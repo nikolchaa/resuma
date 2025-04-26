@@ -1,4 +1,4 @@
-# Resuma
+# ![Resuma Banner](./resuma.png)
 
 ![License](https://img.shields.io/github/license/nikolchaa/resuma?color=blue)
 ![Built with Tauri](https://img.shields.io/badge/Built%20with-Tauri-blue)
