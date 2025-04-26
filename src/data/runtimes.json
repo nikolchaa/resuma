@@ -1,0 +1,120 @@
+[
+  {
+    "name": "llama-hip-gfx1030",
+    "label": "AMD HIP",
+    "download": "https://github.com/ggml-org/llama.cpp/releases/download/b5171/llama-b5171-bin-win-hip-x64-gfx1030.zip",
+    "platform": "windows",
+    "backend": "hip",
+    "compatibleGpus": [
+      { "model": "V620", "status": "confirmed" },
+      { "model": "W6800", "status": "confirmed" },
+      { "model": "W6800X", "status": "confirmed" },
+      { "model": "W6800X Duo", "status": "confirmed" },
+      { "model": "W6900X", "status": "confirmed" },
+      { "model": "RX 6800", "status": "confirmed" },
+      { "model": "RX 6800 XT", "status": "confirmed" },
+      { "model": "RX 6900 XT", "status": "confirmed" },
+      { "model": "RX 6900 XTX", "status": "confirmed" },
+      { "model": "RX 6950 XT", "status": "confirmed" },
+      { "model": "Navi 21", "status": "confirmed" },
+      { "model": "RX 6600", "status": "unknown" },
+      { "model": "RX 6600 XT", "status": "unknown" },
+      { "model": "RX 6700", "status": "unknown" },
+      { "model": "RX 6700 XT", "status": "unknown" },
+      { "model": "RX 7600", "status": "unknown" }
+    ]
+  },
+  {
+    "name": "llama-hip-gfx1100",
+    "label": "AMD HIP",
+    "download": "https://github.com/ggml-org/llama.cpp/releases/download/b5171/llama-b5171-bin-win-hip-x64-gfx1100.zip",
+    "platform": "windows",
+    "backend": "hip",
+    "compatibleGpus": [
+      { "model": "W7800", "status": "confirmed" },
+      { "model": "W7900", "status": "confirmed" },
+      { "model": "RX 7900 GRE", "status": "confirmed" },
+      { "model": "RX 7900 XT", "status": "confirmed" },
+      { "model": "RX 7900 XTX", "status": "confirmed" },
+      { "model": "RX 7900M", "status": "confirmed" },
+      { "model": "Navi 31", "status": "confirmed" },
+      { "model": "RX 7700", "status": "unknown" },
+      { "model": "RX 7700 XT", "status": "unknown" },
+      { "model": "RX 7800 XT", "status": "unknown" },
+      { "model": "RX 7800M", "status": "unknown" },
+      { "model": "RX 7600", "status": "unknown" }
+    ]
+  },
+  {
+    "name": "llama-hip-gfx1101",
+    "label": "AMD HIP",
+    "download": "https://github.com/ggml-org/llama.cpp/releases/download/b5171/llama-b5171-bin-win-hip-x64-gfx1101.zip",
+    "platform": "windows",
+    "backend": "hip",
+    "compatibleGpus": [
+      { "model": "V710", "status": "confirmed" },
+      { "model": "W7700", "status": "confirmed" },
+      { "model": "RX 7700", "status": "confirmed" },
+      { "model": "RX 7700 XT", "status": "confirmed" },
+      { "model": "RX 7800 XT", "status": "confirmed" },
+      { "model": "RX 7800M", "status": "confirmed" },
+      { "model": "RX 7600", "status": "unknown" }
+    ]
+  },
+  {
+    "name": "llama-cuda",
+    "label": "NVIDIA CUDA",
+    "download": "https://github.com/ggml-org/llama.cpp/releases/download/b5171/llama-b5171-bin-win-cuda-cu12.4-x64.zip",
+    "platform": "windows",
+    "backend": "cuda",
+    "compatibleGpus": [{ "model": "Any NVIDIA", "status": "confirmed" }]
+  },
+  {
+    "name": "llama-vulkan-win",
+    "label": "Vulkan (Windows)",
+    "download": "https://github.com/ggml-org/llama.cpp/releases/download/b5171/llama-b5171-bin-win-vulkan-x64.zip",
+    "platform": "windows",
+    "backend": "vulkan",
+    "compatibleGpus": [
+      { "model": "Any NVIDIA", "status": "confirmed" },
+      { "model": "Any AMD", "status": "confirmed" },
+      { "model": "Any Intel", "status": "confirmed" }
+    ]
+  },
+  {
+    "name": "llama-vulkan-linux",
+    "label": "Vulkan (Linux)",
+    "download": "https://github.com/ggml-org/llama.cpp/releases/download/b5171/llama-b5171-bin-ubuntu-vulkan-x64.zip",
+    "platform": "linux",
+    "backend": "vulkan",
+    "compatibleGpus": [
+      { "model": "Any NVIDIA", "status": "confirmed" },
+      { "model": "Any AMD", "status": "confirmed" },
+      { "model": "Any Intel", "status": "confirmed" }
+    ]
+  },
+  {
+    "name": "llama-cpu-win",
+    "label": "CPU (AVX2 - Windows)",
+    "download": "https://github.com/ggml-org/llama.cpp/releases/download/b5171/llama-b5171-bin-win-avx2-x64.zip",
+    "platform": "windows",
+    "backend": "cpu",
+    "compatibleGpus": []
+  },
+  {
+    "name": "llama-cpu-linux",
+    "label": "CPU (AVX2 - Linux)",
+    "download": "https://github.com/ggml-org/llama.cpp/releases/download/b5171/llama-b5171-bin-ubuntu-x64.zip",
+    "platform": "linux",
+    "backend": "cpu",
+    "compatibleGpus": []
+  },
+  {
+    "name": "llama-metal",
+    "label": "Metal (MacOS)",
+    "download": "https://github.com/ggml-org/llama.cpp/releases/download/b5171/llama-b5171-bin-macos-arm64.zip",
+    "platform": "macos",
+    "backend": "cpu",
+    "compatibleGpus": []
+  }
+]
