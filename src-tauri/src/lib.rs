@@ -1,6 +1,8 @@
 use std::process::{Command, Stdio};
 use tauri_plugin_hwinfo;
-// use sysinfo::System;
+use std::fs::File;
+use zip::ZipArchive;
+use std::path::PathBuf;
 
 #[tauri::command]
 async fn run_llama(prompt: String) -> Result<String, String> {
@@ -46,13 +48,38 @@ async fn run_llama(prompt: String) -> Result<String, String> {
     Ok(response)
 }
 
+#[tauri::command]
+async fn unzip_file(source: String, target: String) -> Result<(), String> {
+    let file = File::open(&source).map_err(|e| e.to_string())?;
+    let mut archive = ZipArchive::new(file).map_err(|e| e.to_string())?;
+
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i).map_err(|e| e.to_string())?;
+        let outpath = PathBuf::from(&target).join(file.name());
+
+        if (&*file.name()).ends_with('/') {
+            std::fs::create_dir_all(&outpath).map_err(|e| e.to_string())?;
+        } else {
+            if let Some(p) = outpath.parent() {
+                if !p.exists() {
+                    std::fs::create_dir_all(p).map_err(|e| e.to_string())?;
+                }
+            }
+            let mut outfile = std::fs::File::create(&outpath).map_err(|e| e.to_string())?;
+            std::io::copy(&mut file, &mut outfile).map_err(|e| e.to_string())?;
+        }
+    }
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_hwinfo::init())
-        .invoke_handler(tauri::generate_handler![run_llama])
+        .invoke_handler(tauri::generate_handler![run_llama, unzip_file])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

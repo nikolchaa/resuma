@@ -54,8 +54,7 @@ const Artificial = () => {
 
   useEffect(() => {
     setRuntime(() => selectRecommendedRuntime(getRuntimes(system)));
-
-    console.log(runtime);
+    console.log("Recommended runtime:", runtime);
   }, [system]);
 
   const renderParamTooltip = (label: string, desc: string) => (
@@ -148,7 +147,7 @@ const Artificial = () => {
                 "Detecting..."
               )}
             </span>
-            <Button variant='secondary' size='sm'>
+            <Button variant='secondary' size='sm' disabled={!runtime}>
               <Download className='w-4 h-4 mr-1' />
               Download
             </Button>
