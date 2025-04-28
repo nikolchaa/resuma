@@ -33,11 +33,16 @@ import {
   RuntimeEntry,
   selectRecommendedRuntime,
 } from "@/lib/selectRecommendedRuntime";
+import { listen } from "@tauri-apps/api/event";
+import { invoke } from "@tauri-apps/api/core";
 
 const Artificial = () => {
   const navigate = useNavigate();
   const system = useSystem();
   const [runtime, setRuntime] = useState<RuntimeEntry | null>(null);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [downloadComplete, setDownloadComplete] = useState(false);
+  const [extractComplete, setExtractComplete] = useState(false);
 
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -56,6 +61,40 @@ const Artificial = () => {
     setRuntime(() => selectRecommendedRuntime(getRuntimes(system)));
     console.log("Recommended runtime:", runtime);
   }, [system]);
+
+  useEffect(() => {
+    const unlistenProgress = listen<number>("download_progress", (event) => {
+      setDownloadProgress(event.payload);
+    });
+
+    const unlistenComplete = listen<string>("download_complete", () => {
+      setDownloadComplete(true);
+    });
+
+    const unlistenError = listen<string>("download_error", (event) => {
+      console.error(`Download error: ${event.payload}`);
+    });
+
+    const unlistenExtractComplete = listen<string>(
+      "extract_complete",
+      (event) => {
+        console.log(`Extraction completed at: ${event.payload}`);
+        setExtractComplete(true);
+      }
+    );
+
+    const unlistenExtractError = listen<string>("extract_error", (event) => {
+      console.error(`Extraction error: ${event.payload}`);
+    });
+
+    return () => {
+      unlistenProgress.then((f) => f());
+      unlistenComplete.then((f) => f());
+      unlistenError.then((f) => f());
+      unlistenExtractComplete.then((f) => f());
+      unlistenExtractError.then((f) => f());
+    };
+  }, []);
 
   const renderParamTooltip = (label: string, desc: string) => (
     <TooltipProvider>
@@ -147,12 +186,46 @@ const Artificial = () => {
                 "Detecting..."
               )}
             </span>
-            <Button variant='secondary' size='sm' disabled={!runtime}>
-              <Download className='w-4 h-4 mr-1' />
-              Download
+            <Button
+              variant='secondary'
+              size='sm'
+              disabled={
+                downloadComplete ||
+                (downloadProgress > 0 && downloadProgress < 100)
+              }
+              onClick={async () => {
+                try {
+                  await invoke("download_and_extract", {
+                    runtimeName: runtime?.name,
+                    runtimeUrl: runtime?.download,
+                    noExtract: false,
+                  });
+                  console.log("Download Started.");
+                } catch (error) {
+                  console.error("Error downloading runtime:", error);
+                }
+              }}
+            >
+              {downloadComplete ? (
+                !extractComplete ? (
+                  <>Extracting...</>
+                ) : (
+                  <>Ready</>
+                )
+              ) : downloadProgress > 0 && downloadProgress < 100 ? (
+                <>Downloading... ({Math.round(downloadProgress)}%)</>
+              ) : (
+                <>
+                  <Download className='w-4 h-4 mr-1' />
+                  Download
+                </>
+              )}
             </Button>
           </div>
-          <Progress value={0} className='h-2 mt-2' />
+          <Progress
+            value={extractComplete ? 100 : downloadProgress * 0.95}
+            className='h-2 mt-2'
+          />
         </div>
 
         {/* Advanced Options Toggle */}
