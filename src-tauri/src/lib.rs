@@ -1,74 +1,116 @@
-use std::process::{Command, Stdio};
-use tauri_plugin_hwinfo;
-use std::fs::File;
-use zip::ZipArchive;
+use std::fs::{self, File};
+use std::io::{self, Write};
 use std::path::PathBuf;
+use tauri::Emitter;
+use reqwest::Client;
+use zip::ZipArchive;
+use tauri::async_runtime::spawn;
+// use std::process::{Command, Stdio};
+use tauri_plugin_hwinfo;
+use futures_util::StreamExt; // ← Must be outside the function
 
 #[tauri::command]
-async fn run_llama(prompt: String) -> Result<String, String> {
-    // Insert prompt into ChatML format
-    let chatml_prompt = format!(
-        "<|im_start|>system\nYou are a helpful AI assistant.<|im_end|>\n\
-<|im_start|>user\n{prompt}<|im_end|>\n\
-<|im_start|>assistant"
-    );
+async fn download_and_extract(
+    window: tauri::Window,
+    runtime_name: String,
+    runtime_url: String,
+    no_extract: bool,
+) -> Result<(), String> {
+    spawn(async move {
+        let base_dir = dirs::data_dir()
+            .ok_or_else(|| "Failed to find data directory".to_string())
+            .unwrap()
+            .join("com.resuma.app")
+            .join("runtimes")
+            .join(&runtime_name);
 
-    // Run the llama-cli binary
-    let child = Command::new("llama/llama-cli.exe")
-        .args(&[
-            "-m",
-            "models/model.gguf",
-            "-p",
-            &chatml_prompt,
-            "--gpu-layers",
-            "32",
-            "--mlock",
-        ])
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|e| format!("Failed to start llama-cli.exe: {}", e))?;
+        if let Err(e) = fs::create_dir_all(&base_dir) {
+            let _ = window.emit("download_error", format!("Failed to create directory: {e}"));
+            return;
+        }
 
-    let output = child
-        .wait_with_output()
-        .map_err(|e| format!("Failed to run llama-cli.exe: {}", e))?;
+        let filename = runtime_url.split('/').last().unwrap_or("download.zip");
+        let file_path = base_dir.join(filename);
 
-    let raw_output = String::from_utf8_lossy(&output.stdout).to_string();
+        let client = Client::new();
+        let response = match client.get(&runtime_url).send().await {
+            Ok(res) => res,
+            Err(e) => {
+                let _ = window.emit("download_error", format!("Download failed: {e}"));
+                return;
+            }
+        };
 
-    // Formatting the output to extract the assistant's response
-    // This assumes the output is in the format "<|im_start|> assistant\n<response>"
-    let response = raw_output
-        .split("<|im_start|> assistant")
-        .nth(1)
-        .unwrap_or("")
-        .replace("[end of text]", "")
-        .trim()
-        .to_string();
+        let total_size = response.content_length().unwrap_or(0);
+        let mut downloaded: u64 = 0;
+        let mut stream = response.bytes_stream();
+        let mut file = match File::create(&file_path) {
+            Ok(f) => f,
+            Err(e) => {
+                let _ = window.emit("download_error", format!("Failed to create file: {e}"));
+                return;
+            }
+        };
 
-    Ok(response)
+        while let Some(item) = stream.next().await {
+            match item {
+                Ok(chunk) => {
+                    if let Err(e) = file.write_all(&chunk) {
+                        let _ = window.emit("download_error", format!("Failed writing file: {e}"));
+                        return;
+                    }
+                    downloaded += chunk.len() as u64;
+                    let progress = if total_size > 0 {
+                        (downloaded as f64 / total_size as f64) * 100.0
+                    } else {
+                        0.0
+                    };
+                    let _ = window.emit("download_progress", progress);
+                }
+                Err(e) => {
+                    let _ = window.emit("download_error", format!("Download stream error: {e}"));
+                    return;
+                }
+            }
+        }
+
+        let _ = window.emit("download_complete", file_path.to_string_lossy().to_string());
+
+        if !no_extract {
+            if let Err(e) = extract_zip(&file_path, &base_dir) {
+                let _ = window.emit("extract_error", format!("Extraction failed: {e}"));
+                return;
+            }
+            let _ = window.emit("extract_complete", base_dir.to_string_lossy().to_string());
+        }
+    });
+
+    Ok(())
 }
 
-#[tauri::command]
-async fn unzip_file(source: String, target: String) -> Result<(), String> {
-    let file = File::open(&source).map_err(|e| e.to_string())?;
-    let mut archive = ZipArchive::new(file).map_err(|e| e.to_string())?;
+// Helper function, NOT a tauri command
+fn extract_zip(zip_path: &PathBuf, extract_to: &PathBuf) -> io::Result<()> {
+    let file = File::open(zip_path)?;
+    let mut archive = ZipArchive::new(file)?;
 
     for i in 0..archive.len() {
-        let mut file = archive.by_index(i).map_err(|e| e.to_string())?;
-        let outpath = PathBuf::from(&target).join(file.name());
+        let mut file = archive.by_index(i)?;
+        let outpath = extract_to.join(file.mangled_name()); // ← Not sanitized_name()
 
-        if (&*file.name()).ends_with('/') {
-            std::fs::create_dir_all(&outpath).map_err(|e| e.to_string())?;
+        if (*file.name()).ends_with('/') {
+            fs::create_dir_all(&outpath)?;
         } else {
             if let Some(p) = outpath.parent() {
                 if !p.exists() {
-                    std::fs::create_dir_all(p).map_err(|e| e.to_string())?;
+                    fs::create_dir_all(p)?;
                 }
             }
-            let mut outfile = std::fs::File::create(&outpath).map_err(|e| e.to_string())?;
-            std::io::copy(&mut file, &mut outfile).map_err(|e| e.to_string())?;
+            let mut outfile = File::create(&outpath)?;
+            io::copy(&mut file, &mut outfile)?;
         }
     }
+
+    fs::remove_file(zip_path)?;
 
     Ok(())
 }
@@ -79,7 +121,9 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_hwinfo::init())
-        .invoke_handler(tauri::generate_handler![run_llama, unzip_file])
+        .invoke_handler(tauri::generate_handler![
+            download_and_extract
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
