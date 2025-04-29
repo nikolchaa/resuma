@@ -20,6 +20,7 @@ import {
 import { useSystem } from "@/contexts/SystemContext";
 import {
   ArrowRight,
+  Check,
   ChevronDown,
   ChevronUp,
   Download,
@@ -33,18 +34,20 @@ import {
   RuntimeEntry,
   selectRecommendedRuntime,
 } from "@/lib/selectRecommendedRuntime";
-import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
+import { useDownloadListeners } from "@/hooks/useDownloadListeners";
+import { DownloadStatus } from "@/types/download";
 
 const Artificial = () => {
   const navigate = useNavigate();
   const system = useSystem();
   const [runtime, setRuntime] = useState<RuntimeEntry | null>(null);
-  const [downloadProgress, setDownloadProgress] = useState(0);
-  const [downloadComplete, setDownloadComplete] = useState(false);
-  const [extractComplete, setExtractComplete] = useState(false);
-
   const [showAdvanced, setShowAdvanced] = useState(false);
+
+  const [downloadStatus, setDownloadStatus] = useState<DownloadStatus>({
+    state: "idle",
+    progress: 0,
+  });
 
   const cpu = system?.cpu?.model;
   const gpu = system?.gpu?.model;
@@ -62,39 +65,41 @@ const Artificial = () => {
     console.log("Recommended runtime:", runtime);
   }, [system]);
 
-  useEffect(() => {
-    const unlistenProgress = listen<number>("download_progress", (event) => {
-      setDownloadProgress(event.payload);
-    });
-
-    const unlistenComplete = listen<string>("download_complete", () => {
-      setDownloadComplete(true);
-    });
-
-    const unlistenError = listen<string>("download_error", (event) => {
-      console.error(`Download error: ${event.payload}`);
-    });
-
-    const unlistenExtractComplete = listen<string>(
-      "extract_complete",
-      (event) => {
-        console.log(`Extraction completed at: ${event.payload}`);
-        setExtractComplete(true);
-      }
-    );
-
-    const unlistenExtractError = listen<string>("extract_error", (event) => {
-      console.error(`Extraction error: ${event.payload}`);
-    });
-
-    return () => {
-      unlistenProgress.then((f) => f());
-      unlistenComplete.then((f) => f());
-      unlistenError.then((f) => f());
-      unlistenExtractComplete.then((f) => f());
-      unlistenExtractError.then((f) => f());
-    };
-  }, []);
+  useDownloadListeners(runtime?.name, {
+    onProgress: (progress) => {
+      setDownloadStatus({
+        state: "downloading",
+        progress,
+      });
+    },
+    onComplete: () => {
+      setDownloadStatus((prev) => ({
+        ...prev,
+        state: "extracting",
+      }));
+    },
+    onError: (error) => {
+      console.error(`Download error for ${runtime?.name}: ${error}`);
+      setDownloadStatus((prev) => ({
+        ...prev,
+        state: "error",
+      }));
+    },
+    onExtractComplete: (path) => {
+      console.log(`Extraction completed for ${runtime?.name} at: ${path}`);
+      setDownloadStatus((prev) => ({
+        ...prev,
+        state: "ready",
+      }));
+    },
+    onExtractError: (error) => {
+      console.error(`Extraction error for ${runtime?.name}: ${error}`);
+      setDownloadStatus((prev) => ({
+        ...prev,
+        state: "error",
+      }));
+    },
+  });
 
   const renderParamTooltip = (label: string, desc: string) => (
     <TooltipProvider>
@@ -190,30 +195,38 @@ const Artificial = () => {
               variant='secondary'
               size='sm'
               disabled={
-                downloadComplete ||
-                (downloadProgress > 0 && downloadProgress < 100)
+                downloadStatus.state === "downloading" ||
+                downloadStatus.state === "extracting" ||
+                downloadStatus.state === "ready"
               }
               onClick={async () => {
                 try {
                   await invoke("download_and_extract", {
-                    runtimeName: runtime?.name,
-                    runtimeUrl: runtime?.download,
+                    assetName: runtime?.name,
+                    assetUrl: runtime?.download,
                     noExtract: false,
                   });
                   console.log("Download Started.");
                 } catch (error) {
-                  console.error("Error downloading runtime:", error);
+                  console.error("Error downloading asset:", error);
                 }
               }}
             >
-              {downloadComplete ? (
-                !extractComplete ? (
-                  <>Extracting...</>
-                ) : (
-                  <>Ready</>
-                )
-              ) : downloadProgress > 0 && downloadProgress < 100 ? (
-                <>Downloading... ({Math.round(downloadProgress)}%)</>
+              {downloadStatus.state === "ready" ? (
+                <>
+                  <Check className='w-4 h-4 mr-1' />
+                  Ready
+                </>
+              ) : downloadStatus.state === "downloading" ? (
+                <>
+                  <Download className='w-4 h-4 mr-1' />
+                  Downloading... ({Math.round(downloadStatus.progress)}%)
+                </>
+              ) : downloadStatus.state === "extracting" ? (
+                <>
+                  <Download className='w-4 h-4 mr-1' />
+                  Extracting...
+                </>
               ) : (
                 <>
                   <Download className='w-4 h-4 mr-1' />
@@ -223,7 +236,13 @@ const Artificial = () => {
             </Button>
           </div>
           <Progress
-            value={extractComplete ? 100 : downloadProgress * 0.95}
+            value={
+              downloadStatus.state === "ready"
+                ? 100
+                : downloadStatus.state === "extracting"
+                ? downloadStatus.progress * 0.95
+                : downloadStatus.progress
+            }
             className='h-2 mt-2'
           />
         </div>

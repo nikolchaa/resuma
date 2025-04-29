@@ -5,15 +5,14 @@ use tauri::Emitter;
 use reqwest::Client;
 use zip::ZipArchive;
 use tauri::async_runtime::spawn;
-// use std::process::{Command, Stdio};
 use tauri_plugin_hwinfo;
-use futures_util::StreamExt; // ← Must be outside the function
+use futures_util::StreamExt;
 
 #[tauri::command]
 async fn download_and_extract(
     window: tauri::Window,
-    runtime_name: String,
-    runtime_url: String,
+    asset_name: String,
+    asset_url: String,
     no_extract: bool,
 ) -> Result<(), String> {
     spawn(async move {
@@ -22,21 +21,21 @@ async fn download_and_extract(
             .unwrap()
             .join("com.resuma.app")
             .join("runtimes")
-            .join(&runtime_name);
+            .join(&asset_name);
 
         if let Err(e) = fs::create_dir_all(&base_dir) {
-            let _ = window.emit("download_error", format!("Failed to create directory: {e}"));
+            let _ = window.emit(&format!("download_error:{}", asset_name), format!("Failed to create directory: {e}"));
             return;
         }
 
-        let filename = runtime_url.split('/').last().unwrap_or("download.zip");
+        let filename = asset_url.split('/').last().unwrap_or("download.zip");
         let file_path = base_dir.join(filename);
 
         let client = Client::new();
-        let response = match client.get(&runtime_url).send().await {
+        let response = match client.get(&asset_url).send().await {
             Ok(res) => res,
             Err(e) => {
-                let _ = window.emit("download_error", format!("Download failed: {e}"));
+                let _ = window.emit(&format!("download_error:{}", asset_name), format!("Download failed: {e}"));
                 return;
             }
         };
@@ -47,7 +46,7 @@ async fn download_and_extract(
         let mut file = match File::create(&file_path) {
             Ok(f) => f,
             Err(e) => {
-                let _ = window.emit("download_error", format!("Failed to create file: {e}"));
+                let _ = window.emit(&format!("download_error:{}", asset_name), format!("Failed to create file: {e}"));
                 return;
             }
         };
@@ -56,7 +55,7 @@ async fn download_and_extract(
             match item {
                 Ok(chunk) => {
                     if let Err(e) = file.write_all(&chunk) {
-                        let _ = window.emit("download_error", format!("Failed writing file: {e}"));
+                        let _ = window.emit(&format!("download_error:{}", asset_name), format!("Failed writing file: {e}"));
                         return;
                     }
                     downloaded += chunk.len() as u64;
@@ -65,23 +64,23 @@ async fn download_and_extract(
                     } else {
                         0.0
                     };
-                    let _ = window.emit("download_progress", progress);
+                    let _ = window.emit(&format!("download_progress:{}", asset_name), progress);
                 }
                 Err(e) => {
-                    let _ = window.emit("download_error", format!("Download stream error: {e}"));
+                    let _ = window.emit(&format!("download_error:{}", asset_name), format!("Download stream error: {e}"));
                     return;
                 }
             }
         }
 
-        let _ = window.emit("download_complete", file_path.to_string_lossy().to_string());
+        let _ = window.emit(&format!("download_complete:{}", asset_name), file_path.to_string_lossy().to_string());
 
         if !no_extract {
             if let Err(e) = extract_zip(&file_path, &base_dir) {
-                let _ = window.emit("extract_error", format!("Extraction failed: {e}"));
+                let _ = window.emit(&format!("extract_error:{}", asset_name), format!("Extraction failed: {e}"));
                 return;
             }
-            let _ = window.emit("extract_complete", base_dir.to_string_lossy().to_string());
+            let _ = window.emit(&format!("extract_complete:{}", asset_name), base_dir.to_string_lossy().to_string());
         }
     });
 
@@ -95,7 +94,7 @@ fn extract_zip(zip_path: &PathBuf, extract_to: &PathBuf) -> io::Result<()> {
 
     for i in 0..archive.len() {
         let mut file = archive.by_index(i)?;
-        let outpath = extract_to.join(file.mangled_name()); // ← Not sanitized_name()
+        let outpath = extract_to.join(file.mangled_name());
 
         if (*file.name()).ends_with('/') {
             fs::create_dir_all(&outpath)?;
@@ -115,6 +114,17 @@ fn extract_zip(zip_path: &PathBuf, extract_to: &PathBuf) -> io::Result<()> {
     Ok(())
 }
 
+#[tauri::command]
+async fn check_asset_ready(asset_type: String, asset_name: String) -> Result<bool, String> {
+    let base_dir = dirs::data_dir()
+        .ok_or_else(|| "Failed to find data directory".to_string())?
+        .join("com.resuma.app")
+        .join(asset_type) // ← dynamic folder like runtimes, models, etc.
+        .join(asset_name);
+
+    Ok(base_dir.exists())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -122,7 +132,8 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_hwinfo::init())
         .invoke_handler(tauri::generate_handler![
-            download_and_extract
+            download_and_extract,
+            check_asset_ready,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
