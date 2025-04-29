@@ -36,7 +36,8 @@ import {
 } from "@/lib/selectRecommendedRuntime";
 import { invoke } from "@tauri-apps/api/core";
 import { useDownloadListeners } from "@/hooks/useDownloadListeners";
-import { DownloadStatus } from "@/types/download";
+import { checkAssetReady } from "@/lib/checkAssetReady";
+import { DownloadStatusMap } from "@/types/downloadStatus";
 
 const Artificial = () => {
   const navigate = useNavigate();
@@ -44,15 +45,18 @@ const Artificial = () => {
   const [runtime, setRuntime] = useState<RuntimeEntry | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
-  const [downloadStatus, setDownloadStatus] = useState<DownloadStatus>({
-    state: "idle",
-    progress: 0,
-  });
+  const [downloadStatusMap, setDownloadStatusMap] = useState<DownloadStatusMap>(
+    {}
+  );
 
   const cpu = system?.cpu?.model;
   const gpu = system?.gpu?.model;
   const gpuVram = system?.gpu?.vramMb;
   const ram = system?.ram?.sizeMb ? Math.round(system.ram.sizeMb / 1024) : null;
+
+  const currentStatus = runtime?.name
+    ? downloadStatusMap[runtime.name] ?? { state: "idle", progress: 0 }
+    : { state: "idle", progress: 0 };
 
   const defaultSettings = getAdaptiveSettings({
     ramGb: ram,
@@ -65,41 +69,115 @@ const Artificial = () => {
     console.log("Recommended runtime:", runtime);
   }, [system]);
 
+  useEffect(() => {
+    const checkRuntimeExistance = async () => {
+      if (!runtime?.name) return;
+
+      const exists = await checkAssetReady("runtimes", runtime.name);
+
+      if (exists) {
+        setDownloadStatusMap((prev) => ({
+          ...prev,
+          [runtime.name]: {
+            state: "ready",
+            progress: 100,
+          },
+        }));
+      }
+    };
+
+    checkRuntimeExistance();
+  }, [runtime]);
+
   useDownloadListeners(runtime?.name, {
     onProgress: (progress) => {
-      setDownloadStatus({
-        state: "downloading",
-        progress,
-      });
+      if (!runtime?.name) return;
+      setDownloadStatusMap((prev) => ({
+        ...prev,
+        [runtime.name]: {
+          state: "downloading",
+          progress,
+        },
+      }));
     },
     onComplete: () => {
-      setDownloadStatus((prev) => ({
+      if (!runtime?.name) return;
+      setDownloadStatusMap((prev) => ({
         ...prev,
-        state: "extracting",
+        [runtime.name]: {
+          ...prev[runtime.name],
+          state: "extracting",
+        },
       }));
     },
     onError: (error) => {
-      console.error(`Download error for ${runtime?.name}: ${error}`);
-      setDownloadStatus((prev) => ({
+      if (!runtime?.name) return;
+      console.error(`Download error for ${runtime.name}: ${error}`);
+      setDownloadStatusMap((prev) => ({
         ...prev,
-        state: "error",
+        [runtime.name]: {
+          ...prev[runtime.name],
+          state: "error",
+        },
       }));
     },
     onExtractComplete: (path) => {
-      console.log(`Extraction completed for ${runtime?.name} at: ${path}`);
-      setDownloadStatus((prev) => ({
+      if (!runtime?.name) return;
+      console.log(`Extraction completed for ${runtime.name} at: ${path}`);
+      setDownloadStatusMap((prev) => ({
         ...prev,
-        state: "ready",
+        [runtime.name]: {
+          state: "ready",
+          progress: 100,
+        },
       }));
     },
     onExtractError: (error) => {
-      console.error(`Extraction error for ${runtime?.name}: ${error}`);
-      setDownloadStatus((prev) => ({
+      if (!runtime?.name) return;
+      console.error(`Extraction error for ${runtime.name}: ${error}`);
+      setDownloadStatusMap((prev) => ({
         ...prev,
-        state: "error",
+        [runtime.name]: {
+          ...prev[runtime.name],
+          state: "error",
+        },
       }));
     },
   });
+
+  const handleDownloadClick = async (
+    assetName: string,
+    assetUrl: string,
+    assetType: "runtime" | "model"
+  ) => {
+    if (!assetName) return;
+
+    setDownloadStatusMap((prev) => ({
+      ...prev,
+      [assetName]: {
+        state: "downloading",
+        progress: 0,
+      },
+    }));
+
+    try {
+      await invoke("download_and_extract", {
+        assetName,
+        assetUrl,
+        noExtract: assetType === "model", // 🔥 Automatically decide
+      });
+      console.log(`Download Started for ${assetName}`);
+    } catch (error) {
+      console.error(`Error downloading ${assetName}:`, error);
+      setDownloadStatusMap((prev) => ({
+        ...prev,
+        [assetName]: {
+          state: "error",
+          progress: 0,
+        },
+      }));
+    }
+  };
 
   const renderParamTooltip = (label: string, desc: string) => (
     <TooltipProvider>
@@ -195,34 +273,31 @@ const Artificial = () => {
               variant='secondary'
               size='sm'
               disabled={
-                downloadStatus.state === "downloading" ||
-                downloadStatus.state === "extracting" ||
-                downloadStatus.state === "ready"
+                currentStatus.state === "downloading" ||
+                currentStatus.state === "extracting" ||
+                currentStatus.state === "ready"
               }
-              onClick={async () => {
-                try {
-                  await invoke("download_and_extract", {
-                    assetName: runtime?.name,
-                    assetUrl: runtime?.download,
-                    noExtract: false,
-                  });
-                  console.log("Download Started.");
-                } catch (error) {
-                  console.error("Error downloading asset:", error);
+              onClick={() => {
+                if (runtime?.name && runtime?.download) {
+                  handleDownloadClick(
+                    runtime.name,
+                    runtime.download,
+                    "runtime"
+                  );
                 }
               }}
             >
-              {downloadStatus.state === "ready" ? (
+              {currentStatus.state === "ready" ? (
                 <>
                   <Check className='w-4 h-4 mr-1' />
                   Ready
                 </>
-              ) : downloadStatus.state === "downloading" ? (
+              ) : currentStatus.state === "downloading" ? (
                 <>
                   <Download className='w-4 h-4 mr-1' />
-                  Downloading... ({Math.round(downloadStatus.progress)}%)
+                  Downloading... ({Math.round(currentStatus.progress)}%)
                 </>
-              ) : downloadStatus.state === "extracting" ? (
+              ) : currentStatus.state === "extracting" ? (
                 <>
                   <Download className='w-4 h-4 mr-1' />
                   Extracting...
@@ -237,11 +312,11 @@ const Artificial = () => {
           </div>
           <Progress
             value={
-              downloadStatus.state === "ready"
+              currentStatus.state === "ready"
                 ? 100
-                : downloadStatus.state === "extracting"
-                ? downloadStatus.progress * 0.95
-                : downloadStatus.progress
+                : currentStatus.state === "extracting"
+                ? currentStatus.progress * 0.95
+                : currentStatus.progress
             }
             className='h-2 mt-2'
           />
