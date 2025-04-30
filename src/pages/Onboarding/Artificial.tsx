@@ -165,6 +165,7 @@ const Artificial = () => {
         assetName,
         assetUrl,
         noExtract: assetType === "model", // 🔥 Automatically decide
+        assetType,
       });
       console.log(`Download Started for ${assetName}`);
     } catch (error) {
@@ -446,7 +447,10 @@ const Artificial = () => {
 
         {/* Continue */}
         <div className='flex justify-end'>
-          <Button disabled onClick={() => navigate("/onboarding/step3")}>
+          <Button
+            disabled={!(currentStatus.state === "ready")}
+            onClick={() => navigate("/onboarding/step3")}
+          >
             Continue <ArrowRight className='h-4' />
           </Button>
         </div>

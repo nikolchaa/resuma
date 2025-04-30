@@ -14,13 +14,14 @@ async fn download_and_extract(
     asset_name: String,
     asset_url: String,
     no_extract: bool,
+    asset_type: String, // e.g., "runtimes", "models", etc.
 ) -> Result<(), String> {
     spawn(async move {
         let base_dir = dirs::data_dir()
             .ok_or_else(|| "Failed to find data directory".to_string())
             .unwrap()
             .join("com.resuma.app")
-            .join("runtimes")
+            .join(&format!("{}s", asset_type)) // ← dynamic folder like runtimes, models, etc.
             .join(&asset_name);
 
         if let Err(e) = fs::create_dir_all(&base_dir) {
