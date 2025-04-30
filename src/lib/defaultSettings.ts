@@ -1,3 +1,5 @@
+import { ModelResult } from "@/lib/resolveModel";
+
 export type LLMSettings = {
   threads: number;
   ctxSize: number;
@@ -11,32 +13,32 @@ export type LLMSettings = {
 export function getAdaptiveSettings({
   ramGb,
   gpuVramMb,
-  gpuManufacturer,
+  model,
 }: {
   ramGb: number | null;
   gpuVramMb: number | null;
-  gpuManufacturer: string | null;
+  model: ModelResult | null;
 }): LLMSettings {
-  const isAMD =
-    gpuManufacturer?.toLowerCase().includes("amd") ||
-    gpuManufacturer?.toLowerCase().includes("advanced micro devices");
+  const isGPU = model?.status === "gpu";
+  const effectiveMemory = isGPU ? gpuVramMb : ramGb;
+
+  // mlock thresholds
+  const mlock = effectiveMemory != null && effectiveMemory >= (isGPU ? 8 : 16);
+  // noMmap thresholds
+  const noMmap = effectiveMemory != null && effectiveMemory <= (isGPU ? 4 : 4);
 
   let gpuLayers = 0;
-  if (gpuVramMb != null) {
-    if (gpuVramMb >= 8192) {
-      gpuLayers = isAMD ? 32 : 40;
-    } else if (gpuVramMb >= 4096) {
-      gpuLayers = 20;
-    }
+  if (isGPU && model?.model?.layers) {
+    gpuLayers = model.model.layers;
   }
 
   return {
     threads: -1,
-    ctxSize: ramGb !== null && ramGb >= 16 ? 8192 : 4096,
+    ctxSize: effectiveMemory !== null && effectiveMemory >= 16 ? 8192 : 4096,
     predict: -1,
     gpuLayers,
     flashAttn: false,
-    mlock: ramGb !== null && ramGb >= 16,
-    noMmap: ramGb !== null && ramGb <= 4,
+    mlock,
+    noMmap,
   };
 }

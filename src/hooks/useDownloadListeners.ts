@@ -19,29 +19,30 @@ export function useDownloadListeners(
 ) {
   useEffect(() => {
     if (!assetName) return;
+    const safeName = assetName.replace(/\./g, "_");
 
     const unlistenProgress = listen<number>(
-      `download_progress:${assetName}`,
+      `download_progress:${safeName}`,
       (event) => onProgress(event.payload)
     );
 
     const unlistenComplete = listen<string>(
-      `download_complete:${assetName}`,
+      `download_complete:${safeName}`,
       () => onComplete()
     );
 
     const unlistenError = listen<string>(
-      `download_error:${assetName}`,
+      `download_error:${safeName}`,
       (event) => onError(event.payload)
     );
 
     const unlistenExtractComplete = listen<string>(
-      `extract_complete:${assetName}`,
+      `extract_complete:${safeName}`,
       (event) => onExtractComplete(event.payload)
     );
 
     const unlistenExtractError = listen<string>(
-      `extract_error:${assetName}`,
+      `extract_error:${safeName}`,
       (event) => onExtractError(event.payload)
     );
 

@@ -23,8 +23,11 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
+  Cpu,
   Download,
   Info,
+  Microchip,
+  X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -38,11 +41,17 @@ import { invoke } from "@tauri-apps/api/core";
 import { useDownloadListeners } from "@/hooks/useDownloadListeners";
 import { checkAssetReady } from "@/lib/checkAssetReady";
 import { DownloadStatusMap } from "@/types/downloadStatus";
+import { getModels } from "@/lib/resolveModel";
+import {
+  ModelSelection,
+  selectRecommendedModel,
+} from "@/lib/selectRecommendedModel";
 
 const Artificial = () => {
   const navigate = useNavigate();
   const system = useSystem();
   const [runtime, setRuntime] = useState<RuntimeEntry | null>(null);
+  const [model, setModel] = useState<ModelSelection>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const [downloadStatusMap, setDownloadStatusMap] = useState<DownloadStatusMap>(
@@ -54,23 +63,27 @@ const Artificial = () => {
   const gpuVram = system?.gpu?.vramMb;
   const ram = system?.ram?.sizeMb ? Math.round(system.ram.sizeMb / 1024) : null;
 
-  const currentStatus = runtime?.name
+  const runtimeStatus = runtime?.name
     ? downloadStatusMap[runtime.name] ?? { state: "idle", progress: 0 }
+    : { state: "idle", progress: 0 };
+
+  const modelStatus = model?.model.name
+    ? downloadStatusMap[model.model.name] ?? { state: "idle", progress: 0 }
     : { state: "idle", progress: 0 };
 
   const defaultSettings = getAdaptiveSettings({
     ramGb: ram,
     gpuVramMb: gpuVram,
-    gpuManufacturer: system?.gpu?.manufacturer ?? null,
+    model: model,
   });
 
   useEffect(() => {
     setRuntime(() => selectRecommendedRuntime(getRuntimes(system)));
-    console.log("Recommended runtime:", runtime);
+    setModel(() => selectRecommendedModel(getModels(system)));
   }, [system]);
 
   useEffect(() => {
-    const checkRuntimeExistance = async () => {
+    const checkRuntimeExistence = async () => {
       if (!runtime?.name) return;
 
       const exists = await checkAssetReady("runtimes", runtime.name);
@@ -86,8 +99,28 @@ const Artificial = () => {
       }
     };
 
-    checkRuntimeExistance();
+    checkRuntimeExistence();
   }, [runtime]);
+
+  useEffect(() => {
+    const checkModelExistence = async () => {
+      if (!model?.model.name) return;
+
+      const exists = await checkAssetReady("models", model.model.name);
+
+      if (exists) {
+        setDownloadStatusMap((prev) => ({
+          ...prev,
+          [model.model.name]: {
+            state: "ready",
+            progress: 100,
+          },
+        }));
+      }
+    };
+
+    checkModelExistence();
+  }, [model]);
 
   useDownloadListeners(runtime?.name, {
     onProgress: (progress) => {
@@ -121,9 +154,8 @@ const Artificial = () => {
         },
       }));
     },
-    onExtractComplete: (path) => {
+    onExtractComplete: () => {
       if (!runtime?.name) return;
-      console.log(`Extraction completed for ${runtime.name} at: ${path}`);
       setDownloadStatusMap((prev) => ({
         ...prev,
         [runtime.name]: {
@@ -145,6 +177,43 @@ const Artificial = () => {
     },
   });
 
+  useDownloadListeners(model?.model.name, {
+    onProgress: (progress) => {
+      if (!model?.model.name) return;
+      setDownloadStatusMap((prev) => ({
+        ...prev,
+        [model.model.name]: {
+          state: "downloading",
+          progress,
+        },
+      }));
+    },
+    onComplete: () => {
+      if (!model?.model.name) return;
+      setDownloadStatusMap((prev) => ({
+        ...prev,
+        [model.model.name]: {
+          ...prev[model.model.name],
+          state: "ready",
+          progress: 100,
+        },
+      }));
+    },
+    onError: (error) => {
+      if (!model?.model.name) return;
+      console.error(`Download error for ${model.model.name}: ${error}`);
+      setDownloadStatusMap((prev) => ({
+        ...prev,
+        [model.model.name]: {
+          ...prev[model.model.name],
+          state: "error",
+        },
+      }));
+    },
+    onExtractComplete: () => {},
+    onExtractError: () => {},
+  });
+
   const handleDownloadClick = async (
     assetName: string,
     assetUrl: string,
@@ -164,10 +233,9 @@ const Artificial = () => {
       await invoke("download_and_extract", {
         assetName,
         assetUrl,
-        noExtract: assetType === "model", // 🔥 Automatically decide
+        noExtract: assetType === "model",
         assetType,
       });
-      console.log(`Download Started for ${assetName}`);
     } catch (error) {
       console.error(`Error downloading ${assetName}:`, error);
       setDownloadStatusMap((prev) => ({
@@ -238,18 +306,79 @@ const Artificial = () => {
             Recommended Model
           </Label>
           <div className='flex items-center justify-between'>
-            <span className='font-medium'>mistral-7b-instruct.gguf</span>
-            <Button variant='secondary' size='sm'>
-              <Download className='w-4 h-4 mr-1' />
-              Download
+            <span className='font-medium'>
+              {model ? (
+                <>
+                  {model.model.label}{" "}
+                  <span className='text-muted-foreground text-sm'>
+                    ({model.model.size})
+                  </span>
+                </>
+              ) : (
+                "Detecting..."
+              )}
+            </span>
+            <Button
+              variant='secondary'
+              size='sm'
+              disabled={
+                modelStatus.state === "downloading" ||
+                modelStatus.state === "ready"
+              }
+              onClick={() => {
+                if (model?.model.name && model?.model.download) {
+                  handleDownloadClick(
+                    model.model.name,
+                    model.model.download,
+                    "model"
+                  );
+                }
+              }}
+            >
+              {modelStatus.state === "ready" ? (
+                <>
+                  <Check className='w-4 h-4 mr-1' />
+                  Ready
+                </>
+              ) : modelStatus.state === "downloading" ? (
+                <>
+                  <Download className='w-4 h-4 mr-1' />
+                  Downloading... ({Math.round(modelStatus.progress)}%)
+                </>
+              ) : (
+                <>
+                  <Download className='w-4 h-4 mr-1' />
+                  Download
+                </>
+              )}
             </Button>
           </div>
           <div className='flex flex-wrap gap-2'>
-            <Badge variant='outline'>Quantized</Badge>
-            <Badge variant='outline'>7B</Badge>
-            <Badge variant='outline'>Instruct</Badge>
+            <Badge variant='outline' className='flex items-center gap-1'>
+              {model?.status === "gpu" ? (
+                <>
+                  <Microchip className='h-3.5 w-3.5' />
+                  GPU Compatible
+                </>
+              ) : model?.status === "cpu" ? (
+                <>
+                  <Cpu className='h-3.5 w-3.5' />
+                  CPU Compatible
+                </>
+              ) : (
+                <>
+                  <X className='h-3.5 w-3.5' />
+                  Unsupported
+                </>
+              )}
+            </Badge>
+            <Badge variant='outline'>{model?.model.parameters}</Badge>
+            <Badge variant='outline'>{model?.model.quantization}</Badge>
           </div>
-          <Progress value={0} className='h-2 mt-2' />
+          <Progress
+            value={modelStatus.state === "ready" ? 100 : modelStatus.progress}
+            className='h-2 mt-2'
+          />
         </div>
 
         {/* Runtime Download */}
@@ -274,9 +403,9 @@ const Artificial = () => {
               variant='secondary'
               size='sm'
               disabled={
-                currentStatus.state === "downloading" ||
-                currentStatus.state === "extracting" ||
-                currentStatus.state === "ready"
+                runtimeStatus.state === "downloading" ||
+                runtimeStatus.state === "extracting" ||
+                runtimeStatus.state === "ready"
               }
               onClick={() => {
                 if (runtime?.name && runtime?.download) {
@@ -288,17 +417,17 @@ const Artificial = () => {
                 }
               }}
             >
-              {currentStatus.state === "ready" ? (
+              {runtimeStatus.state === "ready" ? (
                 <>
                   <Check className='w-4 h-4 mr-1' />
                   Ready
                 </>
-              ) : currentStatus.state === "downloading" ? (
+              ) : runtimeStatus.state === "downloading" ? (
                 <>
                   <Download className='w-4 h-4 mr-1' />
-                  Downloading... ({Math.round(currentStatus.progress)}%)
+                  Downloading... ({Math.round(runtimeStatus.progress)}%)
                 </>
-              ) : currentStatus.state === "extracting" ? (
+              ) : runtimeStatus.state === "extracting" ? (
                 <>
                   <Download className='w-4 h-4 mr-1' />
                   Extracting...
@@ -313,11 +442,11 @@ const Artificial = () => {
           </div>
           <Progress
             value={
-              currentStatus.state === "ready"
+              runtimeStatus.state === "ready"
                 ? 100
-                : currentStatus.state === "extracting"
-                ? currentStatus.progress * 0.95
-                : currentStatus.progress
+                : runtimeStatus.state === "extracting"
+                ? runtimeStatus.progress * 0.95
+                : runtimeStatus.progress
             }
             className='h-2 mt-2'
           />
@@ -448,7 +577,10 @@ const Artificial = () => {
         {/* Continue */}
         <div className='flex justify-end'>
           <Button
-            disabled={!(currentStatus.state === "ready")}
+            disabled={
+              !(runtimeStatus.state === "ready") &&
+              !(modelStatus.state === "ready")
+            }
             onClick={() => navigate("/onboarding/step3")}
           >
             Continue <ArrowRight className='h-4' />
