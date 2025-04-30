@@ -29,9 +29,9 @@ import {
   Microchip,
   X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getAdaptiveSettings } from "@/lib/defaultSettings";
+import { getAdaptiveSettings, LLMSettings } from "@/lib/defaultSettings";
 import { getRuntimes } from "@/lib/resolveRuntime";
 import {
   RuntimeEntry,
@@ -46,8 +46,11 @@ import {
   ModelSelection,
   selectRecommendedModel,
 } from "@/lib/selectRecommendedModel";
+import { getSection, updateSection } from "@/lib/store";
+import { StoredLLMConfig } from "@/types/llm";
 
 const Artificial = () => {
+  const hasLoadedStoredSettings = useRef(false);
   const navigate = useNavigate();
   const system = useSystem();
   const [runtime, setRuntime] = useState<RuntimeEntry | null>(null);
@@ -71,11 +74,48 @@ const Artificial = () => {
     ? downloadStatusMap[model.model.name] ?? { state: "idle", progress: 0 }
     : { state: "idle", progress: 0 };
 
-  const defaultSettings = getAdaptiveSettings({
-    ramGb: ram,
-    gpuVramMb: gpuVram,
-    model: model,
-  });
+  const [defaultSettings, setDefaultSettings] = useState<LLMSettings>(
+    getAdaptiveSettings({
+      ramGb: ram,
+      gpuVramMb: gpuVram,
+      model: model,
+    })
+  );
+
+  const [settings, setSettings] = useState<LLMSettings>(defaultSettings);
+
+  useEffect(() => {
+    const loadStoredSettings = async () => {
+      const stored = await getSection<{
+        settings?: LLMSettings;
+        model?: string;
+        runtime?: string;
+      }>("llm");
+
+      if (stored?.settings) {
+        setSettings(stored.settings);
+        hasLoadedStoredSettings.current = true;
+      }
+    };
+
+    loadStoredSettings();
+  }, []);
+
+  useEffect(() => {
+    setDefaultSettings(
+      getAdaptiveSettings({
+        ramGb: ram,
+        gpuVramMb: gpuVram,
+        model: model,
+      })
+    );
+  }, [system, model]);
+
+  useEffect(() => {
+    if (!hasLoadedStoredSettings.current) {
+      setSettings(defaultSettings);
+    }
+  }, [defaultSettings]);
 
   useEffect(() => {
     setRuntime(() => selectRecommendedRuntime(getRuntimes(system)));
@@ -263,6 +303,18 @@ const Artificial = () => {
     </TooltipProvider>
   );
 
+  const handleNext = async () => {
+    if (!model || !runtime) return;
+
+    await updateSection<StoredLLMConfig>("llm", {
+      model: model.model.name,
+      runtime: runtime.name,
+      settings,
+    });
+
+    navigate("/onboarding/step3");
+  };
+
   return (
     <Card className='w-full max-w-lg mx-auto my-16'>
       <CardHeader>
@@ -275,7 +327,12 @@ const Artificial = () => {
 
       <CardContent className='flex flex-col gap-4'>
         {/* System Info */}
-        <div className='flex flex-col gap-2'>
+        <div
+          className='flex flex-col gap-2'
+          onClick={() => {
+            console.log(settings);
+          }}
+        >
           <Label className='text-muted-foreground text-sm'>
             Detected Specs
           </Label>
@@ -474,9 +531,9 @@ const Artificial = () => {
           </Button>
         </div>
 
-        {/* Advanced Fields */}
-        {showAdvanced && (
+        {showAdvanced && settings && (
           <div className='flex flex-col gap-4'>
+            {/* Threads */}
             <div className='flex items-center justify-between h-9'>
               <Label>
                 Threads{" "}
@@ -490,9 +547,19 @@ const Artificial = () => {
                 placeholder='(Auto)'
                 min={-1}
                 max={system?.cpu?.threads ?? 16}
+                value={settings.threads === -1 ? "" : settings.threads}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSettings((prev) => ({
+                    ...prev!,
+                    threads: value === "" ? -1 : Number(value),
+                  }));
+                }}
                 className='w-36 text-right'
               />
             </div>
+
+            {/* Context Size */}
             <div className='flex items-center justify-between h-9'>
               <Label>
                 Context Size{" "}
@@ -506,9 +573,24 @@ const Artificial = () => {
                 placeholder='(Auto)'
                 max={16384}
                 min={1024}
+                value={
+                  settings.ctxSize === defaultSettings.ctxSize
+                    ? ""
+                    : settings.ctxSize
+                }
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSettings((prev) => ({
+                    ...prev!,
+                    ctxSize:
+                      value === "" ? defaultSettings.ctxSize : Number(value),
+                  }));
+                }}
                 className='w-36 text-right'
               />
             </div>
+
+            {/* Predict */}
             <div className='flex items-center justify-between h-9'>
               <Label>
                 Predict{" "}
@@ -522,9 +604,19 @@ const Artificial = () => {
                 placeholder='(Auto)'
                 min={-1}
                 max={16384}
+                value={settings.predict === -1 ? "" : settings.predict}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSettings((prev) => ({
+                    ...prev!,
+                    predict: value === "" ? -1 : Number(value),
+                  }));
+                }}
                 className='w-36 text-right'
               />
             </div>
+
+            {/* GPU Layers */}
             <div className='flex items-center justify-between h-9'>
               <Label>
                 GPU Layers{" "}
@@ -538,9 +630,24 @@ const Artificial = () => {
                 placeholder='(Auto)'
                 min={0}
                 max={defaultSettings.gpuLayers}
+                value={
+                  settings.gpuLayers === defaultSettings.gpuLayers
+                    ? ""
+                    : settings.gpuLayers
+                }
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSettings((prev) => ({
+                    ...prev!,
+                    gpuLayers:
+                      value === "" ? defaultSettings.gpuLayers : Number(value),
+                  }));
+                }}
                 className='w-36 text-right'
               />
             </div>
+
+            {/* Flash Attention */}
             <div className='flex items-center justify-between h-9'>
               <Label>
                 Flash Attention{" "}
@@ -549,8 +656,18 @@ const Artificial = () => {
                   "Enables Flash Attention for faster generation if supported."
                 )}
               </Label>
-              <Switch defaultChecked={defaultSettings.flashAttn} />
+              <Switch
+                checked={settings.flashAttn}
+                onCheckedChange={(checked) => {
+                  setSettings((prev) => ({
+                    ...prev!,
+                    flashAttn: checked,
+                  }));
+                }}
+              />
             </div>
+
+            {/* Memory Lock */}
             <div className='flex items-center justify-between h-9'>
               <Label>
                 Memory Lock{" "}
@@ -559,8 +676,18 @@ const Artificial = () => {
                   "Locks model in memory to avoid swapping (more stable)."
                 )}
               </Label>
-              <Switch defaultChecked={defaultSettings.mlock} />
+              <Switch
+                checked={settings.mlock}
+                onCheckedChange={(checked) => {
+                  setSettings((prev) => ({
+                    ...prev!,
+                    mlock: checked,
+                  }));
+                }}
+              />
             </div>
+
+            {/* Disable MMAP */}
             <div className='flex items-center justify-between h-9'>
               <Label>
                 Disable MMAP{" "}
@@ -569,7 +696,15 @@ const Artificial = () => {
                   "Avoids memory-mapping the model file. May fix load errors on some systems."
                 )}
               </Label>
-              <Switch defaultChecked={defaultSettings.noMmap} />
+              <Switch
+                checked={settings.noMmap}
+                onCheckedChange={(checked) => {
+                  setSettings((prev) => ({
+                    ...prev!,
+                    noMmap: checked,
+                  }));
+                }}
+              />
             </div>
           </div>
         )}
@@ -581,7 +716,7 @@ const Artificial = () => {
               !(runtimeStatus.state === "ready") &&
               !(modelStatus.state === "ready")
             }
-            onClick={() => navigate("/onboarding/step3")}
+            onClick={handleNext}
           >
             Continue <ArrowRight className='h-4' />
           </Button>
