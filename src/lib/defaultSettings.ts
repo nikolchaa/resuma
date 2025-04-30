@@ -20,12 +20,21 @@ export function getAdaptiveSettings({
   model: ModelResult | null;
 }): LLMSettings {
   const isGPU = model?.status === "gpu";
-  const effectiveMemory = isGPU ? gpuVramMb : ramGb;
+  const effectiveMemory = isGPU
+    ? gpuVramMb != null
+      ? Math.round(gpuVramMb / 1024)
+      : null // Convert MB → GB
+    : ramGb != null
+    ? Math.round(ramGb)
+    : null; // Convert 31.92GB → 32GB
 
   // mlock thresholds
   const mlock = effectiveMemory != null && effectiveMemory >= (isGPU ? 8 : 16);
   // noMmap thresholds
   const noMmap = effectiveMemory != null && effectiveMemory <= (isGPU ? 4 : 4);
+  // ctxSize thresholds
+  const ctxSize =
+    effectiveMemory !== null && effectiveMemory >= 16 ? 8192 : 4096;
 
   let gpuLayers = 0;
   if (isGPU && model?.model?.layers) {
@@ -34,7 +43,7 @@ export function getAdaptiveSettings({
 
   return {
     threads: -1,
-    ctxSize: effectiveMemory !== null && effectiveMemory >= 16 ? 8192 : 4096,
+    ctxSize,
     predict: -1,
     gpuLayers,
     flashAttn: false,
