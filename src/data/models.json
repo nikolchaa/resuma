@@ -1,0 +1,62 @@
+[
+  {
+    "name": "qwen3-0.6b",
+    "label": "Qwen3 0.6B",
+    "download": "https://huggingface.co/lmstudio-community/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q8_0.gguf",
+    "quantization": "Q8_0",
+    "size": "805 MB",
+    "parameters": "0.6B",
+    "layers": 28,
+    "contextLength": 32768
+  },
+  {
+    "name": "qwen3-1.7b",
+    "label": "Qwen3 1.7B",
+    "download": "https://huggingface.co/lmstudio-community/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q8_0.gguf",
+    "quantization": "Q8_0",
+    "size": "2.17 GB",
+    "parameters": "1.7B",
+    "layers": 28,
+    "contextLength": 32768
+  },
+  {
+    "name": "qwen3-4b",
+    "label": "Qwen3 4B",
+    "download": "https://huggingface.co/lmstudio-community/Qwen3-4B-GGUF/resolve/main/Qwen3-4B-Q6_K.gguf",
+    "quantization": "Q6_K",
+    "size": "3.31 GB",
+    "parameters": "4B",
+    "layers": 36,
+    "contextLength": 32768
+  },
+  {
+    "name": "qwen3-8b",
+    "label": "Qwen3 8B",
+    "download": "https://huggingface.co/lmstudio-community/Qwen3-8B-GGUF/resolve/main/Qwen3-8B-Q4_K_M.gguf",
+    "quantization": "Q4_K_M",
+    "size": "5.03 GB",
+    "parameters": "8B",
+    "layers": 36,
+    "contextLength": 131072
+  },
+  {
+    "name": "qwen3-14b",
+    "label": "Qwen3 14B",
+    "download": "https://huggingface.co/lmstudio-community/Qwen3-14B-GGUF/resolve/main/Qwen3-14B-Q4_K_M.gguf",
+    "quantization": "Q4_K_M",
+    "size": "9 GB",
+    "parameters": "14B",
+    "layers": 40,
+    "contextLength": 131072
+  },
+  {
+    "name": "qwen3-32b",
+    "label": "Qwen3 32B",
+    "download": "https://huggingface.co/lmstudio-community/Qwen3-32B-GGUF/resolve/main/Qwen3-32B-Q4_K_M.gguf",
+    "quantization": "Q4_K_M",
+    "size": "19.8 GB",
+    "parameters": "32B",
+    "layers": 64,
+    "contextLength": 131072
+  }
+]
