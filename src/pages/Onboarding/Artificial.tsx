@@ -29,7 +29,7 @@ import {
   Microchip,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAdaptiveSettings, LLMSettings } from "@/lib/defaultSettings";
 import { getRuntimes } from "@/lib/resolveRuntime";
@@ -46,13 +46,14 @@ import {
   ModelSelection,
   selectRecommendedModel,
 } from "@/lib/selectRecommendedModel";
-import { getSection, updateSection } from "@/lib/store";
-import { StoredLLMConfig } from "@/types/llm";
+import { useOnboarding } from "@/contexts/OnboardingContext";
 
 const Artificial = () => {
-  const hasLoadedStoredSettings = useRef(false);
+  const { state, update, apply } = useOnboarding();
+
   const navigate = useNavigate();
   const system = useSystem();
+
   const [runtime, setRuntime] = useState<RuntimeEntry | null>(null);
   const [model, setModel] = useState<ModelSelection>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -82,25 +83,6 @@ const Artificial = () => {
     })
   );
 
-  const [settings, setSettings] = useState<LLMSettings>(defaultSettings);
-
-  useEffect(() => {
-    const loadStoredSettings = async () => {
-      const stored = await getSection<{
-        settings?: LLMSettings;
-        model?: string;
-        runtime?: string;
-      }>("llm");
-
-      if (stored?.settings) {
-        setSettings(stored.settings);
-        hasLoadedStoredSettings.current = true;
-      }
-    };
-
-    loadStoredSettings();
-  }, []);
-
   useEffect(() => {
     setDefaultSettings(
       getAdaptiveSettings({
@@ -112,10 +94,12 @@ const Artificial = () => {
   }, [system, model]);
 
   useEffect(() => {
-    if (!hasLoadedStoredSettings.current) {
-      setSettings(defaultSettings);
+    if (state.llm?.settings.ctxSize === 0) {
+      update("llm", {
+        settings: defaultSettings,
+      });
     }
-  }, [defaultSettings]);
+  }, [defaultSettings, state.llm?.settings]);
 
   useEffect(() => {
     setRuntime(() => selectRecommendedRuntime(getRuntimes(system)));
@@ -303,18 +287,6 @@ const Artificial = () => {
     </TooltipProvider>
   );
 
-  const handleNext = async () => {
-    if (!model || !runtime) return;
-
-    await updateSection<StoredLLMConfig>("llm", {
-      model: model.model.name,
-      runtime: runtime.name,
-      settings,
-    });
-
-    navigate("/onboarding/step3");
-  };
-
   return (
     <Card className='w-full max-w-lg mx-auto my-16'>
       <CardHeader>
@@ -327,12 +299,7 @@ const Artificial = () => {
 
       <CardContent className='flex flex-col gap-4'>
         {/* System Info */}
-        <div
-          className='flex flex-col gap-2'
-          onClick={() => {
-            console.log(settings);
-          }}
-        >
+        <div className='flex flex-col gap-2'>
           <Label className='text-muted-foreground text-sm'>
             Detected Specs
           </Label>
@@ -371,6 +338,8 @@ const Artificial = () => {
                     ({model.model.size})
                   </span>
                 </>
+              ) : model === null ? (
+                "No compatible model found."
               ) : (
                 "Detecting..."
               )}
@@ -380,7 +349,8 @@ const Artificial = () => {
               size='sm'
               disabled={
                 modelStatus.state === "downloading" ||
-                modelStatus.state === "ready"
+                modelStatus.state === "ready" ||
+                model === null
               }
               onClick={() => {
                 if (model?.model.name && model?.model.download) {
@@ -429,8 +399,12 @@ const Artificial = () => {
                 </>
               )}
             </Badge>
-            <Badge variant='outline'>{model?.model.parameters}</Badge>
-            <Badge variant='outline'>{model?.model.quantization}</Badge>
+            {!(model === null) && (
+              <Badge variant='outline'>{model?.model.parameters}</Badge>
+            )}
+            {!(model === null) && (
+              <Badge variant='outline'>{model?.model.quantization}</Badge>
+            )}
           </div>
           <Progress
             value={modelStatus.state === "ready" ? 100 : modelStatus.progress}
@@ -452,6 +426,8 @@ const Artificial = () => {
                     ({runtime.name})
                   </span>
                 </>
+              ) : runtime === null ? (
+                "No compatible runtime found."
               ) : (
                 "Detecting..."
               )}
@@ -462,7 +438,8 @@ const Artificial = () => {
               disabled={
                 runtimeStatus.state === "downloading" ||
                 runtimeStatus.state === "extracting" ||
-                runtimeStatus.state === "ready"
+                runtimeStatus.state === "ready" ||
+                runtime === null
               }
               onClick={() => {
                 if (runtime?.name && runtime?.download) {
@@ -531,7 +508,7 @@ const Artificial = () => {
           </Button>
         </div>
 
-        {showAdvanced && settings && (
+        {showAdvanced && state.llm?.settings && (
           <div className='flex flex-col gap-4'>
             {/* Threads */}
             <div className='flex items-center justify-between h-9'>
@@ -547,13 +524,20 @@ const Artificial = () => {
                 placeholder='(Auto)'
                 min={-1}
                 max={system?.cpu?.threads ?? 16}
-                value={settings.threads === -1 ? "" : settings.threads}
+                value={
+                  state.llm?.settings.threads === -1
+                    ? ""
+                    : state.llm?.settings.threads
+                }
                 onChange={(e) => {
                   const value = e.target.value;
-                  setSettings((prev) => ({
-                    ...prev!,
-                    threads: value === "" ? -1 : Number(value),
-                  }));
+                  update("llm", {
+                    settings: {
+                      ...state.llm?.settings,
+                      threads:
+                        value === "" ? defaultSettings.threads : Number(value),
+                    },
+                  });
                 }}
                 className='w-36 text-right'
               />
@@ -574,17 +558,19 @@ const Artificial = () => {
                 max={16384}
                 min={1024}
                 value={
-                  settings.ctxSize === defaultSettings.ctxSize
+                  state.llm?.settings.ctxSize === defaultSettings.ctxSize
                     ? ""
-                    : settings.ctxSize
+                    : state.llm?.settings.ctxSize
                 }
                 onChange={(e) => {
                   const value = e.target.value;
-                  setSettings((prev) => ({
-                    ...prev!,
-                    ctxSize:
-                      value === "" ? defaultSettings.ctxSize : Number(value),
-                  }));
+                  update("llm", {
+                    settings: {
+                      ...state.llm?.settings,
+                      ctxSize:
+                        value === "" ? defaultSettings.ctxSize : Number(value),
+                    },
+                  });
                 }}
                 className='w-36 text-right'
               />
@@ -604,13 +590,20 @@ const Artificial = () => {
                 placeholder='(Auto)'
                 min={-1}
                 max={16384}
-                value={settings.predict === -1 ? "" : settings.predict}
+                value={
+                  state.llm?.settings.predict === -1
+                    ? ""
+                    : state.llm?.settings.predict
+                }
                 onChange={(e) => {
                   const value = e.target.value;
-                  setSettings((prev) => ({
-                    ...prev!,
-                    predict: value === "" ? -1 : Number(value),
-                  }));
+                  update("llm", {
+                    settings: {
+                      ...state.llm?.settings,
+                      predict:
+                        value === "" ? defaultSettings.predict : Number(value),
+                    },
+                  });
                 }}
                 className='w-36 text-right'
               />
@@ -631,17 +624,21 @@ const Artificial = () => {
                 min={0}
                 max={defaultSettings.gpuLayers}
                 value={
-                  settings.gpuLayers === defaultSettings.gpuLayers
+                  state.llm?.settings.gpuLayers === defaultSettings.gpuLayers
                     ? ""
-                    : settings.gpuLayers
+                    : state.llm?.settings.gpuLayers
                 }
                 onChange={(e) => {
                   const value = e.target.value;
-                  setSettings((prev) => ({
-                    ...prev!,
-                    gpuLayers:
-                      value === "" ? defaultSettings.gpuLayers : Number(value),
-                  }));
+                  update("llm", {
+                    settings: {
+                      ...state.llm?.settings,
+                      gpuLayers:
+                        value === ""
+                          ? defaultSettings.gpuLayers
+                          : Number(value),
+                    },
+                  });
                 }}
                 className='w-36 text-right'
               />
@@ -657,12 +654,14 @@ const Artificial = () => {
                 )}
               </Label>
               <Switch
-                checked={settings.flashAttn}
+                checked={state.llm?.settings.flashAttn}
                 onCheckedChange={(checked) => {
-                  setSettings((prev) => ({
-                    ...prev!,
-                    flashAttn: checked,
-                  }));
+                  update("llm", {
+                    settings: {
+                      ...state.llm?.settings,
+                      flashAttn: checked,
+                    },
+                  });
                 }}
               />
             </div>
@@ -677,12 +676,14 @@ const Artificial = () => {
                 )}
               </Label>
               <Switch
-                checked={settings.mlock}
+                checked={state.llm?.settings.mlock}
                 onCheckedChange={(checked) => {
-                  setSettings((prev) => ({
-                    ...prev!,
-                    mlock: checked,
-                  }));
+                  update("llm", {
+                    settings: {
+                      ...state.llm?.settings,
+                      mlock: checked,
+                    },
+                  });
                 }}
               />
             </div>
@@ -697,12 +698,14 @@ const Artificial = () => {
                 )}
               </Label>
               <Switch
-                checked={settings.noMmap}
+                checked={state.llm?.settings.noMmap}
                 onCheckedChange={(checked) => {
-                  setSettings((prev) => ({
-                    ...prev!,
-                    noMmap: checked,
-                  }));
+                  update("llm", {
+                    settings: {
+                      ...state.llm?.settings,
+                      noMmap: checked,
+                    },
+                  });
                 }}
               />
             </div>
@@ -710,13 +713,15 @@ const Artificial = () => {
         )}
 
         {/* Continue */}
-        <div className='flex justify-end'>
+        <div className='flex justify-end mt-4'>
           <Button
             disabled={
-              !(runtimeStatus.state === "ready") &&
+              !(runtimeStatus.state === "ready") ||
               !(modelStatus.state === "ready")
             }
-            onClick={handleNext}
+            onClick={() => {
+              apply("llm").then(() => navigate("/onboarding/step3"));
+            }}
           >
             Continue <ArrowRight className='h-4' />
           </Button>

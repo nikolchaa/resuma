@@ -23,11 +23,16 @@ import Finish from "./pages/Onboarding/Finish";
 import Projects from "./pages/Onboarding/Projects";
 import Artificial from "./pages/Onboarding/Artificial";
 import { SystemProvider } from "./contexts/SystemContext";
+import { OnboardingProvider } from "./contexts/OnboardingContext";
 
 const router = createBrowserRouter([
   {
     path: "/onboarding",
-    element: <Onboarding />, // standalone layout
+    element: (
+      <OnboardingProvider>
+        <Onboarding />
+      </OnboardingProvider>
+    ),
     children: [
       { path: "", element: <Welcome /> },
       { path: "step1", element: <Basic /> },
