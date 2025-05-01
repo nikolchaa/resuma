@@ -16,6 +16,12 @@ const Personal = () => {
   const navigate = useNavigate();
   const { state, update, apply } = useOnboarding();
 
+  const isValid =
+    state.personal.fullName.trim() !== "" &&
+    state.personal.email.trim() !== "" &&
+    state.personal.location.trim() !== "" &&
+    state.personal.headline.trim() !== "";
+
   return (
     <Card className='w-full max-w-lg mx-auto'>
       <CardHeader>
@@ -27,7 +33,9 @@ const Personal = () => {
       </CardHeader>
       <CardContent className='flex flex-col gap-4'>
         <div className='flex flex-col gap-2'>
-          <Label>Full Name</Label>
+          <Label>
+            Full Name<span className='text-destructive'>*</span>
+          </Label>
           <Input
             value={state.personal.fullName}
             onChange={(e) => update("personal", { fullName: e.target.value })}
@@ -35,7 +43,9 @@ const Personal = () => {
           />
         </div>
         <div className='flex flex-col gap-2'>
-          <Label>Email</Label>
+          <Label>
+            Email<span className='text-destructive'>*</span>
+          </Label>
           <Input
             type='email'
             value={state.personal.email}
@@ -44,7 +54,9 @@ const Personal = () => {
           />
         </div>
         <div className='flex flex-col gap-2'>
-          <Label>Location</Label>
+          <Label>
+            Location<span className='text-destructive'>*</span>
+          </Label>
           <Input
             value={state.personal.location}
             onChange={(e) => update("personal", { location: e.target.value })}
@@ -52,7 +64,9 @@ const Personal = () => {
           />
         </div>
         <div className='flex flex-col gap-2'>
-          <Label>Headline</Label>
+          <Label>
+            Headline<span className='text-destructive'>*</span>
+          </Label>
           <Input
             value={state.personal.headline}
             onChange={(e) => update("personal", { headline: e.target.value })}
@@ -61,6 +75,7 @@ const Personal = () => {
         </div>
         <div className='flex justify-end mt-4'>
           <Button
+            disabled={!isValid}
             onClick={() =>
               apply("personal").then(() => navigate("/onboarding/step4"))
             }

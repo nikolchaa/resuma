@@ -1,5 +1,178 @@
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { OnboardingState, useOnboarding } from "@/contexts/OnboardingContext";
+import { MinusCircle, PlusCircle, ArrowRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import DateRangeDropdown from "@/components/ui/daterange";
+
+type EducationEntry = OnboardingState["education"][number];
+
 const Education = () => {
-  return <div>Education</div>;
+  const navigate = useNavigate();
+  const { state, update, apply } = useOnboarding();
+
+  const entries = state.education;
+
+  const sync = (next: EducationEntry[]) => {
+    update("education", next);
+  };
+
+  const handleEntryChange = (
+    index: number,
+    field: keyof Omit<EducationEntry, "date">,
+    value: string
+  ) => {
+    const updated = [...entries];
+    updated[index][field] = value;
+    sync(updated);
+  };
+
+  const handleDateChange = (
+    index: number,
+    value: { from: string; to?: string }
+  ) => {
+    const updated = [...entries];
+    updated[index].date = value;
+    sync(updated);
+  };
+
+  const addEntry = () => {
+    sync([
+      ...entries,
+      {
+        school: "",
+        degree: "",
+        location: "",
+        gpa: "",
+        date: { from: "", to: "" },
+      },
+    ]);
+  };
+
+  const removeEntry = (index: number) => {
+    const updated = [...entries];
+    updated.splice(index, 1);
+    sync(updated);
+  };
+
+  const validateEntries = (entries: EducationEntry[]) => {
+    return entries.every((entry) => {
+      return (
+        entry.school.trim() !== "" &&
+        entry.degree.trim() !== "" &&
+        entry.location.trim() !== "" &&
+        entry.date?.from !== ""
+      );
+    });
+  };
+
+  return (
+    <Card className='w-full max-w-lg mx-auto my-16'>
+      <CardHeader>
+        <CardTitle className='text-2xl font-semibold'>Education</CardTitle>
+        <CardDescription className='text-sm text-muted-foreground'>
+          List your educational background, including school, degree, and
+          relevant coursework.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className='flex flex-col gap-4'>
+        {entries.map((entry, index) => (
+          <div key={index} className='flex flex-col gap-4 border-b pb-4'>
+            <div className='flex flex-col gap-2'>
+              <Label>
+                School Name<span className='text-destructive'>*</span>
+              </Label>
+              <Input
+                placeholder='San Francisco State University'
+                value={entry.school}
+                onChange={(e) =>
+                  handleEntryChange(index, "school", e.target.value)
+                }
+              />
+            </div>
+            <div className='flex flex-col gap-2'>
+              <Label>
+                Degree<span className='text-destructive'>*</span>
+              </Label>
+              <Input
+                placeholder='Bachelor of Computer Science'
+                value={entry.degree}
+                onChange={(e) =>
+                  handleEntryChange(index, "degree", e.target.value)
+                }
+              />
+            </div>
+            <div className='flex flex-col gap-2'>
+              <Label>
+                Location<span className='text-destructive'>*</span>
+              </Label>
+              <Input
+                placeholder='San Francisco, CA'
+                value={entry.location}
+                onChange={(e) =>
+                  handleEntryChange(index, "location", e.target.value)
+                }
+              />
+            </div>
+            <div className='flex flex-col gap-2'>
+              <Label>GPA</Label>
+              <Input
+                placeholder='(Optional) 3.8 / 4.0'
+                value={entry.gpa}
+                onChange={(e) =>
+                  handleEntryChange(index, "gpa", e.target.value)
+                }
+              />
+            </div>
+            <div className='flex flex-col gap-2'>
+              <DateRangeDropdown
+                value={{
+                  from: entry.date?.from,
+                  to: entry.date?.to,
+                }}
+                onChange={(value) => handleDateChange(index, value)}
+              />
+            </div>
+
+            {entries.length > 1 && (
+              <Button
+                variant={"ghost"}
+                className='text-destructive w-36'
+                onClick={() => removeEntry(index)}
+              >
+                <MinusCircle className='h-4 w-4' /> Remove entry
+              </Button>
+            )}
+          </div>
+        ))}
+
+        <div className='flex items-center gap-2'>
+          <Button variant='ghost' onClick={addEntry} className='text-primary'>
+            <PlusCircle className='h-4 w-4 mr-1' /> Add Education
+          </Button>
+        </div>
+
+        <div className='flex justify-end mt-4'>
+          <Button
+            disabled={!validateEntries(entries)}
+            onClick={() =>
+              apply("education").then(() => navigate("/onboarding/step5"))
+            }
+          >
+            Continue <ArrowRight className='h-4 ml-1' />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
 };
 
 export default Education;

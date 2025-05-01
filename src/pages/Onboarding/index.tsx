@@ -50,6 +50,7 @@ export const Onboarding = () => {
                 step1: "app",
                 step2: "llm",
                 step3: "personal",
+                step4: "education",
                 // add more when needed: step4 → "education", step5 → "experience", etc.
               };
 
