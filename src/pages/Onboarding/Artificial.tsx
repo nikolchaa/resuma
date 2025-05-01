@@ -124,6 +124,9 @@ const Artificial = () => {
     };
 
     checkRuntimeExistence();
+    update("llm", {
+      runtime: runtime?.name ?? "",
+    });
   }, [runtime]);
 
   useEffect(() => {
@@ -144,6 +147,9 @@ const Artificial = () => {
     };
 
     checkModelExistence();
+    update("llm", {
+      model: model?.model.name ?? "",
+    });
   }, [model]);
 
   useDownloadListeners(runtime?.name, {

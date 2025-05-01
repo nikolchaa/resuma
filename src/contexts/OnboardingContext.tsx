@@ -1,4 +1,3 @@
-// onboarding/OnboardingContext.tsx
 import { createContext, useContext, useEffect, useState } from "react";
 import { getSection, updateSection } from "@/lib/store";
 
@@ -28,7 +27,16 @@ export type OnboardingState = {
     location: string;
     headline: string;
   };
-  // add other steps (education, experience, etc.) here as needed
+  education: {
+    school: string;
+    degree: string;
+    location: string;
+    gpa: string;
+    date: {
+      from: string;
+      to?: string;
+    };
+  }[];
 };
 
 const defaultState: OnboardingState = {
@@ -57,13 +65,23 @@ const defaultState: OnboardingState = {
     location: "",
     headline: "",
   },
+  education: [
+    {
+      school: "",
+      degree: "",
+      location: "",
+      gpa: "",
+      date: { from: "Jan 2021", to: "Jan 2025" },
+    },
+  ],
 };
 
 const OnboardingContext = createContext<{
   state: OnboardingState;
+  loaded: boolean;
   update: <K extends keyof OnboardingState>(
     section: K,
-    data: Partial<OnboardingState[K]>
+    data: Partial<OnboardingState[K]> | OnboardingState[K]
   ) => void;
   apply: <K extends keyof OnboardingState>(section: K) => Promise<void>;
 } | null>(null);
@@ -74,22 +92,39 @@ export const OnboardingProvider = ({
   children: React.ReactNode;
 }) => {
   const [state, setState] = useState<OnboardingState>(defaultState);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    // Load all onboarding sections in parallel
     const load = async () => {
-      const app = await getSection<OnboardingState["app"]>("app");
-      const llm = await getSection<OnboardingState["llm"]>("llm");
-      const personal = await getSection<OnboardingState["personal"]>(
-        "personal"
-      );
+      const [app, llm, personal, educationRaw] = await Promise.all([
+        getSection<OnboardingState["app"]>("app"),
+        getSection<OnboardingState["llm"]>("llm"),
+        getSection<OnboardingState["personal"]>("personal"),
+        getSection("education"),
+      ]);
+
+      const education = Array.isArray(educationRaw)
+        ? educationRaw.map((entry) => ({
+            school: entry.school ?? "",
+            degree: entry.degree ?? "",
+            location: entry.location ?? "",
+            gpa: entry.gpa ?? "",
+            date: {
+              from: entry.date?.from ?? "",
+              to: entry.date?.to ?? "",
+            },
+          }))
+        : defaultState.education;
 
       setState((prev) => ({
         ...prev,
         app: { ...prev.app, ...app },
         llm: { ...prev.llm, ...llm },
         personal: { ...prev.personal, ...personal },
+        education,
       }));
+
+      setLoaded(true);
     };
 
     load();
@@ -97,14 +132,16 @@ export const OnboardingProvider = ({
 
   const update = <K extends keyof OnboardingState>(
     section: K,
-    data: Partial<OnboardingState[K]>
+    data: Partial<OnboardingState[K]> | OnboardingState[K]
   ) => {
     setState((prev) => ({
       ...prev,
-      [section]: {
-        ...prev[section],
-        ...data,
-      },
+      [section]: Array.isArray(data)
+        ? (data as OnboardingState[K])
+        : {
+            ...prev[section],
+            ...data,
+          },
     }));
   };
 
@@ -113,7 +150,7 @@ export const OnboardingProvider = ({
   };
 
   return (
-    <OnboardingContext.Provider value={{ state, update, apply }}>
+    <OnboardingContext.Provider value={{ state, update, apply, loaded }}>
       {children}
     </OnboardingContext.Provider>
   );
