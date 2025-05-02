@@ -162,16 +162,14 @@ const Projects = () => {
                 Add Technology
               </Button>
             </div>
-            {entries.length > 1 && (
-              <Button
-                variant='ghost'
-                className='text-destructive'
-                onClick={() => removeEntry(index)}
-              >
-                <MinusCircle className='h-4 w-4' />
-                Remove Project
-              </Button>
-            )}
+            <Button
+              variant='ghost'
+              className='text-destructive'
+              onClick={() => removeEntry(index)}
+            >
+              <MinusCircle className='h-4 w-4' />
+              Remove Project
+            </Button>
           </div>
         ))}
         <div className='flex items-center gap-2'>

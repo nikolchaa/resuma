@@ -56,6 +56,17 @@ export type OnboardingState = {
     description: string;
     technologies: string[]; // optional tags/keywords
   }[];
+  skills: {
+    category: string;
+    items: string[];
+  }[];
+  awards: {
+    title: string;
+    organization: string;
+    date: string; // e.g. "Apr 2024"
+    description: string;
+    location: string;
+  }[];
 };
 
 const defaultState: OnboardingState = {
@@ -113,6 +124,21 @@ const defaultState: OnboardingState = {
       technologies: [],
     },
   ],
+  skills: [
+    {
+      category: "",
+      items: [],
+    },
+  ],
+  awards: [
+    {
+      title: "",
+      organization: "",
+      date: "",
+      description: "",
+      location: "",
+    },
+  ],
 };
 
 const OnboardingContext = createContext<{
@@ -133,15 +159,25 @@ export const OnboardingProvider = ({
 
   useEffect(() => {
     const load = async () => {
-      const [app, llm, personal, educationRaw, experienceRaw, projectsRaw] =
-        await Promise.all([
-          getSection<OnboardingState["app"]>("app"),
-          getSection<OnboardingState["llm"]>("llm"),
-          getSection<OnboardingState["personal"]>("personal"),
-          getSection("education"),
-          getSection("experience"),
-          getSection("projects"),
-        ]);
+      const [
+        app,
+        llm,
+        personal,
+        educationRaw,
+        experienceRaw,
+        projectsRaw,
+        skillsRaw,
+        awardsRaw,
+      ] = await Promise.all([
+        getSection<OnboardingState["app"]>("app"),
+        getSection<OnboardingState["llm"]>("llm"),
+        getSection<OnboardingState["personal"]>("personal"),
+        getSection("education"),
+        getSection("experience"),
+        getSection("projects"),
+        getSection("skills"),
+        getSection("awards"),
+      ]);
 
       const education = Array.isArray(educationRaw)
         ? educationRaw.map((entry) => ({
@@ -183,6 +219,23 @@ export const OnboardingProvider = ({
           }))
         : defaultState.projects;
 
+      const skills = Array.isArray(skillsRaw)
+        ? skillsRaw.map((group) => ({
+            category: group.category ?? "",
+            items: Array.isArray(group.items) ? group.items : [],
+          }))
+        : defaultState.skills;
+
+      const awards = Array.isArray(awardsRaw)
+        ? awardsRaw.map((entry) => ({
+            title: entry.title ?? "",
+            organization: entry.organization ?? "",
+            date: entry.date ?? "",
+            description: entry.description ?? "",
+            location: entry.location ?? "",
+          }))
+        : defaultState.awards;
+
       setState((prev) => ({
         ...prev,
         app: { ...prev.app, ...app },
@@ -191,6 +244,8 @@ export const OnboardingProvider = ({
         education,
         experience,
         projects,
+        skills,
+        awards,
       }));
     };
 

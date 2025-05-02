@@ -12,7 +12,8 @@ const steps = [
   "step5", // Experience
   "step6", // Projects
   "step7", // Skills
-  "step8", // Finish
+  "step8", // Awards
+  "step9", // Finish
 ];
 
 export const Onboarding = () => {
@@ -53,7 +54,7 @@ export const Onboarding = () => {
                 step4: "education",
                 step5: "experience",
                 step6: "projects",
-                // step7: "skills",
+                step7: "skills",
                 // add more when needed: step4 → "education", step5 → "experience", etc.
               };
 

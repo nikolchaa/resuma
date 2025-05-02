@@ -80,7 +80,8 @@ export default function DateRangeDropdown({
       <div className='flex gap-4'>
         <div className='flex flex-1 flex-col gap-2'>
           <Label>
-            From{mandatory ?? <span className='text-destructive'>*</span>}
+            {single ? "Date" : "From"}
+            {mandatory ?? <span className='text-destructive'>*</span>}
           </Label>
           <div className='flex gap-4'>
             <Select value={fromMonth} onValueChange={setFromMonth}>
