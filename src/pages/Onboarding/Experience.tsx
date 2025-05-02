@@ -163,7 +163,9 @@ const Experience = () => {
               />
             </div>
             <div className='flex flex-col gap-2'>
-              <Label>Notes</Label>
+              <Label>
+                Notes<span className='text-muted-foreground'>(optional)</span>
+              </Label>
               {entry.notes?.map((note, noteIndex) => (
                 <div key={noteIndex} className='flex gap-2'>
                   <Input
@@ -195,7 +197,7 @@ const Experience = () => {
             {entries.length > 1 && (
               <Button
                 variant='ghost'
-                className='text-destructive w-fit'
+                className='text-destructive'
                 onClick={() => removeEntry(index)}
               >
                 <MinusCircle className='h-4 w-4' />

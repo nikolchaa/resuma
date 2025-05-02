@@ -27,7 +27,7 @@ const Education = () => {
 
   const handleEntryChange = (
     index: number,
-    field: keyof Omit<EducationEntry, "date">,
+    field: keyof Omit<EducationEntry, "date" | "courses">,
     value: string
   ) => {
     const updated = [...entries];
@@ -44,6 +44,28 @@ const Education = () => {
     sync(updated);
   };
 
+  const handleCourseChange = (
+    entryIndex: number,
+    courseIndex: number,
+    value: string
+  ) => {
+    const updated = [...entries];
+    updated[entryIndex].courses![courseIndex] = value;
+    sync(updated);
+  };
+
+  const addCourse = (entryIndex: number) => {
+    const updated = [...entries];
+    updated[entryIndex].courses = [...(updated[entryIndex].courses || []), ""];
+    sync(updated);
+  };
+
+  const removeCourse = (entryIndex: number, courseIndex: number) => {
+    const updated = [...entries];
+    updated[entryIndex].courses!.splice(courseIndex, 1);
+    sync(updated);
+  };
+
   const addEntry = () => {
     sync([
       ...entries,
@@ -53,6 +75,7 @@ const Education = () => {
         location: "",
         gpa: "",
         date: { from: "", to: "" },
+        courses: [],
       },
     ]);
   };
@@ -123,15 +146,18 @@ const Education = () => {
               />
             </div>
             <div className='flex flex-col gap-2'>
-              <Label>GPA</Label>
+              <Label>
+                GPA<span className='text-muted-foreground'>(optional)</span>
+              </Label>
               <Input
-                placeholder='(Optional) 3.8 / 4.0'
+                placeholder='3.8 / 4.0'
                 value={entry.gpa}
                 onChange={(e) =>
                   handleEntryChange(index, "gpa", e.target.value)
                 }
               />
             </div>
+
             <div className='flex flex-col gap-2'>
               <DateRangeDropdown
                 value={{
@@ -142,10 +168,44 @@ const Education = () => {
               />
             </div>
 
+            <div className='flex flex-col gap-2'>
+              <Label>
+                Relevant Coursework
+                <span className='text-muted-foreground'>(optional)</span>
+              </Label>
+              {(entry.courses || []).map((course, i) => (
+                <div key={i} className='flex gap-2'>
+                  <Input
+                    value={course}
+                    onChange={(e) =>
+                      handleCourseChange(index, i, e.target.value)
+                    }
+                    placeholder='Data Structures'
+                  />
+                  <Button
+                    variant='ghost'
+                    type='button'
+                    className='text-destructive px-2'
+                    onClick={() => removeCourse(index, i)}
+                  >
+                    <MinusCircle className='w-4 h-4' />
+                  </Button>
+                </div>
+              ))}
+              <Button
+                variant='ghost'
+                onClick={() => addCourse(index)}
+                className='text-primary self-start px-0'
+              >
+                <PlusCircle className='w-4 h-4 mr-1' />
+                Add Course
+              </Button>
+            </div>
+
             {entries.length > 1 && (
               <Button
                 variant={"ghost"}
-                className='text-destructive w-36'
+                className='text-destructive'
                 onClick={() => removeEntry(index)}
               >
                 <MinusCircle className='h-4 w-4' /> Remove entry

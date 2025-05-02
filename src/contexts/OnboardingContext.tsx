@@ -36,6 +36,7 @@ export type OnboardingState = {
       from: string;
       to?: string;
     };
+    courses?: string[]; // ← added field for relevant coursework
   }[];
   experience: {
     jobTitle: string;
@@ -46,7 +47,7 @@ export type OnboardingState = {
       from: string;
       to?: string;
     };
-    notes?: string[]; // Optional list of highlights or achievements
+    notes?: string[];
   }[];
 };
 
@@ -83,6 +84,7 @@ const defaultState: OnboardingState = {
       location: "",
       gpa: "",
       date: { from: "Jan 2021", to: "Jan 2025" },
+      courses: [],
     },
   ],
   experience: [
@@ -134,6 +136,7 @@ export const OnboardingProvider = ({
               from: entry.date?.from ?? "",
               to: entry.date?.to ?? "",
             },
+            courses: Array.isArray(entry.courses) ? entry.courses : [],
           }))
         : defaultState.education;
 
