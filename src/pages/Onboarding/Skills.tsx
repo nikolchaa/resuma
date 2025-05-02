@@ -97,36 +97,18 @@ const Skills = () => {
       </CardHeader>
       <CardContent className='flex flex-col gap-6'>
         {entries.map((group, catIndex) => (
-          <div key={catIndex} className='flex flex-col gap-3 border-b pb-4'>
-            <div className='flex gap-2 items-end'>
-              <div className='flex flex-col gap-2 w-full'>
-                <Label>Category</Label>
-                <Input
-                  placeholder='Programming'
-                  value={group.category}
-                  onChange={(e) =>
-                    handleCategoryChange(catIndex, e.target.value)
-                  }
-                />
-              </div>
-              <div className='flex gap-1'>
-                <Button
-                  variant='ghost'
-                  onClick={() => moveCategory(catIndex, "up")}
-                >
-                  <ArrowUp className='w-4 h-4' />
-                </Button>
-                <Button
-                  variant='ghost'
-                  onClick={() => moveCategory(catIndex, "down")}
-                >
-                  <ArrowDown className='w-4 h-4' />
-                </Button>
-              </div>
+          <div key={catIndex} className='flex flex-col gap-4 border-b pb-4'>
+            <div className='flex flex-col gap-2 w-full'>
+              <Label>Category</Label>
+              <Input
+                placeholder='Programming'
+                value={group.category}
+                onChange={(e) => handleCategoryChange(catIndex, e.target.value)}
+              />
             </div>
 
             <div className='flex flex-col gap-2'>
-              <Label>Skills </Label>
+              <Label>Skills</Label>
               {group.items.map((item, itemIndex) => (
                 <div key={itemIndex} className='flex gap-2 items-center'>
                   <Input
@@ -165,13 +147,31 @@ const Skills = () => {
                 <PlusCircle className='w-4 h-4 mr-1' /> Add Skill
               </Button>
             </div>
-            <Button
-              variant='ghost'
-              className='text-destructive'
-              onClick={() => removeCategory(catIndex)}
-            >
-              <MinusCircle className='w-4 h-4' /> Remove Entry
-            </Button>
+            <div className='flex justify-between'>
+              <Button
+                variant='ghost'
+                className='text-destructive w-fit'
+                onClick={() => removeCategory(catIndex)}
+              >
+                <MinusCircle className='w-4 h-4 mr-1' /> Remove Category
+              </Button>
+              <div className='flex gap-2'>
+                <Button
+                  variant='ghost'
+                  disabled={catIndex === 0}
+                  onClick={() => moveCategory(catIndex, "up")}
+                >
+                  <ArrowUp className='w-4 h-4 mr-1' /> Move Up
+                </Button>
+                <Button
+                  variant='ghost'
+                  disabled={catIndex === entries.length - 1}
+                  onClick={() => moveCategory(catIndex, "down")}
+                >
+                  <ArrowDown className='w-4 h-4 mr-1' /> Move Down
+                </Button>
+              </div>
+            </div>
           </div>
         ))}
 

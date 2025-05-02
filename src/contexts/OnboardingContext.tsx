@@ -62,8 +62,8 @@ export type OnboardingState = {
   }[];
   awards: {
     title: string;
-    organization: string;
-    date: string; // e.g. "Apr 2024"
+    organizer: string;
+    date: { from: string }; // e.g. "Apr 2024"
     description: string;
     location: string;
   }[];
@@ -133,8 +133,8 @@ const defaultState: OnboardingState = {
   awards: [
     {
       title: "",
-      organization: "",
-      date: "",
+      organizer: "",
+      date: { from: "" },
       description: "",
       location: "",
     },
@@ -229,7 +229,7 @@ export const OnboardingProvider = ({
       const awards = Array.isArray(awardsRaw)
         ? awardsRaw.map((entry) => ({
             title: entry.title ?? "",
-            organization: entry.organization ?? "",
+            organizer: entry.organizer ?? "",
             date: entry.date ?? "",
             description: entry.description ?? "",
             location: entry.location ?? "",

@@ -24,6 +24,7 @@ import Projects from "./pages/Onboarding/Projects";
 import Artificial from "./pages/Onboarding/Artificial";
 import { SystemProvider } from "./contexts/SystemContext";
 import { OnboardingProvider } from "./contexts/OnboardingContext";
+import Awards from "./pages/Onboarding/Awards";
 
 const router = createBrowserRouter([
   {
@@ -42,7 +43,8 @@ const router = createBrowserRouter([
       { path: "step5", element: <Experience /> },
       { path: "step6", element: <Projects /> },
       { path: "step7", element: <Skills /> },
-      { path: "step8", element: <Finish /> },
+      { path: "step8", element: <Awards /> },
+      { path: "step9", element: <Finish /> },
     ],
   },
   {
