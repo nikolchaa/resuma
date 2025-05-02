@@ -158,6 +158,7 @@ const Experience = () => {
             </div>
             <div className='flex flex-col gap-2'>
               <DateRangeDropdown
+                mandatory
                 value={entry.date}
                 onChange={(value) => handleDateChange(index, value)}
               />

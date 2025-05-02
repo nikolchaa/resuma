@@ -52,6 +52,8 @@ export const Onboarding = () => {
                 step3: "personal",
                 step4: "education",
                 step5: "experience",
+                step6: "projects",
+                // step7: "skills",
                 // add more when needed: step4 → "education", step5 → "experience", etc.
               };
 
