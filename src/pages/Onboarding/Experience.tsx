@@ -87,20 +87,13 @@ const Experience = () => {
     sync(updated);
   };
 
-  const validateEntries = () =>
-    entries.every(
-      (e) =>
-        e.jobTitle.trim() &&
-        e.company.trim() &&
-        e.location.trim() &&
-        e.description.trim() &&
-        e.date.from.trim()
-    );
-
   return (
     <Card className='w-full max-w-lg mx-auto my-16'>
       <CardHeader>
-        <CardTitle className='text-2xl font-semibold'>Experience</CardTitle>
+        <CardTitle className='text-2xl font-semibold'>
+          Experience{" "}
+          <span className='text-muted-foreground text-xl'>(optional)</span>
+        </CardTitle>
         <CardDescription className='text-sm text-muted-foreground'>
           Add your work history with key roles and accomplishments.
         </CardDescription>
@@ -109,9 +102,7 @@ const Experience = () => {
         {entries.map((entry, index) => (
           <div key={index} className='flex flex-col gap-4 border-b pb-4'>
             <div className='flex flex-col gap-2'>
-              <Label>
-                Job Title<span className='text-destructive'>*</span>
-              </Label>
+              <Label>Job Title</Label>
               <Input
                 placeholder='Frontend Developer'
                 value={entry.jobTitle}
@@ -121,9 +112,7 @@ const Experience = () => {
               />
             </div>
             <div className='flex flex-col gap-2'>
-              <Label>
-                Company<span className='text-destructive'>*</span>
-              </Label>
+              <Label>Company</Label>
               <Input
                 placeholder='Google'
                 value={entry.company}
@@ -133,9 +122,7 @@ const Experience = () => {
               />
             </div>
             <div className='flex flex-col gap-2'>
-              <Label>
-                Location<span className='text-destructive'>*</span>
-              </Label>
+              <Label>Location</Label>
               <Input
                 placeholder='Mountain View, CA'
                 value={entry.location}
@@ -145,9 +132,7 @@ const Experience = () => {
               />
             </div>
             <div className='flex flex-col gap-2'>
-              <Label>
-                Description<span className='text-destructive'>*</span>
-              </Label>
+              <Label>Description</Label>
               <Textarea
                 placeholder='Worked on major UI redesign for the Ads dashboard...'
                 value={entry.description}
@@ -158,7 +143,6 @@ const Experience = () => {
             </div>
             <div className='flex flex-col gap-2'>
               <DateRangeDropdown
-                mandatory
                 value={entry.date}
                 onChange={(value) => handleDateChange(index, value)}
               />
@@ -194,17 +178,14 @@ const Experience = () => {
                 Add Note
               </Button>
             </div>
-
-            {entries.length > 1 && (
-              <Button
-                variant='ghost'
-                className='text-destructive'
-                onClick={() => removeEntry(index)}
-              >
-                <MinusCircle className='h-4 w-4' />
-                Remove Experience
-              </Button>
-            )}
+            <Button
+              variant='ghost'
+              className='text-destructive'
+              onClick={() => removeEntry(index)}
+            >
+              <MinusCircle className='h-4 w-4' />
+              Remove Experience
+            </Button>
           </div>
         ))}
 
@@ -216,7 +197,6 @@ const Experience = () => {
 
         <div className='flex justify-end mt-4'>
           <Button
-            disabled={!validateEntries()}
             onClick={() => {
               apply("experience").then(() => navigate("/onboarding/step6"));
             }}

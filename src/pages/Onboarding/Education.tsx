@@ -209,7 +209,7 @@ const Education = () => {
                 className='text-destructive'
                 onClick={() => removeEntry(index)}
               >
-                <MinusCircle className='h-4 w-4' /> Remove entry
+                <MinusCircle className='h-4 w-4' /> Remove School
               </Button>
             )}
           </div>
