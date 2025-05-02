@@ -49,6 +49,13 @@ export type OnboardingState = {
     };
     notes?: string[];
   }[];
+  projects: {
+    name: string;
+    link?: string;
+    date: { from: string }; // e.g. "Apr 2024"
+    description: string;
+    technologies: string[]; // optional tags/keywords
+  }[];
 };
 
 const defaultState: OnboardingState = {
@@ -97,6 +104,15 @@ const defaultState: OnboardingState = {
       notes: [],
     },
   ],
+  projects: [
+    {
+      name: "",
+      link: "",
+      date: { from: "" },
+      description: "",
+      technologies: [],
+    },
+  ],
 };
 
 const OnboardingContext = createContext<{
@@ -117,13 +133,14 @@ export const OnboardingProvider = ({
 
   useEffect(() => {
     const load = async () => {
-      const [app, llm, personal, educationRaw, experienceRaw] =
+      const [app, llm, personal, educationRaw, experienceRaw, projectsRaw] =
         await Promise.all([
           getSection<OnboardingState["app"]>("app"),
           getSection<OnboardingState["llm"]>("llm"),
           getSection<OnboardingState["personal"]>("personal"),
           getSection("education"),
           getSection("experience"),
+          getSection("projects"),
         ]);
 
       const education = Array.isArray(educationRaw)
@@ -154,6 +171,18 @@ export const OnboardingProvider = ({
           }))
         : defaultState.experience;
 
+      const projects = Array.isArray(projectsRaw)
+        ? projectsRaw.map((entry) => ({
+            name: entry.name ?? "",
+            link: entry.link ?? "",
+            date: entry.date ?? "",
+            description: entry.description ?? "",
+            technologies: Array.isArray(entry.technologies)
+              ? entry.technologies
+              : [],
+          }))
+        : defaultState.projects;
+
       setState((prev) => ({
         ...prev,
         app: { ...prev.app, ...app },
@@ -161,6 +190,7 @@ export const OnboardingProvider = ({
         personal: { ...prev.personal, ...personal },
         education,
         experience,
+        projects,
       }));
     };
 

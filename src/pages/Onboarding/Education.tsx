@@ -160,6 +160,7 @@ const Education = () => {
 
             <div className='flex flex-col gap-2'>
               <DateRangeDropdown
+                mandatory
                 value={{
                   from: entry.date?.from,
                   to: entry.date?.to,

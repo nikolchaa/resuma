@@ -28,16 +28,22 @@ const months = [
 type Props = {
   value: { from: string; to?: string };
   onChange: (value: { from: string; to?: string }) => void;
+  single?: boolean;
+  mandatory?: boolean;
 };
 
-export default function DateRangeDropdown({ value, onChange }: Props) {
+export default function DateRangeDropdown({
+  value,
+  onChange,
+  single = false,
+  mandatory = false,
+}: Props) {
   const [fromMonth, setFromMonth] = useState("");
   const [fromYear, setFromYear] = useState("");
   const [toMonth, setToMonth] = useState("");
   const [toYear, setToYear] = useState("");
   const [ongoing, setOngoing] = useState(false);
 
-  // Initialize only once on mount
   useEffect(() => {
     const parse = (str?: string) => {
       if (!str) return { month: "", year: "" };
@@ -55,14 +61,17 @@ export default function DateRangeDropdown({ value, onChange }: Props) {
     setOngoing(!value.to);
   }, []);
 
-  // Emit changes upward whenever inputs change
   useEffect(() => {
     if (!fromMonth || !fromYear) return;
-
     const from = `${fromMonth} ${fromYear}`;
+
+    if (single) {
+      onChange({ from });
+      return;
+    }
+
     const to =
       ongoing || !toMonth || !toYear ? undefined : `${toMonth} ${toYear}`;
-
     onChange({ from, to });
   }, [fromMonth, fromYear, toMonth, toYear, ongoing]);
 
@@ -71,7 +80,7 @@ export default function DateRangeDropdown({ value, onChange }: Props) {
       <div className='flex gap-4'>
         <div className='flex flex-1 flex-col gap-2'>
           <Label>
-            From<span className='text-destructive'>*</span>
+            From{mandatory ?? <span className='text-destructive'>*</span>}
           </Label>
           <div className='flex gap-4'>
             <Select value={fromMonth} onValueChange={setFromMonth}>
@@ -96,41 +105,45 @@ export default function DateRangeDropdown({ value, onChange }: Props) {
           </div>
         </div>
 
-        <div className='flex flex-1 flex-col gap-2'>
-          <Label>To</Label>
-          <div className='flex gap-4'>
-            <Select
-              value={toMonth}
-              onValueChange={setToMonth}
-              disabled={ongoing}
-            >
-              <SelectTrigger className='w-1/2'>
-                <SelectValue placeholder='Month' />
-              </SelectTrigger>
-              <SelectContent>
-                {months.map((m) => (
-                  <SelectItem key={m} value={m}>
-                    {m}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Input
-              type='number'
-              placeholder='Year'
-              value={toYear}
-              onChange={(e) => setToYear(e.target.value)}
-              className='w-1/2'
-              disabled={ongoing}
-            />
+        {!single && (
+          <div className='flex flex-1 flex-col gap-2'>
+            <Label>To</Label>
+            <div className='flex gap-4'>
+              <Select
+                value={toMonth}
+                onValueChange={setToMonth}
+                disabled={ongoing}
+              >
+                <SelectTrigger className='w-1/2'>
+                  <SelectValue placeholder='Month' />
+                </SelectTrigger>
+                <SelectContent>
+                  {months.map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {m}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                type='number'
+                placeholder='Year'
+                value={toYear}
+                onChange={(e) => setToYear(e.target.value)}
+                className='w-1/2'
+                disabled={ongoing}
+              />
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
-      <div className='flex items-center justify-between'>
-        <Label>Ongoing</Label>
-        <Switch checked={ongoing} onCheckedChange={setOngoing} />
-      </div>
+      {!single && (
+        <div className='flex items-center justify-between'>
+          <Label>Ongoing</Label>
+          <Switch checked={ongoing} onCheckedChange={setOngoing} />
+        </div>
+      )}
     </div>
   );
 }
