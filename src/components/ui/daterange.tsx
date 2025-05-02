@@ -117,7 +117,7 @@ export default function DateRangeDropdown({ value, onChange }: Props) {
             </Select>
             <Input
               type='number'
-              placeholder='2024'
+              placeholder='Year'
               value={toYear}
               onChange={(e) => setToYear(e.target.value)}
               className='w-1/2'
