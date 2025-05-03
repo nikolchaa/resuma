@@ -27,6 +27,7 @@ import {
   Download,
   Info,
   Microchip,
+  RotateCcw,
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -532,23 +533,23 @@ const Artificial = () => {
               </Label>
               <Input
                 type='number'
-                placeholder='(Auto)'
+                placeholder={`${defaultSettings.ctxSize}`}
                 max={16384}
-                min={1024}
-                value={
-                  state.llm?.settings.ctxSize === defaultSettings.ctxSize
-                    ? ""
-                    : state.llm?.settings.ctxSize
-                }
+                min={1}
+                value={state.llm?.settings.ctxSize}
                 onChange={(e) => {
                   const value = e.target.value;
-                  update("llm", {
-                    settings: {
-                      ...state.llm?.settings,
-                      ctxSize:
-                        value === "" ? defaultSettings.ctxSize : Number(value),
-                    },
-                  });
+                  if (+value >= 1 && +value <= 16384) {
+                    update("llm", {
+                      settings: {
+                        ...state.llm?.settings,
+                        ctxSize:
+                          value === ""
+                            ? defaultSettings.ctxSize
+                            : Number(value),
+                      },
+                    });
+                  }
                 }}
                 className='w-36 text-right'
               />
@@ -565,25 +566,23 @@ const Artificial = () => {
               </Label>
               <Input
                 type='number'
-                placeholder='(Auto)'
+                placeholder={`${defaultSettings.gpuLayers}`}
                 min={0}
                 max={defaultSettings.gpuLayers}
-                value={
-                  state.llm?.settings.gpuLayers === defaultSettings.gpuLayers
-                    ? ""
-                    : state.llm?.settings.gpuLayers
-                }
+                value={state.llm?.settings.gpuLayers}
                 onChange={(e) => {
                   const value = e.target.value;
-                  update("llm", {
-                    settings: {
-                      ...state.llm?.settings,
-                      gpuLayers:
-                        value === ""
-                          ? defaultSettings.gpuLayers
-                          : Number(value),
-                    },
-                  });
+                  if (+value >= 0 && +value <= defaultSettings.gpuLayers) {
+                    update("llm", {
+                      settings: {
+                        ...state.llm?.settings,
+                        gpuLayers:
+                          value === ""
+                            ? defaultSettings.gpuLayers
+                            : Number(value),
+                      },
+                    });
+                  }
                 }}
                 className='w-36 text-right'
               />
@@ -654,6 +653,15 @@ const Artificial = () => {
                 }}
               />
             </div>
+            <Button
+              className='text-destructive'
+              variant={"ghost"}
+              onClick={() => {
+                update("llm", { settings: defaultSettings });
+              }}
+            >
+              <RotateCcw /> Reset to Default
+            </Button>
           </div>
         )}
 
