@@ -1,14 +1,20 @@
 import confetti from "canvas-confetti";
-import { useEffect, useState } from "react";
+import { Dispatch, SetStateAction, useEffect } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
+
+type FinishContext = {
+  fadeOut: boolean;
+  setFadeOut: Dispatch<SetStateAction<boolean>>;
+};
 
 export default function Finish() {
   const { resolvedTheme } = useTheme();
   const navigate = useNavigate();
-  const [fadeOut, setFadeOut] = useState(false);
+
+  const { setFadeOut } = useOutletContext<FinishContext>();
 
   useEffect(() => {
     let stop = false;
@@ -53,9 +59,9 @@ export default function Finish() {
 
   return (
     <div
-      className={`flex flex-col items-center justify-center w-full h-full gap-2 text-center transition-opacity duration-400 ${
-        fadeOut ? "opacity-0" : "opacity-100"
-      }`}
+      className={
+        "flex flex-col items-center justify-center w-full h-full gap-2 text-center"
+      }
     >
       <h1 className='text-2xl font-bold'>You're All Set!</h1>
       <p className='text-muted-foreground'>Your resume journey begins now.</p>
