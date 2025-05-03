@@ -2,6 +2,7 @@ import { Progress } from "@/components/ui/progress";
 import { OnboardingState, useOnboarding } from "@/contexts/OnboardingContext";
 import { ArrowLeft } from "lucide-react";
 import { motion as m, AnimatePresence } from "motion/react";
+import { useState } from "react";
 import { useLocation, useNavigate, useOutlet } from "react-router-dom";
 
 const steps = [
@@ -17,9 +18,11 @@ const steps = [
 ];
 
 export const Onboarding = () => {
+  const [fadeOut, setFadeOut] = useState(false);
+
   const { apply } = useOnboarding();
   const navigate = useNavigate();
-  const outlet = useOutlet();
+  const outlet = useOutlet({ context: fadeOut, setFadeOut });
   const location = useLocation();
   const currentPath = location.pathname.split("/").pop() ?? "";
 
@@ -28,7 +31,11 @@ export const Onboarding = () => {
     stepIndex === -1 ? 0 : (stepIndex / (steps.length - 1)) * 100;
 
   return (
-    <div className='w-full min-h-screen flex flex-col items-center justify-center bg-background overflow-hidden'>
+    <div
+      className={`w-full min-h-screen flex flex-col items-center justify-center bg-background overflow-hidden transition-opacity duration-400 ${
+        fadeOut ? "opacity-0" : "opacity-100"
+      }`}
+    >
       <AnimatePresence mode='wait'>
         <m.div
           key={location.pathname}
@@ -56,14 +63,13 @@ export const Onboarding = () => {
                 step6: "projects",
                 step7: "skills",
                 step8: "awards",
-                // add more when needed: step4 → "education", step5 → "experience", etc.
               };
 
               const section = stepToSectionMap[currentPath];
               if (section) {
                 apply(section).then(() => navigate(-1));
               } else {
-                navigate(-1); // fallback
+                navigate(-1);
               }
             }}
             className='cursor-pointer group bg-background fixed top-8 left-8 z-40 border shadow-sm h-9 w-9 flex items-center justify-center rounded-lg hover:bg-primary dark:hover:bg-primary transition duration-200'
