@@ -49,7 +49,7 @@ import {
 import { useOnboarding } from "@/contexts/OnboardingContext";
 
 const Artificial = () => {
-  const { state, update, apply } = useOnboarding();
+  const { state, update, apply, exists } = useOnboarding();
 
   const navigate = useNavigate();
   const system = useSystem();
@@ -94,12 +94,17 @@ const Artificial = () => {
   }, [system, model]);
 
   useEffect(() => {
-    if (state.llm?.settings.ctxSize === 0) {
-      update("llm", {
-        settings: defaultSettings,
-      });
-    }
-  }, [defaultSettings, state.llm?.settings]);
+    const checkAndSet = async () => {
+      const hasLLM = await exists("llm");
+      if (!hasLLM) {
+        console.log("Default:", defaultSettings);
+        console.log("State:", state.llm?.settings);
+        update("llm", { settings: defaultSettings });
+      }
+    };
+
+    checkAndSet();
+  }, [defaultSettings]);
 
   useEffect(() => {
     setRuntime(() => selectRecommendedRuntime(getRuntimes(system)));
@@ -516,39 +521,6 @@ const Artificial = () => {
 
         {showAdvanced && state.llm?.settings && (
           <div className='flex flex-col gap-4'>
-            {/* Threads */}
-            <div className='flex items-center justify-between h-9'>
-              <Label>
-                Threads{" "}
-                {renderParamTooltip(
-                  "threads",
-                  "Number of CPU threads used for inference."
-                )}
-              </Label>
-              <Input
-                type='number'
-                placeholder='(Auto)'
-                min={-1}
-                max={system?.cpu?.threads ?? 16}
-                value={
-                  state.llm?.settings.threads === -1
-                    ? ""
-                    : state.llm?.settings.threads
-                }
-                onChange={(e) => {
-                  const value = e.target.value;
-                  update("llm", {
-                    settings: {
-                      ...state.llm?.settings,
-                      threads:
-                        value === "" ? defaultSettings.threads : Number(value),
-                    },
-                  });
-                }}
-                className='w-36 text-right'
-              />
-            </div>
-
             {/* Context Size */}
             <div className='flex items-center justify-between h-9'>
               <Label>
@@ -575,39 +547,6 @@ const Artificial = () => {
                       ...state.llm?.settings,
                       ctxSize:
                         value === "" ? defaultSettings.ctxSize : Number(value),
-                    },
-                  });
-                }}
-                className='w-36 text-right'
-              />
-            </div>
-
-            {/* Predict */}
-            <div className='flex items-center justify-between h-9'>
-              <Label>
-                Predict{" "}
-                {renderParamTooltip(
-                  "predict",
-                  "Max tokens to generate before stopping."
-                )}
-              </Label>
-              <Input
-                type='number'
-                placeholder='(Auto)'
-                min={-1}
-                max={16384}
-                value={
-                  state.llm?.settings.predict === -1
-                    ? ""
-                    : state.llm?.settings.predict
-                }
-                onChange={(e) => {
-                  const value = e.target.value;
-                  update("llm", {
-                    settings: {
-                      ...state.llm?.settings,
-                      predict:
-                        value === "" ? defaultSettings.predict : Number(value),
                     },
                   });
                 }}

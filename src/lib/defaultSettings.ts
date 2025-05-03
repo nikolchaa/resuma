@@ -1,9 +1,7 @@
 import { ModelResult } from "@/lib/resolveModel";
 
 export type LLMSettings = {
-  threads: number;
   ctxSize: number;
-  predict: number;
   gpuLayers: number;
   flashAttn: boolean;
   mlock: boolean;
@@ -42,9 +40,7 @@ export function getAdaptiveSettings({
   }
 
   return {
-    threads: -1,
     ctxSize,
-    predict: -1,
     gpuLayers,
     flashAttn: false,
     mlock,

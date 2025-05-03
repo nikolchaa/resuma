@@ -12,9 +12,7 @@ export type OnboardingState = {
     model: string;
     runtime: string;
     settings: {
-      threads: number;
       ctxSize: number;
-      predict: number;
       gpuLayers: number;
       flashAttn: boolean;
       mlock: boolean;
@@ -80,9 +78,7 @@ const defaultState: OnboardingState = {
     model: "",
     runtime: "",
     settings: {
-      threads: 0,
       ctxSize: 0,
-      predict: 0,
       gpuLayers: 0,
       flashAttn: false,
       mlock: false,
@@ -148,6 +144,7 @@ const OnboardingContext = createContext<{
     data: Partial<OnboardingState[K]> | OnboardingState[K]
   ) => void;
   apply: <K extends keyof OnboardingState>(section: K) => Promise<void>;
+  exists: (section: keyof OnboardingState) => Promise<boolean>;
 } | null>(null);
 
 export const OnboardingProvider = ({
@@ -271,8 +268,13 @@ export const OnboardingProvider = ({
     await updateSection(section, state[section]);
   };
 
+  const exists = async (section: keyof OnboardingState): Promise<boolean> => {
+    const value = await getSection(section);
+    return value !== undefined;
+  };
+
   return (
-    <OnboardingContext.Provider value={{ state, update, apply }}>
+    <OnboardingContext.Provider value={{ state, update, apply, exists }}>
       {children}
     </OnboardingContext.Provider>
   );
