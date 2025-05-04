@@ -5,8 +5,12 @@ use tauri::Emitter;
 use reqwest::Client;
 use zip::ZipArchive;
 use tauri::async_runtime::spawn;
-use tauri_plugin_hwinfo;
 use futures_util::StreamExt;
+
+mod rpc;
+use rpc::{start_rpc, set_activity, stop_rpc};
+
+use dotenvy::dotenv;
 
 #[tauri::command]
 async fn download_and_extract(
@@ -128,6 +132,11 @@ async fn check_asset_ready(asset_type: String, asset_name: String) -> Result<boo
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    dotenv().ok(); // Load .env
+    let client_id = std::env::var("DISCORD_CLIENT_ID").expect("DISCORD_CLIENT_ID not set");
+
+    start_rpc(client_id).expect("Failed to start Discord RPC");
+
     tauri::Builder::default()
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
@@ -135,6 +144,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             download_and_extract,
             check_asset_ready,
+            set_activity,
+            stop_rpc,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
