@@ -1,8 +1,9 @@
 import { Progress } from "@/components/ui/progress";
 import { OnboardingState, useOnboarding } from "@/contexts/OnboardingContext";
+import { invoke } from "@tauri-apps/api/core";
 import { ArrowLeft } from "lucide-react";
 import { motion as m, AnimatePresence } from "motion/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useOutlet } from "react-router-dom";
 
 const steps = [
@@ -29,6 +30,17 @@ export const Onboarding = () => {
   const stepIndex = steps.indexOf(currentPath);
   const progress =
     stepIndex === -1 ? 0 : (stepIndex / (steps.length - 1)) * 100;
+
+  useEffect(() => {
+    let details = "Onboarding";
+    let state = "Setting up resuma";
+    let smallImage = "settingsblack";
+    let smallText = "Onboarding";
+
+    invoke("set_activity", { details, state, smallImage, smallText }).catch(
+      console.error
+    );
+  }, []);
 
   return (
     <div
