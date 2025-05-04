@@ -3,6 +3,27 @@
 version = 4
 
 [[package]]
+name = "Resuma"
+version = "0.1.0"
+dependencies = [
+ "dirs",
+ "discord-rich-presence",
+ "dotenvy",
+ "futures-util",
+ "lazy_static",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sysinfo",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-hwinfo",
+ "tauri-plugin-opener",
+ "tauri-plugin-store",
+ "zip",
+]
+
+[[package]]
 name = "addr2line"
 version = "0.24.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3304,27 +3325,6 @@ dependencies = [
  "wasm-streams",
  "web-sys",
  "windows-registry",
-]
-
-[[package]]
-name = "resuma"
-version = "0.1.0"
-dependencies = [
- "dirs",
- "discord-rich-presence",
- "dotenvy",
- "futures-util",
- "lazy_static",
- "reqwest",
- "serde",
- "serde_json",
- "sysinfo",
- "tauri",
- "tauri-build",
- "tauri-plugin-hwinfo",
- "tauri-plugin-opener",
- "tauri-plugin-store",
- "zip",
 ]
 
 [[package]]

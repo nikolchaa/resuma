@@ -1,5 +1,5 @@
 [package]
-name = "resuma"
+name = "Resuma"
 version = "0.1.0"
 description = "Resuma is an open-source desktop application for building beautiful, professional resumes using local AI models. Your data never leaves your device."
 authors = ["Nikola Ranđelović <contact@nikolchaa.com>"]

@@ -124,7 +124,7 @@ async fn check_asset_ready(asset_type: String, asset_name: String) -> Result<boo
     let base_dir = dirs::data_dir()
         .ok_or_else(|| "Failed to find data directory".to_string())?
         .join("com.resuma.app")
-        .join(asset_type) // ← dynamic folder like runtimes, models, etc.
+        .join(asset_type)
         .join(asset_name);
 
     Ok(base_dir.exists())

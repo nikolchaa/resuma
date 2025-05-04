@@ -33,7 +33,7 @@ export const Onboarding = () => {
 
   useEffect(() => {
     let details = "Onboarding";
-    let state = "Setting up resuma";
+    let state = "Setting up Resuma";
     let smallImage = "settingsblack";
     let smallText = "Onboarding";
 
