@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { getSection } from "./lib/store";
 import { applyContentSizeClass } from "./lib/ui";
 import { useTheme } from "./contexts/ThemeContext";
+import { invoke } from "@tauri-apps/api/core";
 
 export default function App() {
   const location = useLocation();
@@ -20,6 +21,30 @@ export default function App() {
       setThemeContext(app?.theme ?? "system");
     });
   }, []);
+
+  useEffect(() => {
+    const path = location.pathname;
+    let details = "Home";
+    let state = "Idling";
+    let smallImage = "homeblack";
+    let smallText = "Home";
+
+    if (path.includes("/editor")) {
+      details = "Editor";
+      state = "Editing a resume";
+      smallImage = "writingblack";
+      smallText = "Editor";
+    } else if (path.includes("/settings")) {
+      details = "Settings";
+      state = "Adjusting preferences";
+      smallImage = "settingsblack";
+      smallText = "Settings";
+    }
+
+    invoke("set_activity", { details, state, smallImage, smallText }).catch(
+      console.error
+    );
+  }, [location.pathname]);
 
   return (
     <div className='min-h-screen bg-background text-foreground overflow-hidden'>
