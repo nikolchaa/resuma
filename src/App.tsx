@@ -40,11 +40,6 @@ export default function App() {
       state = "Editor";
       smallImage = "writingblack";
       smallText = "Editor";
-    } else if (path.includes("/settings")) {
-      details = "Adjusting preferences";
-      state = "Settings";
-      smallImage = "settingsblack";
-      smallText = "Settings";
     }
 
     invoke("set_activity", { details, state, smallImage, smallText }).catch(

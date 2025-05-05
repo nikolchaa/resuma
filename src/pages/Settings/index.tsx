@@ -18,10 +18,57 @@ import { SkillsSettings } from "./SkillsSettings";
 import { AwardsSettings } from "./AwardsSettings";
 
 import { Back } from "@/components/Back";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState("basic");
+
+  useEffect(() => {
+    let details = "Adjusting settings";
+    let state = "Settings";
+    let smallImage = "settingsblack";
+    let smallText = "Settings";
+
+    switch (activeTab) {
+      case "basic":
+        details = "Customizing layout and theme";
+        state = "Settings: App Settings";
+        break;
+      case "artificial":
+        details = "Configuring LLM";
+        state = "Settings: AI Settings";
+        break;
+      case "personal":
+        details = "Editing personal information";
+        state = "Settings: Personal Info";
+        break;
+      case "education":
+        details = "Editing courses & education";
+        state = "Settings: Education";
+        break;
+      case "experience":
+        details = "Editing work experience";
+        state = "Settings: Experience";
+        break;
+      case "projects":
+        details = "Editing list of projects";
+        state = "Settings: Projects";
+        break;
+      case "skills":
+        details = "Editing list of skills";
+        state = "Settings: Skills";
+        break;
+      case "awards":
+        details = "Editing awards & achievements";
+        state = "Settings: Awards";
+        break;
+    }
+
+    invoke("set_activity", { details, state, smallImage, smallText }).catch(
+      console.error
+    );
+  }, [activeTab]);
 
   return (
     <div className='flex w-full h-screen items-center justify-center'>
@@ -51,7 +98,7 @@ export default function Settings() {
                 value='personal'
                 className='px-4 py-2 w-48 justify-baseline'
               >
-                Personal Details
+                Personal Info
               </TabsTrigger>
               <TabsTrigger
                 value='education'
