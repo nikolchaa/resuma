@@ -10,9 +10,6 @@ import { Home } from "./pages/Home";
 import { Editor } from "./pages/Editor";
 import { Onboarding } from "./pages/Onboarding/index";
 import Settings from "./pages/Settings";
-import { AppSettings } from "./pages/Settings/AppSettings";
-import { AISettings } from "./pages/Settings/AISettings";
-import { PersonalDetails } from "./pages/Settings/PersonalDetails";
 import Welcome from "./pages/Onboarding/Welcome";
 import Basic from "./pages/Onboarding/Basic";
 import Education from "./pages/Onboarding/Education";
@@ -25,6 +22,14 @@ import Artificial from "./pages/Onboarding/Artificial";
 import { SystemProvider } from "./contexts/SystemContext";
 import { OnboardingProvider } from "./contexts/OnboardingContext";
 import Awards from "./pages/Onboarding/Awards";
+import { BasicSettings } from "./pages/Settings/BasicSettings";
+import { ArtificialSettings } from "./pages/Settings/ArtificialSettings";
+import { PersonalSettings } from "./pages/Settings/PersonalSettings";
+import { EducationSettings } from "./pages/Settings/EducationSettings";
+import { ExperienceSettings } from "./pages/Settings/ExperienceSettings";
+import { ProjectsSettings } from "./pages/Settings/ProjectsSettings";
+import { SkillsSettings } from "./pages/Settings/SkillsSettings";
+import { AwardsSettings } from "./pages/Settings/AwardsSettings";
 
 const router = createBrowserRouter([
   {
@@ -57,9 +62,14 @@ const router = createBrowserRouter([
         path: "settings",
         element: <Settings />,
         children: [
-          { path: "app", element: <AppSettings /> },
-          { path: "ai", element: <AISettings /> },
-          { path: "personal", element: <PersonalDetails /> },
+          { path: "app", element: <BasicSettings /> },
+          { path: "ai", element: <ArtificialSettings /> },
+          { path: "personal", element: <PersonalSettings /> },
+          { path: "education", element: <EducationSettings /> },
+          { path: "experience", element: <ExperienceSettings /> },
+          { path: "projects", element: <ProjectsSettings /> },
+          { path: "skills", element: <SkillsSettings /> },
+          { path: "awards", element: <AwardsSettings /> },
         ],
       },
     ],
