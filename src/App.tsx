@@ -24,19 +24,19 @@ export default function App() {
 
   useEffect(() => {
     const path = location.pathname;
-    let details = "Home";
-    let state = "Idling";
+    let details = "Idling";
+    let state = "Home";
     let smallImage = "homeblack";
     let smallText = "Home";
 
     if (path.includes("/editor")) {
-      details = "Editor";
-      state = "Editing a resume";
+      details = "Editing a resume";
+      state = "Editor";
       smallImage = "writingblack";
       smallText = "Editor";
     } else if (path.includes("/settings")) {
-      details = "Settings";
-      state = "Adjusting preferences";
+      details = "Adjusting preferences";
+      state = "Settings";
       smallImage = "settingsblack";
       smallText = "Settings";
     }
