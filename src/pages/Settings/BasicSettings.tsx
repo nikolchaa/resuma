@@ -1,6 +1,6 @@
 import { useTheme } from "@/contexts/ThemeContext";
 
-export const AppSettings = () => {
+export const BasicSettings = () => {
   const { setTheme } = useTheme();
 
   return (

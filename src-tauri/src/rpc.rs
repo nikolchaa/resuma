@@ -23,7 +23,7 @@ pub fn set_activity(details: String, state: String, small_image: String, small_t
         .details(&details)
         .state(&state)
         .activity_type(ActivityType::Playing)
-        .assets(Assets::new().large_image("resuma").large_text("https://resuma.download/").small_image(&small_image).small_text(&small_text));
+        .assets(Assets::new().large_image("resuma").large_text("https://resuma.download").small_image(&small_image).small_text(&small_text));
 
     if let Some(client) = &mut *DISCORD_CLIENT.lock().unwrap() {
         client.set_activity(payload).map_err(|e| e.to_string())

@@ -27,7 +27,7 @@ const Personal = () => {
       <CardHeader>
         <CardTitle className='text-2xl font-semibold'>Personal Info</CardTitle>
         <CardDescription className='text-sm text-muted-foreground'>
-          Add your personal details. These will be displayed at the top of your
+          Add your personal details. These will always be displayed on your
           resume.
         </CardDescription>
       </CardHeader>
