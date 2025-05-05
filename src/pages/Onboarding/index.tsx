@@ -32,15 +32,57 @@ export const Onboarding = () => {
     stepIndex === -1 ? 0 : (stepIndex / (steps.length - 1)) * 100;
 
   useEffect(() => {
-    let details = "Onboarding";
-    let state = "Setting up Resuma";
+    let details = "Setting up Resuma";
+    let state = "Onboarding";
     let smallImage = "settingsblack";
     let smallText = "Onboarding";
 
-    invoke("set_activity", { details, state, smallImage, smallText }).catch(
-      console.error
-    );
-  }, []);
+    const stepActivityMap: Record<string, { details: string; state: string }> =
+      {
+        step1: { details: "Choosing layout", state: "Onboarding: Basic Setup" },
+        step2: { details: "Configuring LLM", state: "Onboarding: AI Setup" },
+        step3: {
+          details: "Entering personal information",
+          state: "Onboarding: Personal Info",
+        },
+        step4: {
+          details: "Adding courses & education",
+          state: "Onboarding: Education",
+        },
+        step5: {
+          details: "Adding work experience",
+          state: "Onboarding: Experience",
+        },
+        step6: {
+          details: "Listing all projects",
+          state: "Onboarding: Projects",
+        },
+        step7: {
+          details: "Listing skills",
+          state: "Onboarding: Skills",
+        },
+        step8: {
+          details: "Adding awards & achievements",
+          state: "Onboarding: Awards",
+        },
+        step9: {
+          details: "Finishing up",
+          state: "Onboarding: Finish",
+        },
+      };
+
+    if (stepActivityMap[currentPath]) {
+      details = stepActivityMap[currentPath].details;
+      state = stepActivityMap[currentPath].state;
+    }
+
+    invoke("set_activity", {
+      details,
+      state,
+      smallImage,
+      smallText,
+    }).catch(console.error);
+  }, [currentPath]);
 
   return (
     <div
