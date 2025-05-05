@@ -1,14 +1,16 @@
-import { useLocation, useOutlet } from "react-router-dom";
+import { useLocation, useNavigate, useOutlet } from "react-router-dom";
 import { AnimatePresence, motion as m } from "motion/react";
 import { useEffect } from "react";
 import { getSection } from "./lib/store";
 import { applyContentSizeClass } from "./lib/ui";
 import { useTheme } from "./contexts/ThemeContext";
 import { invoke } from "@tauri-apps/api/core";
+import { OnboardingState } from "./contexts/OnboardingContext";
 
 export default function App() {
   const location = useLocation();
   const outlet = useOutlet();
+  const navigate = useNavigate();
 
   const { setTheme: setThemeContext } = useTheme();
 
@@ -19,6 +21,10 @@ export default function App() {
     }>("app").then((app) => {
       applyContentSizeClass(app?.contentSize ?? "md");
       setThemeContext(app?.theme ?? "system");
+    });
+
+    getSection<OnboardingState["awards"]>("awards").then((section) => {
+      section === undefined && navigate("/onboarding");
     });
   }, []);
 
