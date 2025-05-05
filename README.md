@@ -14,7 +14,7 @@ Powered by Tauri, Rust, React (TSX), and llama.cpp, Resuma brings the power of p
 
 ## 🔧 Features
 
-- ✨ Offline AI resume writing
+- ✍️ Offline AI resume writing
 - 📂 Full local data storage (no external servers)
 - ✨ Elegant onboarding and user experience
 - ⚙️ Advanced model configuration (mmap, mlock, gpu_layers, context size, etc.)
