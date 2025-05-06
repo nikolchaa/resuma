@@ -1,5 +1,5 @@
 import { Progress } from "@/components/ui/progress";
-import { OnboardingState, useOnboarding } from "@/contexts/OnboardingContext";
+import { SettingsType, useOnboarding } from "@/contexts/OnboardingContext";
 import { invoke } from "@tauri-apps/api/core";
 import { ArrowLeft } from "lucide-react";
 import { motion as m, AnimatePresence } from "motion/react";
@@ -108,7 +108,7 @@ export const Onboarding = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             onClick={() => {
-              const stepToSectionMap: Record<string, keyof OnboardingState> = {
+              const stepToSectionMap: Record<string, keyof SettingsType> = {
                 step1: "app",
                 step2: "llm",
                 step3: "personal",

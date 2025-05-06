@@ -21,8 +21,122 @@ import { Back } from "@/components/Back";
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
+import { SettingsType } from "@/contexts/OnboardingContext";
+import { getSection, updateSection } from "@/lib/store";
+
 export default function Settings() {
   const [activeTab, setActiveTab] = useState("basic");
+  const [settings, setSettings] = useState<SettingsType>({
+    app: {
+      theme: "system",
+      paperSize: "A4",
+      language: "en",
+      contentSize: "md",
+    },
+    llm: {
+      model: "",
+      runtime: "",
+      settings: {
+        ctxSize: 0,
+        gpuLayers: 0,
+        flashAttn: false,
+        mlock: false,
+        noMmap: false,
+      },
+    },
+    personal: {
+      fullName: "",
+      email: "",
+      location: "",
+      headline: "",
+    },
+    education: [],
+    experience: [],
+    projects: [],
+    skills: [],
+    awards: [],
+  });
+  const [draftSettings, setDraftSettings] = useState<SettingsType>(settings);
+
+  const updateSetting = <K extends keyof SettingsType>(
+    section: K,
+    data: Partial<SettingsType[K]>
+  ) => {
+    setDraftSettings((prev) => ({
+      ...prev,
+      [section]: {
+        ...(prev[section] as object),
+        ...(data as object),
+      },
+    }));
+  };
+
+  const applySettings = async () => {
+    setSettings(draftSettings);
+    await updateSection("app", draftSettings.app);
+    await updateSection("llm", draftSettings.llm);
+    await updateSection("personal", draftSettings.personal);
+    await updateSection("education", draftSettings.education);
+    await updateSection("experience", draftSettings.experience);
+    await updateSection("projects", draftSettings.projects);
+    await updateSection("skills", draftSettings.skills);
+    await updateSection("awards", draftSettings.awards);
+  };
+
+  const resetSetting = <K extends keyof SettingsType>(section: K) => {
+    setDraftSettings((prev) => ({
+      ...prev,
+      [section]: settings[section],
+    }));
+  };
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      const [
+        app,
+        llm,
+        personal,
+        education,
+        experience,
+        projects,
+        skills,
+        awards,
+      ] = await Promise.all([
+        getSection("app"),
+        getSection("llm"),
+        getSection("personal"),
+        getSection("education"),
+        getSection("experience"),
+        getSection("projects"),
+        getSection("skills"),
+        getSection("awards"),
+      ]);
+
+      setSettings((prev) => ({
+        app: { ...prev.app, ...(app ?? {}) },
+        llm: { ...prev.llm, ...(llm ?? {}) },
+        personal: { ...prev.personal, ...(personal ?? {}) },
+        education: Array.isArray(education) ? education : [],
+        experience: Array.isArray(experience) ? experience : [],
+        projects: Array.isArray(projects) ? projects : [],
+        skills: Array.isArray(skills) ? skills : [],
+        awards: Array.isArray(awards) ? awards : [],
+      }));
+
+      setDraftSettings((prev) => ({
+        app: { ...prev.app, ...(app ?? {}) },
+        llm: { ...prev.llm, ...(llm ?? {}) },
+        personal: { ...prev.personal, ...(personal ?? {}) },
+        education: Array.isArray(education) ? education : [],
+        experience: Array.isArray(experience) ? experience : [],
+        projects: Array.isArray(projects) ? projects : [],
+        skills: Array.isArray(skills) ? skills : [],
+        awards: Array.isArray(awards) ? awards : [],
+      }));
+    };
+
+    loadSettings();
+  }, []);
 
   useEffect(() => {
     let details = "Adjusting settings";
@@ -156,7 +270,11 @@ export default function Settings() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <BasicSettings />
+                    <BasicSettings
+                      settings={draftSettings.app}
+                      setDraftSettings={setDraftSettings}
+                      setSettings={setSettings}
+                    />
                   </CardContent>
                 </Card>
               </m.div>

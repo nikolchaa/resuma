@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { getSection, updateSection } from "@/lib/store";
 
-export type OnboardingState = {
+export type SettingsType = {
   app: {
     theme: "light" | "dark" | "system";
     paperSize: "A4" | "US Letter";
@@ -67,7 +67,7 @@ export type OnboardingState = {
   }[];
 };
 
-const defaultState: OnboardingState = {
+const defaultState: SettingsType = {
   app: {
     theme: "system",
     paperSize: "A4",
@@ -138,13 +138,13 @@ const defaultState: OnboardingState = {
 };
 
 const OnboardingContext = createContext<{
-  state: OnboardingState;
-  update: <K extends keyof OnboardingState>(
+  state: SettingsType;
+  update: <K extends keyof SettingsType>(
     section: K,
-    data: Partial<OnboardingState[K]> | OnboardingState[K]
+    data: Partial<SettingsType[K]> | SettingsType[K]
   ) => void;
-  apply: <K extends keyof OnboardingState>(section: K) => Promise<void>;
-  exists: (section: keyof OnboardingState) => Promise<boolean>;
+  apply: <K extends keyof SettingsType>(section: K) => Promise<void>;
+  exists: (section: keyof SettingsType) => Promise<boolean>;
 } | null>(null);
 
 export const OnboardingProvider = ({
@@ -152,7 +152,7 @@ export const OnboardingProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
-  const [state, setState] = useState<OnboardingState>(defaultState);
+  const [state, setState] = useState<SettingsType>(defaultState);
 
   useEffect(() => {
     const load = async () => {
@@ -166,9 +166,9 @@ export const OnboardingProvider = ({
         skillsRaw,
         awardsRaw,
       ] = await Promise.all([
-        getSection<OnboardingState["app"]>("app"),
-        getSection<OnboardingState["llm"]>("llm"),
-        getSection<OnboardingState["personal"]>("personal"),
+        getSection<SettingsType["app"]>("app"),
+        getSection<SettingsType["llm"]>("llm"),
+        getSection<SettingsType["personal"]>("personal"),
         getSection("education"),
         getSection("experience"),
         getSection("projects"),
@@ -249,14 +249,14 @@ export const OnboardingProvider = ({
     load();
   }, []);
 
-  const update = <K extends keyof OnboardingState>(
+  const update = <K extends keyof SettingsType>(
     section: K,
-    data: Partial<OnboardingState[K]> | OnboardingState[K]
+    data: Partial<SettingsType[K]> | SettingsType[K]
   ) => {
     setState((prev) => ({
       ...prev,
       [section]: Array.isArray(data)
-        ? (data as OnboardingState[K])
+        ? (data as SettingsType[K])
         : {
             ...prev[section],
             ...data,
@@ -264,11 +264,11 @@ export const OnboardingProvider = ({
     }));
   };
 
-  const apply = async <K extends keyof OnboardingState>(section: K) => {
+  const apply = async <K extends keyof SettingsType>(section: K) => {
     await updateSection(section, state[section]);
   };
 
-  const exists = async (section: keyof OnboardingState): Promise<boolean> => {
+  const exists = async (section: keyof SettingsType): Promise<boolean> => {
     const value = await getSection(section);
     return value !== undefined;
   };
