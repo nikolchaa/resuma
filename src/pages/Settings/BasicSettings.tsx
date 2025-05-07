@@ -6,22 +6,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { useTheme } from "@/contexts/ThemeContext";
 import { applyContentSizeClass } from "@/lib/ui";
 import { useEffect } from "react";
 import { SettingsType } from "@/contexts/OnboardingContext";
-import { updateSection } from "@/lib/store";
+import { open, save } from "@tauri-apps/plugin-dialog";
+import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
+import modelList from "@/data/models.json";
 
 type Props = {
   settings: SettingsType["app"];
-  setSettings: React.Dispatch<React.SetStateAction<SettingsType>>;
+  draftSettings: SettingsType;
   setDraftSettings: React.Dispatch<React.SetStateAction<SettingsType>>;
+  setSettings: React.Dispatch<React.SetStateAction<SettingsType>>;
 };
 
 export const BasicSettings = ({
   settings,
-  setSettings,
+  draftSettings,
   setDraftSettings,
+  setSettings,
 }: Props) => {
   const { theme, paperSize, language, contentSize } = settings;
   const { setTheme } = useTheme();
@@ -31,31 +36,91 @@ export const BasicSettings = ({
     applyContentSizeClass(contentSize);
   }, [theme, contentSize, setTheme]);
 
+  const handleChange = (key: keyof SettingsType["app"], value: string) => {
+    setDraftSettings((prev) => ({
+      ...prev,
+      app: { ...prev.app, [key]: value },
+    }));
+    setSettings((prev) => ({
+      ...prev,
+      app: { ...prev.app, [key]: value },
+    }));
+    if (key === "theme") setTheme(value as "light" | "dark" | "system");
+    if (key === "contentSize") applyContentSizeClass(value as "md" | "lg");
+  };
+
+  const handleExport = async () => {
+    try {
+      const filePath = await save({
+        filters: [{ name: "Resuma Settings", extensions: ["dat"] }],
+        defaultPath: ".resuma-settings.dat",
+      });
+
+      if (filePath) {
+        const { llm, ...rest } = draftSettings;
+        const exportData = {
+          ...rest,
+          llm: {
+            ...llm,
+            model: "",
+            runtime: "",
+          },
+        };
+        const content = JSON.stringify(exportData, null, 2);
+        // Remove the model and runtime properties from the llm object
+        await writeTextFile(filePath, content);
+      }
+    } catch (error) {
+      console.error("Export failed:", error);
+    }
+  };
+
+  const handleImport = async () => {
+    try {
+      const selected = await open({
+        filters: [{ name: "Resuma Settings", extensions: ["dat"] }],
+        multiple: false,
+      });
+
+      if (typeof selected === "string") {
+        const content = await readTextFile(selected);
+        const parsed = JSON.parse(content);
+
+        setDraftSettings((prev) => {
+          const currentModelId = prev.llm.model;
+          const modelMeta = modelList.find((m) => m.name === currentModelId)!;
+          const maxGpuLayers = modelMeta.layers;
+
+          const parsedSettings = {
+            ...parsed,
+            llm: {
+              ...parsed.llm,
+              model: currentModelId,
+              runtime: prev.llm.runtime,
+              settings: {
+                ...parsed.llm.settings,
+                gpuLayers: Math.min(
+                  parsed.llm.settings.gpuLayers,
+                  maxGpuLayers
+                ),
+              },
+            },
+          };
+
+          return { ...prev, ...parsedSettings };
+        });
+      }
+    } catch (error) {
+      console.error("Import failed:", error);
+    }
+  };
+
   return (
     <div className='flex flex-col gap-4'>
       {/* Theme */}
       <div className='flex items-center justify-between'>
         <Label className='w-1/3'>Theme</Label>
-        <Select
-          value={theme}
-          onValueChange={(v) => {
-            setTheme(v as "light" | "dark" | "system");
-            setDraftSettings((prev) => ({
-              ...prev,
-              app: { ...prev.app, theme: v as "light" | "dark" | "system" },
-            }));
-            setSettings((prev) => ({
-              ...prev,
-              app: { ...prev.app, theme: v as "light" | "dark" | "system" },
-            }));
-            updateSection("app", {
-              theme: v as "light" | "dark" | "system",
-              paperSize,
-              contentSize,
-              language,
-            });
-          }}
-        >
+        <Select value={theme} onValueChange={(v) => handleChange("theme", v)}>
           <SelectTrigger className='w-2/3'>
             <SelectValue placeholder='Select theme' />
           </SelectTrigger>
@@ -72,22 +137,7 @@ export const BasicSettings = ({
         <Label className='w-1/3'>Paper Format</Label>
         <Select
           value={paperSize}
-          onValueChange={(v) => {
-            setDraftSettings((prev) => ({
-              ...prev,
-              app: { ...prev.app, paperSize: v as "A4" | "US Letter" },
-            }));
-            setSettings((prev) => ({
-              ...prev,
-              app: { ...prev.app, paperSize: v as "A4" | "US Letter" },
-            }));
-            updateSection("app", {
-              theme,
-              paperSize: v as "A4" | "US Letter",
-              contentSize,
-              language,
-            });
-          }}
+          onValueChange={(v) => handleChange("paperSize", v)}
         >
           <SelectTrigger className='w-2/3'>
             <SelectValue placeholder='Select paper size' />
@@ -117,23 +167,7 @@ export const BasicSettings = ({
         <Label className='w-1/3'>Content Size</Label>
         <Select
           value={contentSize}
-          onValueChange={(v) => {
-            applyContentSizeClass(v as "md" | "lg");
-            setDraftSettings((prev) => ({
-              ...prev,
-              app: { ...prev.app, contentSize: v as "md" | "lg" },
-            }));
-            setSettings((prev) => ({
-              ...prev,
-              app: { ...prev.app, contentSize: v as "md" | "lg" },
-            }));
-            updateSection("app", {
-              theme,
-              paperSize,
-              contentSize: v as "md" | "lg",
-              language,
-            });
-          }}
+          onValueChange={(v) => handleChange("contentSize", v)}
         >
           <SelectTrigger className='w-2/3'>
             <SelectValue placeholder='Select content size' />
@@ -143,6 +177,22 @@ export const BasicSettings = ({
             <SelectItem value='lg'>Large (125%)</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+
+      <span className='text-sm text-muted-foreground'>
+        Import and export settings along with your data. This will not overwrite
+        your current settings and data. It's a good idea to back up your
+        settings and data before importing.
+      </span>
+
+      {/* Import/Export Buttons */}
+      <div className='flex gap-4'>
+        <Button variant='outline' onClick={handleImport}>
+          Import Settings
+        </Button>
+        <Button variant='default' onClick={handleExport}>
+          Export Settings
+        </Button>
       </div>
     </div>
   );

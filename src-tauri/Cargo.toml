@@ -32,4 +32,6 @@ dirs = "6.0.0"
 dotenvy = "0.15.7"
 discord-rich-presence = "0.2.5"
 lazy_static = "1.5.0"
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
 

@@ -5,7 +5,7 @@ import { getSection } from "./lib/store";
 import { applyContentSizeClass } from "./lib/ui";
 import { useTheme } from "./contexts/ThemeContext";
 import { invoke } from "@tauri-apps/api/core";
-import { OnboardingState } from "./contexts/OnboardingContext";
+import { SettingsType } from "./contexts/OnboardingContext";
 
 export default function App() {
   const location = useLocation();
@@ -23,7 +23,7 @@ export default function App() {
       setThemeContext(app?.theme ?? "system");
     });
 
-    getSection<OnboardingState["awards"]>("awards").then((section) => {
+    getSection<SettingsType["awards"]>("awards").then((section) => {
       section === undefined && navigate("/onboarding");
     });
   }, []);
