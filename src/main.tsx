@@ -22,14 +22,6 @@ import Artificial from "./pages/Onboarding/Artificial";
 import { SystemProvider } from "./contexts/SystemContext";
 import { OnboardingProvider } from "./contexts/OnboardingContext";
 import Awards from "./pages/Onboarding/Awards";
-import { BasicSettings } from "./pages/Settings/BasicSettings";
-import { ArtificialSettings } from "./pages/Settings/ArtificialSettings";
-import { PersonalSettings } from "./pages/Settings/PersonalSettings";
-import { EducationSettings } from "./pages/Settings/EducationSettings";
-import { ExperienceSettings } from "./pages/Settings/ExperienceSettings";
-import { ProjectsSettings } from "./pages/Settings/ProjectsSettings";
-import { SkillsSettings } from "./pages/Settings/SkillsSettings";
-import { AwardsSettings } from "./pages/Settings/AwardsSettings";
 
 const router = createBrowserRouter([
   {
@@ -61,16 +53,6 @@ const router = createBrowserRouter([
       {
         path: "settings",
         element: <Settings />,
-        children: [
-          { path: "app", element: <BasicSettings /> },
-          { path: "ai", element: <ArtificialSettings /> },
-          { path: "personal", element: <PersonalSettings /> },
-          { path: "education", element: <EducationSettings /> },
-          { path: "experience", element: <ExperienceSettings /> },
-          { path: "projects", element: <ProjectsSettings /> },
-          { path: "skills", element: <SkillsSettings /> },
-          { path: "awards", element: <AwardsSettings /> },
-        ],
       },
     ],
   },

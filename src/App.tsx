@@ -15,17 +15,32 @@ export default function App() {
   const { setTheme: setThemeContext } = useTheme();
 
   useEffect(() => {
-    getSection<{
-      contentSize?: "md" | "lg";
-      theme?: "light" | "dark" | "system";
-    }>("app").then((app) => {
+    const requiredSections: (keyof SettingsType)[] = [
+      "app",
+      "llm",
+      "personal",
+      "education",
+      "experience",
+      "projects",
+      "skills",
+      "awards",
+    ];
+
+    const checkSections = async () => {
+      const results = await Promise.all(
+        requiredSections.map((section) => getSection(section))
+      );
+      const app = results[0] as SettingsType["app"];
       applyContentSizeClass(app?.contentSize ?? "md");
       setThemeContext(app?.theme ?? "system");
-    });
+      const allExist = results.every(
+        (sectionData) => sectionData !== undefined
+      );
 
-    getSection<SettingsType["awards"]>("awards").then((section) => {
-      section === undefined && navigate("/onboarding");
-    });
+      !allExist && navigate("/onboarding");
+    };
+
+    checkSections();
   }, []);
 
   useEffect(() => {

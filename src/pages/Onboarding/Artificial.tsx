@@ -653,6 +653,8 @@ const Artificial = () => {
                 }}
               />
             </div>
+
+            {/* Reset to Default Settings */}
             <Button
               className='text-destructive'
               variant={"ghost"}
