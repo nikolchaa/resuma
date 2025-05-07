@@ -98,8 +98,6 @@ const Artificial = () => {
     const checkAndSet = async () => {
       const hasLLM = await exists("llm");
       if (!hasLLM) {
-        console.log("Default:", defaultSettings);
-        console.log("State:", state.llm?.settings);
         update("llm", { settings: defaultSettings });
       }
     };

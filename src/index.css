@@ -262,6 +262,26 @@
   display: none; /* Chrome, Safari, Opera */
 }
 
+.scrollbar-override {
+  scrollbar-width: thin !important;
+  scrollbar-color: var(--muted) transparent !important;
+  -ms-overflow-style: auto !important;
+}
+
+.scrollbar-override::-webkit-scrollbar {
+  display: block !important;
+  height: 8px;
+}
+
+.scrollbar-override::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-override::-webkit-scrollbar-thumb {
+  background-color: var(--muted);
+  border-radius: 999px;
+}
+
 html.content-md {
   font-size: 100%; /* base, 16px */
 }
