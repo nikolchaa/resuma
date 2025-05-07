@@ -68,12 +68,18 @@ const Artificial = () => {
   const gpuVram = system?.gpu?.vramMb;
   const ram = system?.ram?.sizeMb ? Math.round(system.ram.sizeMb / 1024) : null;
 
-  const runtimeStatus = runtime?.name
-    ? downloadStatusMap[runtime.name] ?? { state: "idle", progress: 0 }
+  const runtimeStatus = runtime?.name.replace(/\./g, "_")
+    ? downloadStatusMap[runtime.name.replace(/\./g, "_")] ?? {
+        state: "idle",
+        progress: 0,
+      }
     : { state: "idle", progress: 0 };
 
-  const modelStatus = model?.model.name
-    ? downloadStatusMap[model.model.name] ?? { state: "idle", progress: 0 }
+  const modelStatus = model?.model.name.replace(/\./g, "_")
+    ? downloadStatusMap[model.model.name.replace(/\./g, "_")] ?? {
+        state: "idle",
+        progress: 0,
+      }
     : { state: "idle", progress: 0 };
 
   const [defaultSettings, setDefaultSettings] = useState<LLMSettings>(
@@ -135,14 +141,17 @@ const Artificial = () => {
 
   useEffect(() => {
     const checkModelExistence = async () => {
-      if (!model?.model.name) return;
+      if (!model?.model.name.replace(/\./g, "_")) return;
 
-      const exists = await checkAssetReady("models", model.model.name);
+      const exists = await checkAssetReady(
+        "models",
+        model.model.name.replace(/\./g, "_")
+      );
 
       if (exists) {
         setDownloadStatusMap((prev) => ({
           ...prev,
-          [model.model.name]: {
+          [model.model.name.replace(/\./g, "_")]: {
             state: "ready",
             progress: 100,
           },
@@ -152,7 +161,7 @@ const Artificial = () => {
 
     checkModelExistence();
     update("llm", {
-      model: model?.model.name ?? "",
+      model: model?.model.name.replace(/\./g, "_") ?? "",
     });
   }, [model]);
 
@@ -211,35 +220,37 @@ const Artificial = () => {
     },
   });
 
-  useDownloadListeners(model?.model.name, {
+  useDownloadListeners(model?.model.name.replace(/\./g, "_"), {
     onProgress: (progress) => {
-      if (!model?.model.name) return;
+      if (!model?.model.name.replace(/\./g, "_")) return;
       setDownloadStatusMap((prev) => ({
         ...prev,
-        [model.model.name]: {
+        [model.model.name.replace(/\./g, "_")]: {
           state: "downloading",
           progress,
         },
       }));
     },
     onComplete: () => {
-      if (!model?.model.name) return;
+      if (!model?.model.name.replace(/\./g, "_")) return;
       setDownloadStatusMap((prev) => ({
         ...prev,
-        [model.model.name]: {
-          ...prev[model.model.name],
+        [model.model.name.replace(/\./g, "_")]: {
+          ...prev[model.model.name.replace(/\./g, "_")],
           state: "ready",
           progress: 100,
         },
       }));
     },
     onError: (error) => {
-      if (!model?.model.name) return;
-      console.error(`Download error for ${model.model.name}: ${error}`);
+      if (!model?.model.name.replace(/\./g, "_")) return;
+      console.error(
+        `Download error for ${model.model.name.replace(/\./g, "_")}: ${error}`
+      );
       setDownloadStatusMap((prev) => ({
         ...prev,
-        [model.model.name]: {
-          ...prev[model.model.name],
+        [model.model.name.replace(/\./g, "_")]: {
+          ...prev[model.model.name.replace(/\./g, "_")],
           state: "error",
         },
       }));
@@ -365,7 +376,7 @@ const Artificial = () => {
               onClick={() => {
                 if (model?.model.name && model?.model.download) {
                   handleDownloadClick(
-                    model.model.name,
+                    model.model.name.replace(/\./g, "_"),
                     model.model.download,
                     "model"
                   );
