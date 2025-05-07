@@ -8,12 +8,12 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { OnboardingState, useOnboarding } from "@/contexts/OnboardingContext";
+import { SettingsType, useOnboarding } from "@/contexts/OnboardingContext";
 import { MinusCircle, PlusCircle, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import DateRangeDropdown from "@/components/ui/daterange";
 
-type EducationEntry = OnboardingState["education"][number];
+type EducationEntry = SettingsType["education"][number];
 
 const Education = () => {
   const navigate = useNavigate();

@@ -10,11 +10,11 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { MinusCircle, PlusCircle, ArrowRight } from "lucide-react";
-import { OnboardingState, useOnboarding } from "@/contexts/OnboardingContext";
+import { SettingsType, useOnboarding } from "@/contexts/OnboardingContext";
 import DateRangeDropdown from "@/components/ui/daterange";
 import { Textarea } from "@/components/ui/textarea";
 
-type ProjectEntry = OnboardingState["projects"][number];
+type ProjectEntry = SettingsType["projects"][number];
 
 const Projects = () => {
   const navigate = useNavigate();

@@ -16,11 +16,11 @@ import {
   ArrowUp,
   ArrowDown,
 } from "lucide-react";
-import { OnboardingState, useOnboarding } from "@/contexts/OnboardingContext";
+import { SettingsType, useOnboarding } from "@/contexts/OnboardingContext";
 import { Textarea } from "@/components/ui/textarea";
 import DateRangeDropdown from "@/components/ui/daterange";
 
-type AwardEntry = OnboardingState["awards"][number];
+type AwardEntry = SettingsType["awards"][number];
 
 const Awards = () => {
   const navigate = useNavigate();

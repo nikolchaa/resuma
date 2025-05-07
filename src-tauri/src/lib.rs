@@ -1,14 +1,14 @@
+use futures_util::StreamExt;
+use reqwest::Client;
 use std::fs::{self, File};
 use std::io::{self, Write};
 use std::path::PathBuf;
-use tauri::Emitter;
-use reqwest::Client;
-use zip::ZipArchive;
 use tauri::async_runtime::spawn;
-use futures_util::StreamExt;
+use tauri::Emitter;
+use zip::ZipArchive;
 
 mod rpc;
-use rpc::{start_rpc, set_activity, stop_rpc};
+use rpc::{set_activity, start_rpc, stop_rpc};
 
 use dotenvy::dotenv;
 
@@ -29,7 +29,10 @@ async fn download_and_extract(
             .join(&asset_name);
 
         if let Err(e) = fs::create_dir_all(&base_dir) {
-            let _ = window.emit(&format!("download_error:{}", asset_name), format!("Failed to create directory: {e}"));
+            let _ = window.emit(
+                &format!("download_error:{}", asset_name),
+                format!("Failed to create directory: {e}"),
+            );
             return;
         }
 
@@ -40,7 +43,10 @@ async fn download_and_extract(
         let response = match client.get(&asset_url).send().await {
             Ok(res) => res,
             Err(e) => {
-                let _ = window.emit(&format!("download_error:{}", asset_name), format!("Download failed: {e}"));
+                let _ = window.emit(
+                    &format!("download_error:{}", asset_name),
+                    format!("Download failed: {e}"),
+                );
                 return;
             }
         };
@@ -51,7 +57,10 @@ async fn download_and_extract(
         let mut file = match File::create(&file_path) {
             Ok(f) => f,
             Err(e) => {
-                let _ = window.emit(&format!("download_error:{}", asset_name), format!("Failed to create file: {e}"));
+                let _ = window.emit(
+                    &format!("download_error:{}", asset_name),
+                    format!("Failed to create file: {e}"),
+                );
                 return;
             }
         };
@@ -60,7 +69,10 @@ async fn download_and_extract(
             match item {
                 Ok(chunk) => {
                     if let Err(e) = file.write_all(&chunk) {
-                        let _ = window.emit(&format!("download_error:{}", asset_name), format!("Failed writing file: {e}"));
+                        let _ = window.emit(
+                            &format!("download_error:{}", asset_name),
+                            format!("Failed writing file: {e}"),
+                        );
                         return;
                     }
                     downloaded += chunk.len() as u64;
@@ -72,20 +84,32 @@ async fn download_and_extract(
                     let _ = window.emit(&format!("download_progress:{}", asset_name), progress);
                 }
                 Err(e) => {
-                    let _ = window.emit(&format!("download_error:{}", asset_name), format!("Download stream error: {e}"));
+                    let _ = window.emit(
+                        &format!("download_error:{}", asset_name),
+                        format!("Download stream error: {e}"),
+                    );
                     return;
                 }
             }
         }
 
-        let _ = window.emit(&format!("download_complete:{}", asset_name), file_path.to_string_lossy().to_string());
+        let _ = window.emit(
+            &format!("download_complete:{}", asset_name),
+            file_path.to_string_lossy().to_string(),
+        );
 
         if !no_extract {
             if let Err(e) = extract_zip(&file_path, &base_dir) {
-                let _ = window.emit(&format!("extract_error:{}", asset_name), format!("Extraction failed: {e}"));
+                let _ = window.emit(
+                    &format!("extract_error:{}", asset_name),
+                    format!("Extraction failed: {e}"),
+                );
                 return;
             }
-            let _ = window.emit(&format!("extract_complete:{}", asset_name), base_dir.to_string_lossy().to_string());
+            let _ = window.emit(
+                &format!("extract_complete:{}", asset_name),
+                base_dir.to_string_lossy().to_string(),
+            );
         }
     });
 
@@ -138,6 +162,8 @@ pub fn run() {
     start_rpc(client_id).expect("Failed to start Discord RPC");
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_hwinfo::init())

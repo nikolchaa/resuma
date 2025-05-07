@@ -23,6 +23,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 import { SettingsType } from "@/contexts/OnboardingContext";
 import { getSection, updateSection } from "@/lib/store";
+import { Button } from "@/components/ui/button";
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState("basic");
@@ -58,6 +59,8 @@ export default function Settings() {
   });
   const [draftSettings, setDraftSettings] = useState<SettingsType>(settings);
 
+  const [unsavedChanges, setUnsavedChanges] = useState(false);
+
   const updateSetting = <K extends keyof SettingsType>(
     section: K,
     data: Partial<SettingsType[K]>
@@ -83,11 +86,8 @@ export default function Settings() {
     await updateSection("awards", draftSettings.awards);
   };
 
-  const resetSetting = <K extends keyof SettingsType>(section: K) => {
-    setDraftSettings((prev) => ({
-      ...prev,
-      [section]: settings[section],
-    }));
+  const resetSetting = () => {
+    setDraftSettings(settings);
   };
 
   useEffect(() => {
@@ -184,10 +184,73 @@ export default function Settings() {
     );
   }, [activeTab]);
 
+  useEffect(() => {
+    const deepEqual = (a: any, b: any): boolean => {
+      if (Array.isArray(a) && Array.isArray(b)) {
+        if (a.length !== b.length) return false;
+        return a.every((val, i) => deepEqual(val, b[i]));
+      }
+
+      if (
+        typeof a === "object" &&
+        typeof b === "object" &&
+        a !== null &&
+        b !== null
+      ) {
+        const aKeys = Object.keys(a);
+        const bKeys = Object.keys(b);
+        if (aKeys.length !== bKeys.length) return false;
+
+        return aKeys.every(
+          (key) => b.hasOwnProperty(key) && deepEqual(a[key], b[key])
+        );
+      }
+
+      return a === b;
+    };
+
+    const changed = (
+      [
+        "llm",
+        "personal",
+        "education",
+        "experience",
+        "projects",
+        "skills",
+        "awards",
+      ] as const
+    ).some((key) => !deepEqual(draftSettings[key], settings[key]));
+
+    setUnsavedChanges(changed);
+  }, [draftSettings, settings]);
+
   return (
     <div className='flex w-full h-screen items-center justify-center'>
       <Back location='/' />
       <div className='flex max-w-[75rem] w-[calc(100vw-12.5rem)] h-screen gap-8'>
+        {/* Apply Settings popup */}
+        <AnimatePresence>
+          {unsavedChanges && (
+            <m.div
+              initial={{ y: 100, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 100, opacity: 0 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className='fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-popover border rounded-lg shadow-md p-2 flex gap-2 items-center'
+            >
+              <span className='pl-2 text-sm text-muted-foreground'>
+                You have unsaved changes.
+              </span>
+              <Button variant='ghost' onClick={resetSetting}>
+                Reset
+              </Button>
+              <Button variant='default' onClick={applySettings}>
+                Apply
+              </Button>
+            </m.div>
+          )}
+        </AnimatePresence>
+
         {/* Left Vertical Tabs */}
         <div className='mt-8 sticky h-full'>
           <Tabs
@@ -274,6 +337,7 @@ export default function Settings() {
                       settings={draftSettings.app}
                       setDraftSettings={setDraftSettings}
                       setSettings={setSettings}
+                      draftSettings={draftSettings}
                     />
                   </CardContent>
                 </Card>
