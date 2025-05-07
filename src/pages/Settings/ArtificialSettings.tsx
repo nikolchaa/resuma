@@ -62,6 +62,9 @@ export const ArtificialSettings = ({
   const [downloadedModelNames, setDownloadedModelNames] = useState<string[]>(
     []
   );
+  const [downloadedRuntimeNames, setDownloadedRuntimeNames] = useState<
+    string[]
+  >([]);
   const [downloadStatusMap, setDownloadStatusMap] = useState<DownloadStatusMap>(
     {}
   );
@@ -82,6 +85,24 @@ export const ArtificialSettings = ({
       return [];
     }
   };
+
+  const getDownloadedRuntimes = async (): Promise<string[]> => {
+    try {
+      const entries: DirEntry[] = await readDir("runtimes", {
+        baseDir: BaseDirectory.AppData,
+      });
+
+      const folders = entries
+        .filter((entry) => entry.name && entry.isDirectory)
+        .map((entry) => entry.name as string);
+
+      return folders;
+    } catch (error) {
+      console.error("Error reading downloaded models:", error);
+      return [];
+    }
+  };
+
   useEffect(() => {
     const loadDownloadedModels = async () => {
       const folders = await getDownloadedModels();
@@ -99,15 +120,36 @@ export const ArtificialSettings = ({
         ...prev, // don't overwrite in-progress ones
       }));
     };
+    const loadDownloadedRuntimes = async () => {
+      const folders = await getDownloadedRuntimes();
+
+      const readyMap: DownloadStatusMap = {};
+      folders.forEach((folderName) => {
+        readyMap[folderName] = {
+          state: "ready",
+          progress: 100,
+        };
+      });
+
+      setDownloadStatusMap((prev) => ({
+        ...readyMap,
+        ...prev, // don't overwrite in-progress ones
+      }));
+    };
 
     loadDownloadedModels();
+    loadDownloadedRuntimes();
 
     getDownloadedModels().then(setDownloadedModelNames);
+    getDownloadedRuntimes().then(setDownloadedRuntimeNames);
   }, []);
 
   const downloadedModels = getModels(system).filter((entry) => {
     const safeName = entry.model.name.replace(/\./g, "_");
     return downloadedModelNames.includes(safeName);
+  });
+  const downloadedRuntimes = getRuntimes(system).filter((entry) => {
+    return downloadedRuntimeNames.includes(entry.runtime.name);
   });
 
   const handleDeleteModel = async (modelName: string) => {
@@ -122,8 +164,23 @@ export const ArtificialSettings = ({
         delete updated[modelName.replace(/\./g, "_")];
         return updated;
       });
+    } catch (error) {
+      console.error("Failed to delete model:", error);
+    }
+  };
 
-      console.log(`Deleted model folder: ${modelName}`);
+  const handleDeleteRuntime = async (runtimeName: string) => {
+    try {
+      await remove(`runtimes/${runtimeName}`, {
+        recursive: true,
+        baseDir: BaseDirectory.AppData,
+      });
+
+      setDownloadStatusMap((prev) => {
+        const updated = { ...prev };
+        delete updated[runtimeName];
+        return updated;
+      });
     } catch (error) {
       console.error("Failed to delete model:", error);
     }
@@ -163,6 +220,63 @@ export const ArtificialSettings = ({
       },
       onExtractComplete: () => {},
       onExtractError: () => {},
+    });
+  });
+
+  getRuntimes(system).forEach((entry) => {
+    useDownloadListeners(entry.runtime.name, {
+      onProgress: (progress) => {
+        if (!entry.runtime.name) return;
+        setDownloadStatusMap((prev) => ({
+          ...prev,
+          [entry.runtime.name]: {
+            state: "downloading",
+            progress,
+          },
+        }));
+      },
+      onComplete: () => {
+        if (!entry.runtime.name) return;
+        setDownloadStatusMap((prev) => ({
+          ...prev,
+          [entry.runtime.name]: {
+            ...prev[entry.runtime.name],
+            state: "extracting",
+          },
+        }));
+      },
+      onError: (error) => {
+        if (!entry.runtime.name) return;
+        console.error(`Download error for ${entry.runtime.name}: ${error}`);
+        setDownloadStatusMap((prev) => ({
+          ...prev,
+          [entry.runtime.name]: {
+            ...prev[entry.runtime.name],
+            state: "error",
+          },
+        }));
+      },
+      onExtractComplete: () => {
+        if (!entry.runtime.name) return;
+        setDownloadStatusMap((prev) => ({
+          ...prev,
+          [entry.runtime.name]: {
+            state: "ready",
+            progress: 100,
+          },
+        }));
+      },
+      onExtractError: (error) => {
+        if (!entry.runtime.name) return;
+        console.error(`Extraction error for ${entry.runtime.name}: ${error}`);
+        setDownloadStatusMap((prev) => ({
+          ...prev,
+          [entry.runtime.name]: {
+            ...prev[entry.runtime.name],
+            state: "error",
+          },
+        }));
+      },
     });
   });
 
@@ -220,11 +334,24 @@ export const ArtificialSettings = ({
       {/* Runtime */}
       <div className='flex items-center justify-between h-9'>
         <Label className='w-1/3'>Runtime</Label>
-        <Input
+        <Select
           value={llm.runtime}
-          onChange={(e) => updateSettings("llm", { runtime: e.target.value })}
-          className='text-right w-2/3'
-        />
+          onValueChange={(value) => updateSettings("llm", { runtime: value })}
+        >
+          <SelectTrigger className='w-2/3 text-right'>
+            <SelectValue placeholder='Select model' />
+          </SelectTrigger>
+          <SelectContent>
+            {downloadedRuntimes.map((entry) => (
+              <SelectItem key={entry.runtime.name} value={entry.runtime.name}>
+                {entry.runtime.label}{" "}
+                <Badge variant='outline'>
+                  {entry.runtime.backend.toUpperCase()}
+                </Badge>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Model */}
@@ -242,6 +369,7 @@ export const ArtificialSettings = ({
               <SelectItem key={entry.model.name} value={entry.model.name}>
                 {entry.model.label}{" "}
                 <Badge variant='outline'>{entry.model.size}</Badge>
+                <Badge variant='outline'>{entry.status.toUpperCase()}</Badge>
               </SelectItem>
             ))}
           </SelectContent>
@@ -280,9 +408,14 @@ export const ArtificialSettings = ({
             "Number of model layers offloaded to GPU."
           )}
         </Label>
+
         <Input
           type='number'
           min={0}
+          disabled={
+            getRuntimes(system).find((r) => r.runtime.name === llm.runtime)
+              ?.runtime.backend === "cpu"
+          }
           max={
             getModels(system).find((entry) => entry.model.name === llm.model)
               ?.model.layers ?? 48
@@ -505,15 +638,121 @@ export const ArtificialSettings = ({
         </CardDescription>
       </div>
 
-      <div className='flex flex-col gap-1.5'>
+      <div className='flex flex-col gap-3'>
         {getRuntimes(system).map((entry) => (
           <div
             key={entry.runtime.name}
-            className='flex items-center justify-between'
+            className='flex items-center justify-between border rounded-xl px-2 py-2 pl-4 shadow-sm'
           >
-            <Label className='w-1/3'>{entry.runtime.label}</Label>
-            <div className='text-right w-2/3'>
-              <span>{entry.status}</span>
+            <div className='flex gap-2 items-center'>
+              <span className='font-medium'>
+                {entry.runtime.label}{" "}
+                <span className='text-muted-foreground'>
+                  ({entry.runtime.name})
+                </span>
+              </span>
+              <Badge variant='outline' className='w-fit'>
+                {entry.status === "confirmed" ? (
+                  <>
+                    <Check className='h-5 w-5' /> Supported
+                  </>
+                ) : entry.status === "unknown" ? (
+                  <>
+                    <X className='h-5 w-5' /> Unknown
+                  </>
+                ) : (
+                  <>
+                    <X className='h-5 w-5' /> Unsupported
+                  </>
+                )}
+              </Badge>
+            </div>
+
+            <div className='flex gap-2'>
+              {downloadStatusMap[entry.runtime.name]?.state === "ready" && (
+                <Button
+                  variant='ghost'
+                  size='sm'
+                  className='text-destructive'
+                  onClick={() => handleDeleteRuntime(entry.runtime.name)}
+                >
+                  <Trash2 className='w-4 h-4' />
+                </Button>
+              )}
+              <Button
+                size='sm'
+                variant={"secondary"}
+                disabled={
+                  !entry.runtime.download ||
+                  entry.status === "unsupported" ||
+                  downloadStatusMap[entry.runtime.name]?.state === "ready" ||
+                  downloadStatusMap[entry.runtime.name]?.state ===
+                    "downloading" ||
+                  downloadStatusMap[entry.runtime.name]?.state === "extracting"
+                }
+                onClick={() =>
+                  handleDownloadClick(
+                    entry.runtime.name,
+                    entry.runtime.download,
+                    "runtime"
+                  )
+                }
+              >
+                {(entry.runtime.name
+                  ? downloadStatusMap[entry.runtime.name] ?? {
+                      state: "idle",
+                      progress: 0,
+                    }
+                  : { state: "idle", progress: 0 }
+                ).state === "ready" ? (
+                  <>
+                    <Check className='w-4 h-4 mr-1' />
+                    Ready
+                  </>
+                ) : (entry.runtime.name
+                    ? downloadStatusMap[entry.runtime.name] ?? {
+                        state: "idle",
+                        progress: 0,
+                      }
+                    : { state: "idle", progress: 0 }
+                  ).state === "downloading" ? (
+                  <>
+                    <Download className='w-4 h-4 mr-1' />
+                    Downloading... (
+                    {Math.round(
+                      (entry.runtime.name
+                        ? downloadStatusMap[entry.runtime.name] ?? {
+                            state: "idle",
+                            progress: 0,
+                          }
+                        : { state: "idle", progress: 0 }
+                      ).progress
+                    )}
+                    %)
+                  </>
+                ) : (entry.runtime.name
+                    ? downloadStatusMap[entry.runtime.name] ?? {
+                        state: "idle",
+                        progress: 0,
+                      }
+                    : { state: "idle", progress: 0 }
+                  ).state === "extracting" ? (
+                  <>
+                    <Download className='w-4 h-4 mr-1' />
+                    Extracting...
+                  </>
+                ) : entry.status === "unsupported" ? (
+                  <>
+                    <X className='w-4 h-4 mr-1' />
+                    Unsupported
+                  </>
+                ) : (
+                  <>
+                    <Download className='w-4 h-4 mr-1' />
+                    Download
+                  </>
+                )}
+              </Button>
             </div>
           </div>
         ))}

@@ -90,7 +90,7 @@
   },
   {
     "name": "llama-vulkan-win",
-    "label": "Vulkan (Windows)",
+    "label": "Vulkan",
     "download": "https://github.com/ggml-org/llama.cpp/releases/download/b5233/llama-b5233-bin-win-vulkan-x64.zip",
     "platform": "windows",
     "backend": "vulkan",
@@ -102,7 +102,7 @@
   },
   {
     "name": "llama-vulkan-linux",
-    "label": "Vulkan (Linux)",
+    "label": "Vulkan",
     "download": "https://github.com/ggml-org/llama.cpp/releases/download/b5233/llama-b5233-bin-ubuntu-vulkan-x64.zip",
     "platform": "linux",
     "backend": "vulkan",
@@ -114,7 +114,7 @@
   },
   {
     "name": "llama-cpu-win",
-    "label": "CPU (AVX2 - Windows)",
+    "label": "CPU",
     "download": "https://github.com/ggml-org/llama.cpp/releases/download/b5233/llama-b5233-bin-win-avx2-x64.zip",
     "platform": "windows",
     "backend": "cpu",
@@ -122,7 +122,7 @@
   },
   {
     "name": "llama-cpu-linux",
-    "label": "CPU (AVX2 - Linux)",
+    "label": "CPU",
     "download": "https://github.com/ggml-org/llama.cpp/releases/download/b5233/llama-b5233-bin-ubuntu-x64.zip",
     "platform": "linux",
     "backend": "cpu",
@@ -130,7 +130,7 @@
   },
   {
     "name": "llama-metal",
-    "label": "Metal (MacOS)",
+    "label": "Metal",
     "download": "https://github.com/ggml-org/llama.cpp/releases/download/b5233/llama-b5233-bin-macos-arm64.zip",
     "platform": "macos",
     "backend": "cpu",
