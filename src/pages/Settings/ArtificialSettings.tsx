@@ -34,6 +34,13 @@ import {
   readDir,
   remove,
 } from "@tauri-apps/plugin-fs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type Props = {
   llm: SettingsType["llm"];
@@ -52,6 +59,9 @@ export const ArtificialSettings = ({
   const settings = llm.settings;
   const system = useSystem();
 
+  const [downloadedModelNames, setDownloadedModelNames] = useState<string[]>(
+    []
+  );
   const [downloadStatusMap, setDownloadStatusMap] = useState<DownloadStatusMap>(
     {}
   );
@@ -72,26 +82,6 @@ export const ArtificialSettings = ({
       return [];
     }
   };
-
-  const handleDeleteModel = async (modelName: string) => {
-    try {
-      await remove(`models/${modelName.replace(/\./g, "_")}`, {
-        recursive: true,
-        baseDir: BaseDirectory.AppData,
-      });
-
-      setDownloadStatusMap((prev) => {
-        const updated = { ...prev };
-        delete updated[modelName.replace(/\./g, "_")];
-        return updated;
-      });
-
-      console.log(`Deleted model folder: ${modelName}`);
-    } catch (error) {
-      console.error("Failed to delete model:", error);
-    }
-  };
-
   useEffect(() => {
     const loadDownloadedModels = async () => {
       const folders = await getDownloadedModels();
@@ -111,7 +101,33 @@ export const ArtificialSettings = ({
     };
 
     loadDownloadedModels();
+
+    getDownloadedModels().then(setDownloadedModelNames);
   }, []);
+
+  const downloadedModels = getModels(system).filter((entry) => {
+    const safeName = entry.model.name.replace(/\./g, "_");
+    return downloadedModelNames.includes(safeName);
+  });
+
+  const handleDeleteModel = async (modelName: string) => {
+    try {
+      await remove(`models/${modelName.replace(/\./g, "_")}`, {
+        recursive: true,
+        baseDir: BaseDirectory.AppData,
+      });
+
+      setDownloadStatusMap((prev) => {
+        const updated = { ...prev };
+        delete updated[modelName.replace(/\./g, "_")];
+        return updated;
+      });
+
+      console.log(`Deleted model folder: ${modelName}`);
+    } catch (error) {
+      console.error("Failed to delete model:", error);
+    }
+  };
 
   getModels(system).forEach((entry) => {
     const safeName = entry.model.name.replace(/\./g, "_");
@@ -214,11 +230,22 @@ export const ArtificialSettings = ({
       {/* Model */}
       <div className='flex items-center justify-between h-9'>
         <Label className='w-1/3'>Model</Label>
-        <Input
+        <Select
           value={llm.model}
-          onChange={(e) => updateSettings("llm", { model: e.target.value })}
-          className='text-right w-2/3'
-        />
+          onValueChange={(value) => updateSettings("llm", { model: value })}
+        >
+          <SelectTrigger className='w-2/3 text-right'>
+            <SelectValue placeholder='Select model' />
+          </SelectTrigger>
+          <SelectContent>
+            {downloadedModels.map((entry) => (
+              <SelectItem key={entry.model.name} value={entry.model.name}>
+                {entry.model.label}{" "}
+                <Badge variant='outline'>{entry.model.size}</Badge>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Context Size */}
