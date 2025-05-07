@@ -61,7 +61,7 @@ export default function Settings() {
 
   const [unsavedChanges, setUnsavedChanges] = useState(false);
 
-  const updateSetting = <K extends keyof SettingsType>(
+  const updateSettings = <K extends keyof SettingsType>(
     section: K,
     data: Partial<SettingsType[K]>
   ) => {
@@ -86,7 +86,7 @@ export default function Settings() {
     await updateSection("awards", draftSettings.awards);
   };
 
-  const resetSetting = () => {
+  const resetSettings = () => {
     setDraftSettings(settings);
   };
 
@@ -241,7 +241,7 @@ export default function Settings() {
               <span className='pl-2 text-sm text-muted-foreground'>
                 You have unsaved changes.
               </span>
-              <Button variant='ghost' onClick={resetSetting}>
+              <Button variant='ghost' onClick={resetSettings}>
                 Reset
               </Button>
               <Button variant='default' onClick={applySettings}>
@@ -364,7 +364,11 @@ export default function Settings() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <ArtificialSettings />
+                    <ArtificialSettings
+                      llm={draftSettings.llm}
+                      updateSettings={updateSettings}
+                      stockSettings={settings.llm}
+                    />
                   </CardContent>
                 </Card>
               </m.div>
