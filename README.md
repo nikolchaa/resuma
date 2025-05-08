@@ -9,6 +9,7 @@ Resuma is an open-source desktop application for building beautiful, professiona
 Powered by Tauri, Rust, React (TSX), and llama.cpp, Resuma brings the power of private AI directly to your desktop, ensuring fast performance and complete privacy.
 
 > ⚡ **Offline and private**: No external servers, complete control over your data.
+
 > ⚡ **Cross-platform**: Works on Windows, macOS, and Linux.
 
 ## 🔧 Features
