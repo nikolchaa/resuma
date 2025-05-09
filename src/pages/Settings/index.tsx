@@ -560,7 +560,10 @@ export default function Settings() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <SkillsSettings />
+                    <SkillsSettings
+                      settings={draftSettings.skills}
+                      updateSettings={updateSettings}
+                    />
                   </CardContent>
                 </Card>
               </m.div>
