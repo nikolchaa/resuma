@@ -24,6 +24,7 @@ export type SettingsType = {
     email: string;
     location: string;
     headline: string;
+    socials: string[];
   };
   education: {
     school: string;
@@ -90,6 +91,7 @@ const defaultState: SettingsType = {
     email: "",
     location: "",
     headline: "",
+    socials: [],
   },
   education: [
     {
