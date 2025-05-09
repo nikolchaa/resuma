@@ -21,7 +21,7 @@ import { Back } from "@/components/Back";
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
-import { SettingsType } from "@/contexts/OnboardingContext";
+import { defaultState, SettingsType } from "@/contexts/OnboardingContext";
 import { getSection, updateSection } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 
@@ -50,6 +50,7 @@ export default function Settings() {
       email: "",
       location: "",
       headline: "",
+      socials: [],
     },
     education: [],
     experience: [],
@@ -63,14 +64,13 @@ export default function Settings() {
 
   const updateSettings = <K extends keyof SettingsType>(
     section: K,
-    data: Partial<SettingsType[K]>
+    data: Partial<SettingsType[K]> | SettingsType[K]
   ) => {
     setDraftSettings((prev) => ({
       ...prev,
-      [section]: {
-        ...(prev[section] as object),
-        ...(data as object),
-      },
+      [section]: Array.isArray(data)
+        ? (data as SettingsType[K])
+        : { ...(prev[section] as any), ...(data as any) },
     }));
   };
 
@@ -96,15 +96,15 @@ export default function Settings() {
         app,
         llm,
         personal,
-        education,
-        experience,
-        projects,
-        skills,
-        awards,
+        educationRaw,
+        experienceRaw,
+        projectsRaw,
+        skillsRaw,
+        awardsRaw,
       ] = await Promise.all([
-        getSection("app"),
-        getSection("llm"),
-        getSection("personal"),
+        getSection<SettingsType["app"]>("app"),
+        getSection<SettingsType["llm"]>("llm"),
+        getSection<SettingsType["personal"]>("personal"),
         getSection("education"),
         getSection("experience"),
         getSection("projects"),
@@ -112,27 +112,83 @@ export default function Settings() {
         getSection("awards"),
       ]);
 
-      setSettings((prev) => ({
-        app: { ...prev.app, ...(app ?? {}) },
-        llm: { ...prev.llm, ...(llm ?? {}) },
-        personal: { ...prev.personal, ...(personal ?? {}) },
-        education: Array.isArray(education) ? education : [],
-        experience: Array.isArray(experience) ? experience : [],
-        projects: Array.isArray(projects) ? projects : [],
-        skills: Array.isArray(skills) ? skills : [],
-        awards: Array.isArray(awards) ? awards : [],
-      }));
+      const education = Array.isArray(educationRaw)
+        ? educationRaw.map((entry) => ({
+            school: entry.school ?? "",
+            degree: entry.degree ?? "",
+            location: entry.location ?? "",
+            gpa: entry.gpa ?? "",
+            date: {
+              from: entry.date?.from ?? "",
+              to: entry.date?.to ?? undefined,
+            },
+            courses: Array.isArray(entry.courses) ? [...entry.courses] : [],
+          }))
+        : [...defaultState.education];
 
-      setDraftSettings((prev) => ({
-        app: { ...prev.app, ...(app ?? {}) },
-        llm: { ...prev.llm, ...(llm ?? {}) },
-        personal: { ...prev.personal, ...(personal ?? {}) },
-        education: Array.isArray(education) ? education : [],
-        experience: Array.isArray(experience) ? experience : [],
-        projects: Array.isArray(projects) ? projects : [],
-        skills: Array.isArray(skills) ? skills : [],
-        awards: Array.isArray(awards) ? awards : [],
-      }));
+      const experience = Array.isArray(experienceRaw)
+        ? experienceRaw.map((entry) => ({
+            jobTitle: entry.jobTitle ?? "",
+            company: entry.company ?? "",
+            location: entry.location ?? "",
+            description: entry.description ?? "",
+            date: {
+              from: entry.date?.from ?? "",
+              to: entry.date?.to ?? undefined,
+            },
+            notes: Array.isArray(entry.notes) ? [...entry.notes] : [],
+          }))
+        : [...defaultState.experience];
+
+      const projects = Array.isArray(projectsRaw)
+        ? projectsRaw.map((entry) => ({
+            name: entry.name ?? "",
+            link: entry.link ?? "",
+            date: entry.date ?? "",
+            description: entry.description ?? "",
+            technologies: Array.isArray(entry.technologies)
+              ? [...entry.technologies]
+              : [],
+          }))
+        : [...defaultState.projects];
+
+      const skills = Array.isArray(skillsRaw)
+        ? skillsRaw.map((entry) => ({
+            category: entry.category ?? "",
+            items: Array.isArray(entry.items) ? [...entry.items] : [],
+          }))
+        : [...defaultState.skills];
+
+      const awards = Array.isArray(awardsRaw)
+        ? awardsRaw.map((entry) => ({
+            title: entry.title ?? "",
+            organizer: entry.organizer ?? "",
+            date: entry.date ?? "",
+            description: entry.description ?? "",
+            location: entry.location ?? "",
+          }))
+        : [...defaultState.awards];
+
+      const loaded: SettingsType = {
+        app: { ...defaultState.app, ...(app ?? {}) },
+        llm: {
+          ...defaultState.llm,
+          ...(llm ?? {}),
+          settings: {
+            ...defaultState.llm.settings,
+            ...(llm?.settings ?? {}),
+          },
+        },
+        personal: { ...defaultState.personal, ...(personal ?? {}) },
+        education,
+        experience,
+        projects,
+        skills,
+        awards,
+      };
+
+      setSettings(loaded);
+      setDraftSettings(loaded);
     };
 
     loadSettings();
@@ -393,7 +449,10 @@ export default function Settings() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <PersonalSettings />
+                    <PersonalSettings
+                      settings={draftSettings.personal}
+                      updateSettings={updateSettings}
+                    />
                   </CardContent>
                 </Card>
               </m.div>
@@ -418,7 +477,10 @@ export default function Settings() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <EducationSettings />
+                    <EducationSettings
+                      settings={draftSettings.education}
+                      updateSettings={updateSettings}
+                    />
                   </CardContent>
                 </Card>
               </m.div>
@@ -442,7 +504,10 @@ export default function Settings() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <ExperienceSettings />
+                    <ExperienceSettings
+                      settings={draftSettings.experience}
+                      updateSettings={updateSettings}
+                    />
                   </CardContent>
                 </Card>
               </m.div>
