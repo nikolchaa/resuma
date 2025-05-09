@@ -587,7 +587,10 @@ export default function Settings() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <AwardsSettings />
+                    <AwardsSettings
+                      settings={draftSettings.awards}
+                      updateSettings={updateSettings}
+                    />
                   </CardContent>
                 </Card>
               </m.div>
