@@ -532,7 +532,10 @@ export default function Settings() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <ProjectsSettings />
+                    <ProjectsSettings
+                      settings={draftSettings.projects}
+                      updateSettings={updateSettings}
+                    />
                   </CardContent>
                 </Card>
               </m.div>
