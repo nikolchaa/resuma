@@ -68,7 +68,7 @@ export type SettingsType = {
   }[];
 };
 
-const defaultState: SettingsType = {
+export const defaultState: SettingsType = {
   app: {
     theme: "system",
     paperSize: "A4",
@@ -186,7 +186,7 @@ export const OnboardingProvider = ({
             gpa: entry.gpa ?? "",
             date: {
               from: entry.date?.from ?? "",
-              to: entry.date?.to ?? "",
+              to: entry.date?.to ?? undefined,
             },
             courses: Array.isArray(entry.courses) ? entry.courses : [],
           }))
@@ -199,7 +199,7 @@ export const OnboardingProvider = ({
             location: entry.location ?? "",
             date: {
               from: entry.date?.from ?? "",
-              to: entry.date?.to ?? "",
+              to: entry.date?.to ?? undefined,
             },
             description: entry.description ?? "",
             notes: Array.isArray(entry.notes) ? entry.notes : [],
