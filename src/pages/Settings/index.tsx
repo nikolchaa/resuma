@@ -24,6 +24,12 @@ import { invoke } from "@tauri-apps/api/core";
 import { defaultState, SettingsType } from "@/contexts/OnboardingContext";
 import { getSection, updateSection } from "@/lib/store";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  getIdentifier,
+  getTauriVersion,
+  getVersion,
+} from "@tauri-apps/api/app";
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState("basic");
@@ -61,6 +67,28 @@ export default function Settings() {
   const [draftSettings, setDraftSettings] = useState<SettingsType>(settings);
 
   const [unsavedChanges, setUnsavedChanges] = useState(false);
+
+  const [version, setVersion] = useState<string>("");
+  const [identifier, setIdentifier] = useState<string>("");
+  const [tauriVersion, setTauriVersion] = useState<string>("");
+
+  useEffect(() => {
+    getVersion()
+      .then((v) => {
+        setVersion(v);
+      })
+      .catch(console.error);
+    getIdentifier()
+      .then((id) => {
+        setIdentifier(id);
+      })
+      .catch(console.error);
+    getTauriVersion()
+      .then((v) => {
+        setTauriVersion(v);
+      })
+      .catch(console.error);
+  }, []);
 
   const updateSettings = <K extends keyof SettingsType>(
     section: K,
@@ -365,6 +393,32 @@ export default function Settings() {
               </TabsTrigger>
             </TabsList>
           </Tabs>
+          {/* Version */}
+          <div className='flex flex-col gap-4 w-[13.125rem] p-4 mt-2'>
+            <Label>
+              Version <span className='text-muted-foreground'>{version}</span>
+            </Label>
+            <Label>
+              Identifier{" "}
+              <span className='text-muted-foreground'>{identifier}</span>
+            </Label>
+            <Label>
+              Tauri version:{" "}
+              <span className='text-muted-foreground'>{tauriVersion}</span>
+            </Label>
+            <span className='text-sm text-muted-foreground'>
+              Resuma is open-source software. Check out the source code on{" "}
+              <a
+                href='https://github.com/nikolchaa/resuma'
+                target='_blank'
+                rel='noopener noreferrer'
+                className='text-primary underline'
+              >
+                GitHub
+              </a>
+              .
+            </span>
+          </div>
         </div>
 
         {/* Right Content Area */}

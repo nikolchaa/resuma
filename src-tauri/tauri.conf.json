@@ -1,9 +1,9 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "resuma",
+  "productName": "Resuma",
   "version": "0.1.0",
   "identifier": "com.resuma.app",
-  "mainBinaryName": "resuma",
+  "mainBinaryName": "Resuma",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
   "app": {
     "windows": [
       {
-        "title": "resuma",
+        "title": "Resuma",
         "width": 1600,
         "height": 900,
         "minWidth": 1280,
