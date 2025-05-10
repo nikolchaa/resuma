@@ -14,6 +14,7 @@ import { SettingsType } from "@/contexts/OnboardingContext";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import modelList from "@/data/models.json";
+import { updateSection } from "@/lib/store";
 
 type Props = {
   settings: SettingsType["app"];
@@ -36,7 +37,11 @@ export const BasicSettings = ({
     applyContentSizeClass(contentSize);
   }, [theme, contentSize, setTheme]);
 
-  const handleChange = (key: keyof SettingsType["app"], value: string) => {
+  const handleChange = async (
+    key: keyof SettingsType["app"],
+    value: string
+  ) => {
+    // 1) update local React state
     setDraftSettings((prev) => ({
       ...prev,
       app: { ...prev.app, [key]: value },
@@ -45,8 +50,17 @@ export const BasicSettings = ({
       ...prev,
       app: { ...prev.app, [key]: value },
     }));
+
+    // 2) apply to the running UI immediately
     if (key === "theme") setTheme(value as "light" | "dark" | "system");
     if (key === "contentSize") applyContentSizeClass(value as "md" | "lg");
+
+    // 3) persist to settings.dat
+    try {
+      await updateSection("app", { ...draftSettings.app, [key]: value });
+    } catch (err) {
+      console.error("Failed to save app settings:", err);
+    }
   };
 
   const handleExport = async () => {
@@ -194,6 +208,19 @@ export const BasicSettings = ({
           Export Settings
         </Button>
       </div>
+
+      <span className='text-sm text-muted-foreground'>
+        Resuma is open-source software. Check out the source code on{" "}
+        <a
+          href='https://github.com/nikolchaa/resuma'
+          target='_blank'
+          rel='noopener noreferrer'
+          className='text-primary underline'
+        >
+          GitHub
+        </a>
+        .
+      </span>
     </div>
   );
 };

@@ -406,18 +406,6 @@ export default function Settings() {
               Tauri version:{" "}
               <span className='text-muted-foreground'>{tauriVersion}</span>
             </Label>
-            <span className='text-sm text-muted-foreground'>
-              Resuma is open-source software. Check out the source code on{" "}
-              <a
-                href='https://github.com/nikolchaa/resuma'
-                target='_blank'
-                rel='noopener noreferrer'
-                className='text-primary underline'
-              >
-                GitHub
-              </a>
-              .
-            </span>
           </div>
         </div>
 
