@@ -37,7 +37,7 @@ npm install
 npm run tauri dev
 ```
 
-> **Note:** Development builds may contain experimental features. Make sure you have Rust and Tauri prerequisites installed. See the [Tauri setup guide](https://tauri.app/v2/guides/getting-started/prerequisites).
+> **Note:** Development builds may contain experimental features. Make sure you have Rust and Tauri prerequisites installed. See the [Tauri setup guide](https://v2.tauri.app/start/prerequisites/).
 
 ## 🔒 License
 
