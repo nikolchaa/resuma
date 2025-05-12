@@ -1,65 +1,38 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { loadResume, saveResume } from "@/lib/resumesStore";
-import { getSettings } from "@/lib/store";
+import { loadResume } from "@/lib/resumesStore";
 import { ResumeData } from "@/lib/resumesStore";
+import { ResumeWizard } from "@/components/ResumeWizard";
 
 export const Editor = () => {
-  const { id } = useParams(); // defined if from /editor/:id
+  const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const [resume, setResume] = useState<ResumeData | null>(null);
+  const isNew = location.pathname === "/new";
 
   useEffect(() => {
-    const load = async () => {
-      if (location.pathname === "/new") {
-        // Create new resume from settings
-        const settings = await getSettings();
-        const newResume: ResumeData = {
-          id: crypto.randomUUID(),
-          title: "Untitled Resume",
-          updated: new Date().toISOString(),
-          content: {
-            personal: settings.personal ?? {
-              fullName: "",
-              email: "",
-              location: "",
-              headline: "",
-              socials: [],
-            },
-            education: settings.education ?? [],
-            experience: [],
-            projects: [],
-            skills: [],
-            awards: [],
-          },
-          image: "https://placehold.co/210x297?text=Sample",
-        };
-        await saveResume(newResume);
-        navigate(`/editor/${newResume.id}`, { replace: true });
-      } else if (id) {
-        const existing = await loadResume(id);
-        if (!existing) {
+    if (!isNew && id) {
+      loadResume(id).then((res) => {
+        if (!res) {
           navigate("/", { replace: true });
         } else {
-          setResume(existing);
+          setResume(res);
         }
-      }
-    };
+      });
+    }
+  }, [id, isNew, navigate]);
 
-    load();
-  }, [id, location.pathname, navigate]);
-
-  if (!resume) {
-    return (
-      <div className='text-center mt-20 text-muted-foreground'>Loading...</div>
-    );
-  }
+  const title = resume?.title || "Untitled Resume";
 
   return (
-    <div className='p-6'>
-      <h1 className='text-2xl font-bold mb-4'>{resume.title}</h1>
-      {/* Editor UI here */}
+    <div className='relative p-6'>
+      <h1 className='text-2xl font-bold mb-4'>{title}</h1>
+
+      {/* Editor UI goes here */}
+      {/* For example: <ResumeEditor resume={resume} /> */}
+
+      {isNew && <ResumeWizard />}
     </div>
   );
 };

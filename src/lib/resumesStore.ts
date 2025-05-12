@@ -31,34 +31,44 @@ export interface ResumeContent {
     degree: string;
     location: string;
     gpa: string;
-    date: { from: string; to?: string };
-    courses: string[];
+    date: {
+      from: string;
+      to?: string;
+    };
+    courses?: string[];
   }[];
-  experience?: {
+  experience: {
     jobTitle: string;
     company: string;
     location: string;
-    date: { from: string; to?: string };
     description: string;
-    notes: string[];
+    date: {
+      from: string;
+      to?: string;
+    };
+    notes?: string[];
   }[];
-  awards?: {
-    title: string;
-    organizer: string;
-    location: string;
-    description: string;
-    date: { from: string };
-  }[];
-  projects?: {
+  projects: {
     name: string;
+    link?: string;
+    date: {
+      from: string;
+    };
     description: string;
-    link: string;
-    date: { from: string; to?: string };
     technologies: string[];
   }[];
-  skills?: {
+  skills: {
     category: string;
     items: string[];
+  }[];
+  awards: {
+    title: string;
+    organizer: string;
+    date: {
+      from: string;
+    };
+    description: string;
+    location: string;
   }[];
 }
 

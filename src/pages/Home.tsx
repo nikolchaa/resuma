@@ -102,7 +102,12 @@ export const Home = () => {
                 <CardHeader className='mt-auto'>
                   <CardTitle className='truncate'>{res.title}</CardTitle>
                   <CardDescription className='truncate'>
-                    Last updated: {res.updated}
+                    Last updated:{" "}
+                    {new Date(res.updated).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
                   </CardDescription>
                 </CardHeader>
               </Link>
