@@ -5,7 +5,7 @@ let storePromise: Promise<Store> | null = null;
 // Lazily load and reuse store instance
 async function getStore(): Promise<Store> {
   if (!storePromise) {
-    storePromise = Store.load(".resuma-settings.dat");
+    storePromise = Store.load("settings.resuma");
   }
   return storePromise;
 }
