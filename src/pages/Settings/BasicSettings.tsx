@@ -66,8 +66,8 @@ export const BasicSettings = ({
   const handleExport = async () => {
     try {
       const filePath = await save({
-        filters: [{ name: "Resuma Settings", extensions: ["dat"] }],
-        defaultPath: ".resuma-settings.dat",
+        filters: [{ name: "Resuma Settings", extensions: ["resuma"] }],
+        defaultPath: "settings.resuma",
       });
 
       if (filePath) {
@@ -92,7 +92,7 @@ export const BasicSettings = ({
   const handleImport = async () => {
     try {
       const selected = await open({
-        filters: [{ name: "Resuma Settings", extensions: ["dat"] }],
+        filters: [{ name: "Resuma Settings", extensions: ["resuma"] }],
         multiple: false,
       });
 
