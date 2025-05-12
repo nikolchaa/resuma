@@ -55,6 +55,11 @@ export default function App() {
       state = "Editor";
       smallImage = "writingblack";
       smallText = "Editor";
+    } else if (path.includes("/new")) {
+      details = "Creating a new resume";
+      state = "New Resume";
+      smallImage = "writingblack";
+      smallText = "Editor";
     }
 
     invoke("set_activity", { details, state, smallImage, smallText }).catch(

@@ -1,22 +1,65 @@
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { useEffect, useState } from "react";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { loadResume, saveResume } from "@/lib/resumesStore";
+import { getSettings } from "@/lib/store";
+import { ResumeData } from "@/lib/resumesStore";
 
 export const Editor = () => {
+  const { id } = useParams(); // defined if from /editor/:id
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [resume, setResume] = useState<ResumeData | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      if (location.pathname === "/new") {
+        // Create new resume from settings
+        const settings = await getSettings();
+        const newResume: ResumeData = {
+          id: crypto.randomUUID(),
+          title: "Untitled Resume",
+          updated: new Date().toISOString(),
+          content: {
+            personal: settings.personal ?? {
+              fullName: "",
+              email: "",
+              location: "",
+              headline: "",
+              socials: [],
+            },
+            education: settings.education ?? [],
+            experience: [],
+            projects: [],
+            skills: [],
+            awards: [],
+          },
+          image: "https://placehold.co/210x297?text=Sample",
+        };
+        await saveResume(newResume);
+        navigate(`/editor/${newResume.id}`, { replace: true });
+      } else if (id) {
+        const existing = await loadResume(id);
+        if (!existing) {
+          navigate("/", { replace: true });
+        } else {
+          setResume(existing);
+        }
+      }
+    };
+
+    load();
+  }, [id, location.pathname, navigate]);
+
+  if (!resume) {
+    return (
+      <div className='text-center mt-20 text-muted-foreground'>Loading...</div>
+    );
+  }
+
   return (
-    <div className='flex h-screen w-full flex-col items-center justify-center gap-4'>
-      <Card className='glex flex-col items-center justify-center p-4 gap-4'>
-        <h1>This is a Tauri (Rust + React TSX) LLM UI</h1>
-        <div className='flex gap-2'>
-          <Input
-            type='text'
-            className='w-[400px]'
-            placeholder='Your Prompt Here'
-          />
-          <Button className='cursor-pointer'>Say something!</Button>
-        </div>
-      </Card>
-      <p>Editor</p>
+    <div className='p-6'>
+      <h1 className='text-2xl font-bold mb-4'>{resume.title}</h1>
+      {/* Editor UI here */}
     </div>
   );
 };

@@ -46,14 +46,12 @@ const router = createBrowserRouter([
   },
   {
     path: "/",
-    element: <App />, // main layout
+    element: <App />,
     children: [
       { path: "", element: <Home /> },
-      { path: "editor", element: <Editor /> },
-      {
-        path: "settings",
-        element: <Settings />,
-      },
+      { path: "new", element: <Editor /> },
+      { path: "editor/:id", element: <Editor /> },
+      { path: "settings", element: <Settings /> },
     ],
   },
 ]);
