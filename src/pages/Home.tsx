@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SettingsButton } from "@/components/Settings";
 import Logo from "../assets/Logo.svg?react";
 import { Link } from "react-router-dom";
@@ -18,61 +18,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus } from "lucide-react";
+import { listResumes, ResumeData } from "@/lib/resumesStore";
 
 export const Home = () => {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("recent");
+  const [resumes, setResumes] = useState<ResumeData[]>([]);
 
-  const resumes = [
-    {
-      id: "1",
-      title: "Software Engineer – John Doe",
-      updated: "May 10, 2025",
-      image: "https://placehold.co/210x297?text=Just know that",
-    },
-    {
-      id: "2",
-      title: "Product Manager CV",
-      updated: "April 28, 2025",
-      image: "https://placehold.co/210x297?text=I would die for you",
-    },
-    {
-      id: "3",
-      title: "Graphic Designer Portfolio",
-      updated: "March 15, 2025",
-      image: "https://placehold.co/210x297?text=baby, I would die for you",
-    },
-    {
-      id: "4",
-      title: "Graphic Designer Portfolio",
-      updated: "March 15, 2025",
-      image: "https://placehold.co/210x297?text=I'm not a robot, I swear",
-    },
-    {
-      id: "1",
-      title: "Software Engineer – John Doe",
-      updated: "May 10, 2025",
-      image: "https://placehold.co/210x297?text=Just know that",
-    },
-    {
-      id: "2",
-      title: "Product Manager CV",
-      updated: "April 28, 2025",
-      image: "https://placehold.co/210x297?text=I would die for you",
-    },
-    {
-      id: "3",
-      title: "Graphic Designer Portfolio",
-      updated: "March 15, 2025",
-      image: "https://placehold.co/210x297?text=baby, I would die for you",
-    },
-    {
-      id: "4",
-      title: "Graphic Designer Portfolio",
-      updated: "March 15, 2025",
-      image: "https://placehold.co/210x297?text=I'm not a robot, I swear",
-    },
-  ];
+  useEffect(() => {
+    listResumes().then(setResumes);
+  }, []);
 
   const filteredAndSorted = useMemo(() => {
     const filtered = resumes.filter((res) =>
