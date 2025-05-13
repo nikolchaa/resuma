@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ export const ResumeWizard = () => {
   const [title, setTitle] = useState("Untitled Resume");
   const [jobDesc, setJobDesc] = useState("");
   const [loading, setLoading] = useState(false);
+  const [suggestedId, setSuggestedId] = useState("untitled-resume");
 
   const slugify = (text: string) => {
     return text
@@ -41,14 +42,21 @@ export const ResumeWizard = () => {
     return candidate;
   };
 
+  useEffect(() => {
+    const updateId = async () => {
+      const base = slugify(title);
+      const unique = await getUniqueId(base);
+      setSuggestedId(unique);
+    };
+    updateId();
+  }, [title]);
+
   const handleFinish = async (useAI: boolean) => {
     setLoading(true);
     const settings = await getSettings();
-    const baseId = slugify(title);
-    const uniqueId = await getUniqueId(baseId);
 
     const newResume: ResumeData = {
-      id: uniqueId,
+      id: suggestedId,
       title,
       updated: new Date().toISOString(),
       image: "https://placehold.co/210x297?text=New+Resume",
@@ -90,22 +98,28 @@ export const ResumeWizard = () => {
         return "";
     }
   };
+
   const getDescText = () => {
     switch (step) {
       case 1:
         return "This will be the name of your resume. It will be used to identify your resume in the app. You can change it later.";
       case 2:
-        return "Paste Job Description (Optional)";
+        return "Paste the job description you're targeting to help tailor your resume. This step is optional.";
       case 3:
-        return "Trim Content with AI?";
+        return "AI can help trim unrelated content from your resume based on the job description you provided.";
       default:
         return "";
     }
   };
 
   return (
-    <div className='fixed inset-0 z-40 flex items-center justify-center bg-black/40 backdrop-blur-sm'>
-      <div className='flex flex-col gap-4 bg-background rounded-lg border shadow-lg w-full max-w-md p-6'>
+    <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm'>
+      <motion.div
+        layout
+        layoutRoot
+        transition={{ layout: { duration: 0.25, ease: "easeInOut" } }}
+        className='bg-background rounded-lg border shadow-lg w-full max-w-md p-6'
+      >
         <AnimatePresence mode='wait'>
           <motion.div
             key={`header-${step}`}
@@ -113,7 +127,7 @@ export const ResumeWizard = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 8 }}
             transition={{ duration: 0.2 }}
-            className='flex flex-col gap-2'
+            className='flex flex-col gap-2 mb-4'
           >
             <h2 className='text-xl font-semibold'>{getTitleText()}</h2>
             <p className='text-sm text-muted-foreground'>{getDescText()}</p>
@@ -124,15 +138,16 @@ export const ResumeWizard = () => {
           {step === 1 && (
             <motion.div
               key='step1'
+              layout
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
-              className='flex flex-col gap-2'
+              className='flex flex-col gap-4'
             >
               <Input value={title} onChange={(e) => setTitle(e.target.value)} />
               <p className='text-sm text-muted-foreground'>
-                ID: {slugify(title)}
+                Filename: <code>{suggestedId}.resume</code>
               </p>
               <Button onClick={() => setStep(2)}>Next</Button>
             </motion.div>
@@ -141,6 +156,7 @@ export const ResumeWizard = () => {
           {step === 2 && (
             <motion.div
               key='step2'
+              layout
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
@@ -165,6 +181,7 @@ export const ResumeWizard = () => {
           {step === 3 && (
             <motion.div
               key='step3'
+              layout
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
@@ -186,7 +203,7 @@ export const ResumeWizard = () => {
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+      </motion.div>
     </div>
   );
 };
