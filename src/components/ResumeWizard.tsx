@@ -1,10 +1,4 @@
 import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -16,6 +10,7 @@ import {
   ResumeContent,
 } from "@/lib/resumesStore";
 import { useNavigate } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
 
 export const ResumeWizard = () => {
   const navigate = useNavigate();
@@ -71,6 +66,7 @@ export const ResumeWizard = () => {
         skills: settings.skills ?? [],
         awards: settings.awards ?? [],
       },
+      jobDesc: jobDesc ?? undefined,
     };
 
     if (useAI && jobDesc) {
@@ -82,59 +78,116 @@ export const ResumeWizard = () => {
     navigate(`/editor/${newResume.id}`);
   };
 
+  const getTitleText = () => {
+    switch (step) {
+      case 1:
+        return "Name Your Resume";
+      case 2:
+        return "Paste Job Description (Optional)";
+      case 3:
+        return "Trim Content with AI?";
+      default:
+        return "";
+    }
+  };
+  const getDescText = () => {
+    switch (step) {
+      case 1:
+        return "This will be the name of your resume. It will be used to identify your resume in the app. You can change it later.";
+      case 2:
+        return "Paste Job Description (Optional)";
+      case 3:
+        return "Trim Content with AI?";
+      default:
+        return "";
+    }
+  };
+
   return (
-    <Dialog open>
-      <DialogContent className='max-w-md' showClose={false}>
-        <DialogHeader>
-          <DialogTitle>
-            {step === 1 && "Name Your Resume"}
-            {step === 2 && "Paste Job Description (Optional)"}
-            {step === 3 && "Trim Content with AI?"}
-          </DialogTitle>
-        </DialogHeader>
+    <div className='fixed inset-0 z-40 flex items-center justify-center bg-black/40 backdrop-blur-sm'>
+      <div className='flex flex-col gap-4 bg-background rounded-lg border shadow-lg w-full max-w-md p-6'>
+        <AnimatePresence mode='wait'>
+          <motion.div
+            key={`header-${step}`}
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ duration: 0.2 }}
+            className='flex flex-col gap-2'
+          >
+            <h2 className='text-xl font-semibold'>{getTitleText()}</h2>
+            <p className='text-sm text-muted-foreground'>{getDescText()}</p>
+          </motion.div>
+        </AnimatePresence>
 
-        {step === 1 && (
-          <div className='flex flex-col gap-4'>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} />
-            <Button onClick={() => setStep(2)}>Next</Button>
-          </div>
-        )}
+        <AnimatePresence mode='wait'>
+          {step === 1 && (
+            <motion.div
+              key='step1'
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className='flex flex-col gap-2'
+            >
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+              <p className='text-sm text-muted-foreground'>
+                ID: {slugify(title)}
+              </p>
+              <Button onClick={() => setStep(2)}>Next</Button>
+            </motion.div>
+          )}
 
-        {step === 2 && (
-          <div className='flex flex-col gap-4'>
-            <Textarea
-              placeholder='Paste job description from Infostud, Indeed, etc.'
-              value={jobDesc}
-              onChange={(e) => setJobDesc(e.target.value)}
-              rows={6}
-            />
-            <div className='flex gap-2 justify-end'>
-              <Button variant='outline' onClick={() => handleFinish(false)}>
-                Skip
-              </Button>
-              <Button onClick={() => setStep(3)}>Continue</Button>
-            </div>
-          </div>
-        )}
+          {step === 2 && (
+            <motion.div
+              key='step2'
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className='flex flex-col gap-4'
+            >
+              <Textarea
+                placeholder='Paste job description from Infostud, Indeed, etc.'
+                value={jobDesc}
+                onChange={(e) => setJobDesc(e.target.value)}
+                rows={6}
+              />
+              <div className='flex gap-2 justify-end'>
+                <Button variant='outline' onClick={() => handleFinish(false)}>
+                  Skip
+                </Button>
+                <Button onClick={() => setStep(3)}>Continue</Button>
+              </div>
+            </motion.div>
+          )}
 
-        {step === 3 && (
-          <div className='flex flex-col gap-4'>
-            <p className='text-sm text-muted-foreground'>
-              Would you like AI to trim your resume down to only what's relevant
-              to the job?
-            </p>
-            <div className='flex gap-2 justify-end'>
-              <Button variant='outline' onClick={() => handleFinish(false)}>
-                No, keep everything
-              </Button>
-              <Button disabled={loading} onClick={() => handleFinish(true)}>
-                {loading ? "Cleaning..." : "Yes, trim it"}
-              </Button>
-            </div>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+          {step === 3 && (
+            <motion.div
+              key='step3'
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className='flex flex-col gap-4'
+            >
+              <p className='text-sm text-muted-foreground'>
+                Would you like AI to trim your resume down to only what's
+                relevant to the job?
+              </p>
+              <div className='flex gap-2 justify-end'>
+                <Button variant='outline' onClick={() => handleFinish(false)}>
+                  No, keep everything
+                </Button>
+                <Button disabled={loading} onClick={() => handleFinish(true)}>
+                  {loading ? "Cleaning..." : "Yes, trim it"}
+                </Button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
   );
 };
 
