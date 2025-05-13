@@ -9,7 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { getSettings } from "@/lib/store";
-import { saveResume, ResumeData, ResumeContent } from "@/lib/resumesStore";
+import {
+  saveResume,
+  listResumes,
+  ResumeData,
+  ResumeContent,
+} from "@/lib/resumesStore";
 import { useNavigate } from "react-router-dom";
 
 export const ResumeWizard = () => {
@@ -19,12 +24,36 @@ export const ResumeWizard = () => {
   const [jobDesc, setJobDesc] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const slugify = (text: string) => {
+    return text
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  };
+
+  const getUniqueId = async (base: string): Promise<string> => {
+    const existing = await listResumes();
+    const ids = new Set(existing.map((r) => r.id));
+    if (!ids.has(base)) return base;
+
+    let suffix = 1;
+    let candidate = `${base}-${suffix}`;
+    while (ids.has(candidate)) {
+      suffix++;
+      candidate = `${base}-${suffix}`;
+    }
+    return candidate;
+  };
+
   const handleFinish = async (useAI: boolean) => {
     setLoading(true);
     const settings = await getSettings();
+    const baseId = slugify(title);
+    const uniqueId = await getUniqueId(baseId);
 
     const newResume: ResumeData = {
-      id: crypto.randomUUID(),
+      id: uniqueId,
       title,
       updated: new Date().toISOString(),
       image: "https://placehold.co/210x297?text=New+Resume",
