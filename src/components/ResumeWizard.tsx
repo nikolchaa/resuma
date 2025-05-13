@@ -15,10 +15,10 @@ import { AnimatePresence, motion } from "framer-motion";
 export const ResumeWizard = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
-  const [title, setTitle] = useState("Untitled Resume");
+  const [title, setTitle] = useState("Untitled");
   const [jobDesc, setJobDesc] = useState("");
   const [loading, setLoading] = useState(false);
-  const [suggestedId, setSuggestedId] = useState("untitled-resume");
+  const [suggestedId, setSuggestedId] = useState("untitled");
 
   const slugify = (text: string) => {
     return text
@@ -113,13 +113,8 @@ export const ResumeWizard = () => {
   };
 
   return (
-    <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm'>
-      <motion.div
-        layout
-        layoutRoot
-        transition={{ layout: { duration: 0.25, ease: "easeInOut" } }}
-        className='bg-background rounded-lg border shadow-lg w-full max-w-md p-6'
-      >
+    <div className='fixed inset-0 z-40 flex items-center justify-center bg-black/40 backdrop-blur-sm'>
+      <div className='bg-background rounded-lg border shadow-lg w-full max-w-md p-6'>
         <AnimatePresence mode='wait'>
           <motion.div
             key={`header-${step}`}
@@ -173,7 +168,17 @@ export const ResumeWizard = () => {
                 <Button variant='outline' onClick={() => handleFinish(false)}>
                   Skip
                 </Button>
-                <Button onClick={() => setStep(3)}>Continue</Button>
+                <Button
+                  onClick={() => setStep(3)}
+                  disabled={jobDesc.trim().length === 0}
+                  title={
+                    jobDesc.trim().length === 0
+                      ? "Job description is required"
+                      : ""
+                  }
+                >
+                  Continue
+                </Button>
               </div>
             </motion.div>
           )}
@@ -188,7 +193,7 @@ export const ResumeWizard = () => {
               transition={{ duration: 0.2 }}
               className='flex flex-col gap-4'
             >
-              <p className='text-sm text-muted-foreground'>
+              <p className='text-md'>
                 Would you like AI to trim your resume down to only what's
                 relevant to the job?
               </p>
@@ -203,7 +208,7 @@ export const ResumeWizard = () => {
             </motion.div>
           )}
         </AnimatePresence>
-      </motion.div>
+      </div>
     </div>
   );
 };
@@ -213,7 +218,8 @@ async function simulateAI(
   content: ResumeContent,
   jobDesc: string
 ): Promise<ResumeContent> {
+  console.log("Simulate AI start", jobDesc);
   await new Promise((res) => setTimeout(res, 1500));
-  console.log(jobDesc);
+  console.log("Simulate AI done");
   return content; // 🧠 replace with real filtering logic later
 }
