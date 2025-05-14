@@ -113,7 +113,7 @@ export const ResumeWizard = () => {
   };
 
   return (
-    <div className='fixed inset-0 z-40 flex items-center justify-center bg-black/40 backdrop-blur-sm'>
+    <div className='fixed inset-0 z-40 flex items-center justify-center bg-background/50 backdrop-blur-sm'>
       <div className='bg-background rounded-lg border shadow-lg w-full max-w-md p-6'>
         <AnimatePresence mode='wait'>
           <motion.div
