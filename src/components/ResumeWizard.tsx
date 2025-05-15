@@ -221,5 +221,5 @@ async function simulateAI(
   console.log("Simulate AI start", jobDesc);
   await new Promise((res) => setTimeout(res, 1500));
   console.log("Simulate AI done");
-  return content; // 🧠 replace with real filtering logic later
+  return content;
 }
