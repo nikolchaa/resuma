@@ -27,13 +27,9 @@ export const Editor = () => {
   }, [id, isNew, navigate]);
 
   return (
-    <>
-      <div className='fixed top-0 left-0 bg-background h-screen w-72 border-r-1 shadow-sm'>
+    <div className='flex'>
+      <div className='bg-background h-screen w-72 border-r-1 shadow-sm'>
         <Logo className='w-full p-8' />
-        <h1 className='text-2xl font-bold mb-4'>
-          {resume?.title || "Untitled Resume"}
-        </h1>
-        {isNew && <ResumeWizard />}
       </div>
       <Button
         onClick={() => {
@@ -43,6 +39,10 @@ export const Editor = () => {
       >
         <Download /> Export as PDF
       </Button>
-    </>
+      <div className='w-full h-screen'>
+        <h1 className='text-2xl'>{resume?.title || "Untitled Resume"}</h1>
+      </div>
+      {isNew && <ResumeWizard />}
+    </div>
   );
 };
