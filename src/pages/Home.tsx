@@ -90,7 +90,7 @@ export const Home = () => {
             <Card key={res.id} className='w-full overflow-hidden'>
               <Link
                 to={`/editor/${res.id}`}
-                className='flex flex-col hover:shadow-lg transition h-full'
+                className='flex flex-col transition h-full'
               >
                 <div className='px-6 pb-6'>
                   <img

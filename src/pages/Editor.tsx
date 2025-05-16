@@ -3,6 +3,9 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { loadResume } from "@/lib/resumesStore";
 import { ResumeData } from "@/lib/resumesStore";
 import { ResumeWizard } from "@/components/ResumeWizard";
+import Logo from "../assets/Logo.svg?react";
+import { Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export const Editor = () => {
   const { id } = useParams();
@@ -23,16 +26,23 @@ export const Editor = () => {
     }
   }, [id, isNew, navigate]);
 
-  const title = resume?.title || "Untitled Resume";
-
   return (
-    <div className='relative p-6'>
-      <h1 className='text-2xl font-bold mb-4'>{title}</h1>
-
-      {/* Editor UI goes here */}
-      {/* For example: <ResumeEditor resume={resume} /> */}
-
-      {isNew && <ResumeWizard />}
-    </div>
+    <>
+      <div className='fixed top-0 left-0 bg-background h-screen w-72 border-r-1 shadow-sm'>
+        <Logo className='w-full p-8' />
+        <h1 className='text-2xl font-bold mb-4'>
+          {resume?.title || "Untitled Resume"}
+        </h1>
+        {isNew && <ResumeWizard />}
+      </div>
+      <Button
+        onClick={() => {
+          console.log("hi!");
+        }}
+        className='fixed bottom-8 right-8 shadow-sm'
+      >
+        <Download /> Export as PDF
+      </Button>
+    </>
   );
 };
