@@ -27,6 +27,7 @@ export const Editor = () => {
   }, [id, isNew, navigate]);
 
   return (
+    // Work in progress
     <div className='flex'>
       <div className='bg-background h-screen w-72 border-r-1 shadow-sm'>
         <Logo className='w-full p-8' />
