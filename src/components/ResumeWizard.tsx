@@ -218,8 +218,6 @@ async function simulateAI(
   content: ResumeContent,
   jobDesc: string
 ): Promise<ResumeContent> {
-  console.log("Simulate AI start", jobDesc);
   await new Promise((res) => setTimeout(res, 1500));
-  console.log("Simulate AI done");
   return content;
 }
