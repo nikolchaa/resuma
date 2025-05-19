@@ -2,7 +2,7 @@
 
 Thank you for your interest in Resuma™.
 
-While the Resuma software is open source under the Apache 2.0 license, the name "Resuma" and associated logos are trademarks owned by Nikola Ranđelović.
+While the Resuma software is open source under the GNU GPLv3 license, the name "Resuma" and associated logos are trademarks owned by Nikola Ranđelović.
 
 ## You may:
 
