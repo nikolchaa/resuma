@@ -41,7 +41,7 @@ npm run tauri dev
 
 ## 🔒 License
 
-This project is licensed under the [Apache 2.0 License](./LICENSE).
+This project is licensed under the [GNU GPLv3 License](./LICENSE).
 
 "Resuma™" and the Resuma™ logo are trademarks of Nikola Ranđelović. Please see the [Trademark Policy](./TRADEMARK.md) for details.
 
