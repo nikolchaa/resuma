@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { SettingsButton } from "@/components/Settings";
 import Logo from "../assets/Logo.svg?react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   Card,
   CardDescription,
@@ -17,8 +17,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus } from "lucide-react";
-import { listResumes, ResumeData } from "@/lib/resumesStore";
+import { Download, Plus, SquarePen, Trash, Upload } from "lucide-react";
+import {
+  deleteResume,
+  listResumes,
+  loadResume,
+  ResumeData,
+  saveResume,
+} from "@/lib/resumesStore";
+import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
+import { open, save } from "@tauri-apps/plugin-dialog";
 
 export const Home = () => {
   const navigate = useNavigate();
@@ -29,6 +37,64 @@ export const Home = () => {
   useEffect(() => {
     listResumes().then(setResumes);
   }, []);
+
+  const handleDelete = async (id: string) => {
+    if (confirm("Are you sure you want to delete this resume?")) {
+      await deleteResume(id);
+      const updated = await listResumes();
+      setResumes(updated);
+    }
+  };
+
+  const handleExport = async (id: string) => {
+    try {
+      const resume = await loadResume(id);
+      if (!resume) return;
+
+      const filePath = await save({
+        defaultPath: `${resume.id}.resume`,
+        filters: [{ name: "Resume File", extensions: ["resume"] }],
+      });
+
+      if (filePath) {
+        const content = JSON.stringify(resume, null, 2);
+        await writeTextFile(filePath, content);
+        alert("Resume exported successfully.");
+      }
+    } catch (error) {
+      console.error("Export failed:", error);
+    }
+  };
+
+  const handleImport = async () => {
+    try {
+      const selected = await open({
+        filters: [{ name: "Resuma Resume", extensions: ["resume"] }],
+        multiple: false,
+      });
+
+      if (typeof selected === "string") {
+        const raw = await readTextFile(selected);
+        const parsed = JSON.parse(raw) as ResumeData;
+
+        const resumeToSave: ResumeData = {
+          id: parsed.id,
+          title: parsed.title || "Imported Resume",
+          updated: new Date().toISOString(),
+          image:
+            parsed.image || "https://placehold.co/210x297?text=Imported+Resume",
+          content: parsed.content,
+          jobDesc: parsed.jobDesc ?? undefined,
+        };
+
+        await saveResume(resumeToSave);
+        const navigate = useNavigate();
+        navigate(`/editor/${resumeToSave.id}`);
+      }
+    } catch (err) {
+      console.error("Failed to import resume:", err);
+    }
+  };
 
   const filteredAndSorted = useMemo(() => {
     const filtered = resumes.filter((res) =>
@@ -66,7 +132,7 @@ export const Home = () => {
           className='flex-2'
         />
         <Select value={sort} onValueChange={setSort}>
-          <SelectTrigger className='w-48'>
+          <SelectTrigger className='w-36'>
             <SelectValue placeholder='Sort by' />
           </SelectTrigger>
           <SelectContent>
@@ -76,10 +142,11 @@ export const Home = () => {
             <SelectItem value='z-a'>Name Z–A</SelectItem>
           </SelectContent>
         </Select>
-        <Button asChild>
-          <Button onClick={() => navigate("/new")}>
-            <Plus className='mr-2 h-4 w-4' /> New Resume
-          </Button>
+        <Button variant={"outline"} onClick={() => handleImport()}>
+          <Upload className='h-4 w-4' />
+        </Button>
+        <Button onClick={() => navigate("/new")}>
+          <Plus className='h-4 w-4' /> New Resume
         </Button>
       </div>
 
@@ -88,10 +155,7 @@ export const Home = () => {
         {filteredAndSorted.length > 0 ? (
           filteredAndSorted.map((res) => (
             <Card key={res.id} className='w-full overflow-hidden'>
-              <Link
-                to={`/editor/${res.id}`}
-                className='flex flex-col transition h-full'
-              >
+              <div className='flex flex-col transition h-full'>
                 <div className='px-6 pb-6'>
                   <img
                     src={res.image}
@@ -110,7 +174,33 @@ export const Home = () => {
                     })}
                   </CardDescription>
                 </CardHeader>
-              </Link>
+                <div className='flex items-center gap-2 px-6 pt-4'>
+                  <Button
+                    className='flex-1'
+                    onClick={() => navigate(`/editor/${res.id}`)}
+                  >
+                    <SquarePen className='h-4 w-4' />
+                    Edit
+                  </Button>
+
+                  <Button
+                    size='icon'
+                    variant='ghost'
+                    onClick={() => handleExport(res.id)}
+                  >
+                    <Download className='w-4 h-4' />
+                  </Button>
+
+                  <Button
+                    size='icon'
+                    variant='ghost'
+                    className='text-destructive hover:bg-destructive/10'
+                    onClick={() => handleDelete(res.id)}
+                  >
+                    <Trash className='w-4 h-4' />
+                  </Button>
+                </div>
+              </div>
             </Card>
           ))
         ) : (
