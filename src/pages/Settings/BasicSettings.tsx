@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/contexts/ThemeContext";
 import { applyContentSizeClass } from "@/lib/ui";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { SettingsType } from "@/contexts/OnboardingContext";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
@@ -32,7 +32,14 @@ export const BasicSettings = ({
   const { theme, paperSize, language, contentSize } = settings;
   const { setTheme } = useTheme();
 
+  const [runOnce, setRunOnce] = useState(false);
+
   useEffect(() => {
+    if (!runOnce) {
+      // Fix the flashing issue upon opening settings
+      setRunOnce(true);
+      return;
+    }
     setTheme(theme);
     applyContentSizeClass(contentSize);
   }, [theme, contentSize, setTheme]);
