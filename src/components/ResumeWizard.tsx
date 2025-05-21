@@ -218,6 +218,7 @@ async function simulateAI(
   content: ResumeContent,
   jobDesc: string
 ): Promise<ResumeContent> {
+  console.log(`Simulating AI processing... ${jobDesc}}`); // Stop annoying error
   await new Promise((res) => setTimeout(res, 1500));
   return content;
 }
