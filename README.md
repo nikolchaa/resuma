@@ -1,8 +1,11 @@
 # ![Resuma Banner](./resuma.png)
 
-![License](https://img.shields.io/github/license/nikolchaa/resuma?color=blue)
-![Built with Tauri](https://img.shields.io/badge/Built%20with-Tauri-blue)
-![Platform](https://img.shields.io/badge/Platform-Desktop--only-blue)
+![Tauri](https://img.shields.io/badge/Tauri-24C8D8?logo=tauri&logoColor=fff)
+![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=fff)
+![Rust](https://img.shields.io/badge/Rust-%23000000.svg?e&logo=rust&logoColor=white)
+![React](https://img.shields.io/badge/React-%2320232a.svg?logo=react&logoColor=%2361DAFB)
+![TailwindCSS](https://img.shields.io/badge/Tailwind%20CSS-%2338B2AC.svg?logo=tailwind-css&logoColor=white)
+![Visual Studio Code](https://custom-icon-badges.demolab.com/badge/Visual%20Studio%20Code-0078d7.svg?logo=vsc&logoColor=white)
 
 Resuma is an open-source desktop application for building beautiful, professional resumes using local AI models. Your data never leaves your device.
 
