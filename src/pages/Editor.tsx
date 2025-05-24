@@ -61,6 +61,7 @@ export const Editor = () => {
   };
 
   const [zoomLevel, setZoomLevel] = useState(1); // testing zoom functionality
+  const [numPages, setNumPages] = useState(0);
 
   return (
     <div className='flex h-screen'>
@@ -104,24 +105,29 @@ export const Editor = () => {
       <div className='w-full h-full bg-secondary dark:bg-background text-black overflow-auto'>
         <div className='flex'>
           {pdfUrl ? (
-            <div className='p-20 mx-auto'>
+            <div className='py-20 px-8 xl:px-20 mx-auto'>
               <Document
-                key={pdfUrl} // Force reset when pdfUrl changes
+                key={pdfUrl}
                 file={pdfUrl}
                 onLoadError={(err) => console.error(err)}
+                onLoadSuccess={({ numPages: n }) => setNumPages(n)}
               >
-                <Page
-                  pageNumber={1}
-                  width={800 * zoomLevel}
-                  className={`border`}
-                  renderTextLayer={false}
-                  renderAnnotationLayer={false}
-                />
+                {Array.from(new Array(numPages), (_, index) => (
+                  <Page
+                    key={`page_${index + 1}`}
+                    pageNumber={index + 1}
+                    width={800 * zoomLevel}
+                    className={`border mb-8`}
+                    renderTextLayer={false}
+                    renderAnnotationLayer={false}
+                  />
+                ))}
               </Document>
             </div>
           ) : (
             <div className='text-gray-500 mt-40'>Generating preview…</div>
           )}
+
           <div className='absolute bottom-8 left-[calc(calc(100vw/2)+calc(24rem/2))] -translate-x-1/2 bg-background border shadow-sm rounded-lg flex items-center gap-2 p-2 z-50'>
             <Button
               size='sm'
