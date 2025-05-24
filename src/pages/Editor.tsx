@@ -4,7 +4,7 @@ import { loadResume, saveResume } from "@/lib/resumesStore";
 import { ResumeData } from "@/lib/resumesStore";
 import { ResumeWizard } from "@/components/ResumeWizard";
 import Logo from "../assets/Logo.svg?react";
-import { Download, Minus, Plus, RotateCcw } from "lucide-react";
+import { ArrowLeft, Download, Minus, Plus, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ResumePDFDocument } from "@/components/ResumePreview";
 import { pdf } from "@react-pdf/renderer";
@@ -60,6 +60,7 @@ export const Editor = () => {
     if (resume) {
       setDraft(structuredClone(resume));
     }
+    navigate("/");
   };
 
   const handleExportPDF = async () => {
@@ -116,7 +117,7 @@ export const Editor = () => {
 
         <div className='flex gap-4 p-4'>
           <Button onClick={handleDiscard} variant='outline'>
-            <RotateCcw className='h-4 w-4' />
+            <ArrowLeft className='h-4 w-4' />
           </Button>
           <Button onClick={handleSave} className='flex-1'>
             Save
