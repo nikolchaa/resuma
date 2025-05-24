@@ -1,11 +1,10 @@
-// Editor.tsx
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { loadResume, saveResume } from "@/lib/resumesStore";
 import { ResumeData } from "@/lib/resumesStore";
 import { ResumeWizard } from "@/components/ResumeWizard";
 import Logo from "../assets/Logo.svg?react";
-import { Download } from "lucide-react";
+import { Download, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ResumePDFDocument } from "@/components/ResumePreview";
 import { pdf } from "@react-pdf/renderer";
@@ -14,6 +13,7 @@ import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
 import worker from "pdfjs-dist/build/pdf.worker?url";
+import { Input } from "@/components/ui/input";
 pdfjs.GlobalWorkerOptions.workerSrc = worker;
 
 export const Editor = () => {
@@ -42,26 +42,62 @@ export const Editor = () => {
     if (draft) {
       pdf(<ResumePDFDocument data={draft} />)
         .toBlob()
-        .then((blob) => setPdfUrl(URL.createObjectURL(blob)));
+        .then((blob) => setPdfUrl(URL.createObjectURL(blob)))
+        .catch((err) => console.error("PDF generation failed:", err));
     }
   }, [draft]);
+
+  const handleSave = async () => {
+    if (draft) {
+      await saveResume(draft);
+      setResume(structuredClone(draft)); // Sync resume to draft
+    }
+  };
+
+  const handleDiscard = () => {
+    if (resume) {
+      setDraft(structuredClone(resume));
+    }
+  };
+
+  const [zoomLevel, setZoomLevel] = useState(1); // testing zoom functionality
 
   return (
     <div className='flex h-screen'>
       {/* Sidebar */}
-      <div className='bg-background min-w-72 border-r-1 shadow-sm flex flex-col justify-between'>
+      <div className='bg-background min-w-96 border-r-1 shadow-sm flex flex-col justify-between'>
         <Logo className='w-full p-8' />
-        <Button
-          onClick={async () => {
-            if (draft) {
-              await saveResume(draft);
-              setResume(draft);
-            }
-          }}
-          className='m-4'
-        >
-          Save
-        </Button>
+        <div className='h-full flex flex-col justify-between px-4'>
+          <Input
+            type='text'
+            value={draft?.content?.personal?.fullName || ""}
+            onChange={(e) => {
+              if (draft) {
+                setDraft({
+                  ...draft,
+                  content: {
+                    ...draft.content,
+                    personal: {
+                      ...draft.content?.personal,
+                      fullName: e.target.value,
+                    },
+                  },
+                });
+              }
+            }}
+            placeholder='John Doe'
+            className='border p-2 rounded-md'
+          />
+        </div>
+
+        <div className='flex gap-4 p-4'>
+          <Button onClick={handleDiscard} variant='outline'>
+            <RotateCcw className='h-4 w-4' />
+          </Button>
+          <Button onClick={handleSave} className='flex-1'>
+            Save
+          </Button>
+        </div>
       </div>
 
       {/* PDF Preview */}
@@ -75,8 +111,8 @@ export const Editor = () => {
             >
               <Page
                 pageNumber={1}
-                width={800}
-                className={"border"}
+                width={800 * zoomLevel}
+                className={`border`}
                 renderTextLayer={false}
                 renderAnnotationLayer={false}
               />
@@ -84,6 +120,23 @@ export const Editor = () => {
           ) : (
             <div className='text-gray-500 mt-40'>Generating preview…</div>
           )}
+          <div className='absolute bottom-8 left-[calc(calc(100vw/2)+calc(24rem/2))] -translate-x-1/2 bg-background border shadow-sm rounded-lg flex items-center gap-2 p-2 z-50'>
+            <Button
+              size='sm'
+              variant='outline'
+              onClick={() => setZoomLevel((z) => Math.max(z - 0.1, 0.5))}
+            >
+              -
+            </Button>
+            <span className='text-sm'>{Math.round(zoomLevel * 100)}%</span>
+            <Button
+              size='sm'
+              variant='outline'
+              onClick={() => setZoomLevel((z) => Math.min(z + 0.1, 2))}
+            >
+              +
+            </Button>
+          </div>
         </div>
       </div>
 
