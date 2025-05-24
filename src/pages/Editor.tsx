@@ -1,3 +1,4 @@
+// Editor.tsx
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { loadResume, saveResume } from "@/lib/resumesStore";
@@ -7,7 +8,13 @@ import Logo from "../assets/Logo.svg?react";
 import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ResumePDFDocument } from "@/components/ResumePreview";
-import { PDFViewer } from "@react-pdf/renderer";
+import { pdf } from "@react-pdf/renderer";
+
+import { Document, Page, pdfjs } from "react-pdf";
+import "react-pdf/dist/esm/Page/AnnotationLayer.css";
+import "react-pdf/dist/esm/Page/TextLayer.css";
+import worker from "pdfjs-dist/build/pdf.worker?url";
+pdfjs.GlobalWorkerOptions.workerSrc = worker;
 
 export const Editor = () => {
   const { id } = useParams();
@@ -15,6 +22,7 @@ export const Editor = () => {
   const location = useLocation();
   const [resume, setResume] = useState<ResumeData | null>(null);
   const [draft, setDraft] = useState<ResumeData | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const isNew = location.pathname === "/new";
 
   useEffect(() => {
@@ -30,11 +38,18 @@ export const Editor = () => {
     }
   }, [id, isNew, navigate]);
 
+  useEffect(() => {
+    if (draft) {
+      pdf(<ResumePDFDocument data={draft} />)
+        .toBlob()
+        .then((blob) => setPdfUrl(URL.createObjectURL(blob)));
+    }
+  }, [draft]);
+
   return (
-    // Work in progress
-    <div className='flex'>
+    <div className='flex h-screen'>
       {/* Sidebar */}
-      <div className='bg-background h-screen min-w-72 border-r-1 shadow-sm'>
+      <div className='bg-background min-w-72 border-r-1 shadow-sm flex flex-col justify-between'>
         <Logo className='w-full p-8' />
         <Button
           onClick={async () => {
@@ -43,30 +58,33 @@ export const Editor = () => {
               setResume(draft);
             }
           }}
+          className='m-4'
         >
           Save
         </Button>
       </div>
 
-      {/* Main Editor */}
-      <div className='w-full h-screen'>
-        <h1 className='text-2xl'>{resume?.title || "Untitled Resume"}</h1>
-        {draft && (
-          <div className='w-full h-[calc(100vh-2rem)] overflow-auto bg-white text-black'>
-            <PDFViewer
-              style={{
-                width: "100%",
-                height: "100%",
-                border: "none",
-                backgroundColor: "#fff",
-              }}
-              showToolbar={false}
+      {/* PDF Preview */}
+      <div className='w-full h-full bg-secondary dark:bg-background text-black overflow-auto'>
+        <div className='flex flex-col items-center py-20'>
+          {pdfUrl ? (
+            <Document
+              key={pdfUrl} // Force reset when pdfUrl changes
+              file={pdfUrl}
+              onLoadError={(err) => console.error(err)}
             >
-              <ResumePDFDocument data={draft} />
-            </PDFViewer>
-          </div>
-        )}{" "}
-        {/* Fix this later */}
+              <Page
+                pageNumber={1}
+                width={800}
+                className={"border"}
+                renderTextLayer={false}
+                renderAnnotationLayer={false}
+              />
+            </Document>
+          ) : (
+            <div className='text-gray-500 mt-40'>Generating preview…</div>
+          )}
+        </div>
       </div>
 
       {/* Export Button */}
@@ -77,7 +95,7 @@ export const Editor = () => {
             setResume(draft);
           }
           console.log("Exporting as PDF...");
-          // Add PDF export logic here
+          // You can trigger download here if needed
         }}
         className='fixed bottom-8 right-8 shadow-sm'
       >
