@@ -21,12 +21,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Figtree",
     backgroundColor: "#ffffff",
-    color: "#1f2937", // Tailwind gray-800
+    color: "#1f2937",
   },
   section: {
     marginBottom: 20,
     paddingBottom: 10,
-    borderBottom: "1pt solid #e5e7eb", // Tailwind gray-200
+    borderBottom: "1pt solid #e5e7eb",
   },
   heading: {
     fontSize: 20,
@@ -36,7 +36,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontWeight: "bold",
-    color: "#374151", // Tailwind gray-700
+    color: "#374151",
     marginBottom: 2,
   },
   text: {
