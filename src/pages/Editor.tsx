@@ -102,21 +102,23 @@ export const Editor = () => {
 
       {/* PDF Preview */}
       <div className='w-full h-full bg-secondary dark:bg-background text-black overflow-auto'>
-        <div className='flex flex-col items-center py-20'>
+        <div className='flex'>
           {pdfUrl ? (
-            <Document
-              key={pdfUrl} // Force reset when pdfUrl changes
-              file={pdfUrl}
-              onLoadError={(err) => console.error(err)}
-            >
-              <Page
-                pageNumber={1}
-                width={800 * zoomLevel}
-                className={`border`}
-                renderTextLayer={false}
-                renderAnnotationLayer={false}
-              />
-            </Document>
+            <div className='p-20 mx-auto'>
+              <Document
+                key={pdfUrl} // Force reset when pdfUrl changes
+                file={pdfUrl}
+                onLoadError={(err) => console.error(err)}
+              >
+                <Page
+                  pageNumber={1}
+                  width={800 * zoomLevel}
+                  className={`border`}
+                  renderTextLayer={false}
+                  renderAnnotationLayer={false}
+                />
+              </Document>
+            </div>
           ) : (
             <div className='text-gray-500 mt-40'>Generating preview…</div>
           )}
@@ -128,7 +130,9 @@ export const Editor = () => {
             >
               -
             </Button>
-            <span className='text-sm'>{Math.round(zoomLevel * 100)}%</span>
+            <span className='text-sm text-center w-12'>
+              {Math.round(zoomLevel * 100)}%
+            </span>
             <Button
               size='sm'
               variant='outline'
