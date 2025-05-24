@@ -23,11 +23,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     color: "#1f2937",
   },
-  section: {
-    marginBottom: 20,
-    paddingBottom: 10,
-    borderBottom: "1pt solid #e5e7eb",
-  },
   heading: {
     fontSize: 20,
     fontWeight: "bold",
@@ -42,12 +37,26 @@ const styles = StyleSheet.create({
   text: {
     marginBottom: 4,
   },
+  section: {
+    marginBottom: 20,
+    paddingBottom: 10,
+    borderBottom: "1pt solid #e5e7eb",
+  },
+  pageNumber: {
+    position: "absolute",
+    fontSize: 12,
+    bottom: 30,
+    left: 0,
+    right: 0,
+    textAlign: "center",
+    color: "grey",
+  },
 });
 
 export const ResumePDFDocument = ({ data }: { data: ResumeData }) => (
   <Document>
-    {/* Page 1: Personal Info */}
     <Page size='A4' style={styles.page}>
+      {/* Personal Section */}
       <View style={styles.section}>
         <Text style={styles.heading}>{data.title || "Untitled Resume"}</Text>
         {data.content?.personal && (
@@ -67,42 +76,35 @@ export const ResumePDFDocument = ({ data }: { data: ResumeData }) => (
           </>
         )}
       </View>
-    </Page>
 
-    {/* Page 2: Experience */}
-    <Page size='A4' style={styles.page}>
-      <View style={styles.section}>
-        <Text style={styles.heading}>Experience</Text>
-        {data.content?.experience && data.content.experience.length > 0 ? (
-          data.content.experience.map((item, index) => (
+      {/* Experience Section */}
+      {data.content?.experience && data.content.experience.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.heading}>Experience</Text>
+          {data.content.experience.map((item, index) => (
             <View key={index} style={{ marginBottom: 10 }}>
               <Text style={styles.label}>{item.jobTitle}</Text>
               <Text style={styles.text}>{item.company}</Text>
               <Text style={styles.text}>{item.description}</Text>
             </View>
-          ))
-        ) : (
-          <Text style={styles.text}>No experience listed.</Text>
-        )}
-      </View>
-    </Page>
+          ))}
+        </View>
+      )}
 
-    {/* Page 3: Projects */}
-    <Page size='A4' style={styles.page}>
-      <View style={styles.section}>
-        <Text style={styles.heading}>Projects</Text>
-        {data.content?.projects && data.content.projects.length > 0 ? (
-          data.content.projects.map((project, index) => (
+      {/* Projects Section */}
+      {data.content?.projects && data.content.projects.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.heading}>Projects</Text>
+          {data.content.projects.map((project, index) => (
             <View key={index} style={{ marginBottom: 10 }}>
               <Text style={styles.label}>{project.name}</Text>
               <Text style={styles.text}>{project.description}</Text>
             </View>
-          ))
-        ) : (
-          <Text style={styles.text}>No projects listed.</Text>
-        )}
-      </View>
+          ))}
+        </View>
+      )}
+
+      {/* More sections coming later... */}
     </Page>
   </Document>
-  // this is a simplified version, just for testing purposes
 );

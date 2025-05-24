@@ -4,7 +4,7 @@ import { loadResume, saveResume } from "@/lib/resumesStore";
 import { ResumeData } from "@/lib/resumesStore";
 import { ResumeWizard } from "@/components/ResumeWizard";
 import Logo from "../assets/Logo.svg?react";
-import { Download, RotateCcw } from "lucide-react";
+import { Download, Minus, Plus, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ResumePDFDocument } from "@/components/ResumePreview";
 import { pdf } from "@react-pdf/renderer";
@@ -14,6 +14,8 @@ import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
 import worker from "pdfjs-dist/build/pdf.worker?url";
 import { Input } from "@/components/ui/input";
+import { save } from "@tauri-apps/plugin-dialog";
+import { writeFile } from "@tauri-apps/plugin-fs";
 pdfjs.GlobalWorkerOptions.workerSrc = worker;
 
 export const Editor = () => {
@@ -57,6 +59,27 @@ export const Editor = () => {
   const handleDiscard = () => {
     if (resume) {
       setDraft(structuredClone(resume));
+    }
+  };
+
+  const handleExportPDF = async () => {
+    if (!draft) return;
+
+    try {
+      const filePath = await save({
+        filters: [{ name: "PDF", extensions: ["pdf"] }],
+        defaultPath: `${draft.title || "resume"}.pdf`,
+      });
+
+      if (filePath) {
+        const blob = await pdf(<ResumePDFDocument data={draft} />).toBlob();
+        const arrayBuffer = await blob.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
+        await writeFile(filePath, uint8Array);
+        console.log("PDF saved at:", filePath);
+      }
+    } catch (error) {
+      console.error("Export failed:", error);
     }
   };
 
@@ -120,7 +143,11 @@ export const Editor = () => {
                     className={`border mb-8`}
                     renderTextLayer={false}
                     renderAnnotationLayer={false}
-                  />
+                  >
+                    <div className='text-xs text-center text-gray-500 mt-2'>
+                      Page {index + 1} of {numPages}
+                    </div>
+                  </Page>
                 ))}
               </Document>
             </div>
@@ -129,12 +156,15 @@ export const Editor = () => {
           )}
 
           <div className='absolute bottom-8 left-[calc(calc(100vw/2)+calc(24rem/2))] -translate-x-1/2 bg-background border shadow-sm rounded-lg flex items-center gap-2 p-2 z-50'>
+            <Button size='sm' variant='outline' onClick={() => setZoomLevel(1)}>
+              <RotateCcw className='h-4 w-4' />
+            </Button>
             <Button
               size='sm'
               variant='outline'
               onClick={() => setZoomLevel((z) => Math.max(z - 0.1, 0.5))}
             >
-              -
+              <Minus className='h-4 w-4' />
             </Button>
             <span className='text-sm text-center w-12'>
               {Math.round(zoomLevel * 100)}%
@@ -144,26 +174,14 @@ export const Editor = () => {
               variant='outline'
               onClick={() => setZoomLevel((z) => Math.min(z + 0.1, 2))}
             >
-              +
+              <Plus className='h-4 w-4' />
+            </Button>
+            <Button size='sm' onClick={handleExportPDF}>
+              <Download className='h-4 w-4' /> Export PDF
             </Button>
           </div>
         </div>
       </div>
-
-      {/* Export Button */}
-      <Button
-        onClick={async () => {
-          if (draft) {
-            await saveResume(draft);
-            setResume(draft);
-          }
-          console.log("Exporting as PDF...");
-          // You can trigger download here if needed
-        }}
-        className='fixed bottom-8 right-8 shadow-sm'
-      >
-        <Download /> Export as PDF
-      </Button>
 
       {/* Resume Wizard */}
       {isNew && <ResumeWizard />}
