@@ -14,7 +14,7 @@ export interface ResumeData {
   id: string;
   title: string;
   updated: string;
-  content?: ResumeContent;
+  content: ResumeContent;
   image?: string; // base64 or external
   jobDesc?: string; // optional job description for AI generation
 }
