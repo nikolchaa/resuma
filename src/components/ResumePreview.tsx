@@ -1,4 +1,3 @@
-// ResumePDFDocument.tsx
 import {
   Document,
   Page,
@@ -18,93 +17,166 @@ Font.register({
 const styles = StyleSheet.create({
   page: {
     padding: 40,
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: "Figtree",
     backgroundColor: "#ffffff",
     color: "#1f2937",
   },
-  heading: {
+  name: {
     fontSize: 20,
+    textTransform: "uppercase",
     fontWeight: "bold",
-    marginBottom: 8,
-    color: "#1f2937",
-  },
-  label: {
-    fontWeight: "bold",
-    color: "#374151",
-    marginBottom: 2,
-  },
-  text: {
     marginBottom: 4,
   },
-  section: {
-    marginBottom: 20,
-    paddingBottom: 10,
-    borderBottom: "1pt solid #e5e7eb",
+  contact: {
+    fontSize: 10,
+    color: "#6b7280",
+    marginBottom: 8,
   },
-  pageNumber: {
-    position: "absolute",
+  sectionHeader: {
     fontSize: 12,
-    bottom: 30,
-    left: 0,
-    right: 0,
-    textAlign: "center",
-    color: "grey",
+    fontWeight: "bold",
+    textTransform: "uppercase",
+    marginTop: 16,
+    marginBottom: 4,
+    borderBottomWidth: 1,
+    borderColor: "#d1d5db",
+    paddingBottom: 2,
+  },
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 2,
+  },
+  bold: {
+    fontWeight: "bold",
+  },
+  text: {
+    fontSize: 10,
+    marginBottom: 2,
+  },
+  small: {
+    fontSize: 9,
+    color: "#6b7280",
+  },
+  subItem: {
+    marginBottom: 8,
   },
 });
 
 export const ResumePDFDocument = ({ data }: { data: ResumeData }) => (
   <Document>
     <Page size='A4' style={styles.page}>
-      {/* Personal Section */}
-      <View style={styles.section}>
-        <Text style={styles.heading}>{data.title || "Untitled Resume"}</Text>
-        {data.content?.personal && (
-          <>
-            <Text style={styles.label}>Name:</Text>
-            <Text style={styles.text}>{data.content.personal.fullName}</Text>
-            <Text style={styles.label}>Email:</Text>
-            <Text style={styles.text}>{data.content.personal.email}</Text>
-            {data.content.personal.location && (
-              <>
-                <Text style={styles.label}>Location:</Text>
-                <Text style={styles.text}>
-                  {data.content.personal.location}
+      {/* Header */}
+      {data.content?.personal && (
+        <View>
+          <Text style={styles.name}>{data.content.personal.fullName}</Text>
+          <Text style={styles.contact}>
+            {data.content.personal.email} | {data.content.personal.location}
+          </Text>
+        </View>
+      )}
+
+      {/* Education */}
+      {data.content?.education && data.content.education.length > 0 && (
+        <View>
+          <Text style={styles.sectionHeader}>Education</Text>
+          {data.content.education.map((edu, idx) => (
+            <View key={idx} style={styles.subItem}>
+              <View style={styles.row}>
+                <Text style={styles.bold}>{edu.degree}</Text>
+                <Text style={styles.bold}>{edu.school}</Text>
+              </View>
+              <Text style={styles.small}>
+                {edu.location} | {edu.date.from} – {edu.date.to || "Present"}
+              </Text>
+              {edu.gpa && <Text style={styles.small}>GPA: {edu.gpa}</Text>}
+              {edu.courses && edu.courses.length > 0 && (
+                <Text style={styles.small}>
+                  Courses: {edu.courses.join(", ")}
                 </Text>
-              </>
-            )}
-          </>
-        )}
-      </View>
+              )}
+            </View>
+          ))}
+        </View>
+      )}
 
-      {/* Experience Section */}
+      {/* Experience */}
       {data.content?.experience && data.content.experience.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.heading}>Experience</Text>
-          {data.content.experience.map((item, index) => (
-            <View key={index} style={{ marginBottom: 10 }}>
-              <Text style={styles.label}>{item.jobTitle}</Text>
-              <Text style={styles.text}>{item.company}</Text>
-              <Text style={styles.text}>{item.description}</Text>
+        <View>
+          <Text style={styles.sectionHeader}>Experience</Text>
+          {data.content.experience.map((exp, idx) => (
+            <View key={idx} style={styles.subItem}>
+              <View style={styles.row}>
+                <Text style={styles.bold}>{exp.jobTitle}</Text>
+                <Text style={styles.bold}>{exp.company}</Text>
+              </View>
+              <Text style={styles.small}>
+                {exp.location} | {exp.date.from} – {exp.date.to || "Present"}
+              </Text>
+              {exp.description && (
+                <Text style={styles.text}>{exp.description}</Text>
+              )}
+              {exp.notes && exp.notes.length > 0 && (
+                <Text style={styles.text}>• {exp.notes.join("\n• ")}</Text>
+              )}
             </View>
           ))}
         </View>
       )}
 
-      {/* Projects Section */}
+      {/* Projects */}
       {data.content?.projects && data.content.projects.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.heading}>Projects</Text>
-          {data.content.projects.map((project, index) => (
-            <View key={index} style={{ marginBottom: 10 }}>
-              <Text style={styles.label}>{project.name}</Text>
-              <Text style={styles.text}>{project.description}</Text>
+        <View>
+          <Text style={styles.sectionHeader}>Projects</Text>
+          {data.content.projects.map((proj, idx) => (
+            <View key={idx} style={styles.subItem}>
+              <Text style={styles.bold}>{proj.name}</Text>
+              {proj.link && <Text style={styles.small}>{proj.link}</Text>}
+              <Text style={styles.text}>{proj.description}</Text>
+              {proj.technologies && proj.technologies.length > 0 && (
+                <Text style={styles.small}>
+                  Tech: {proj.technologies.join(", ")}
+                </Text>
+              )}
             </View>
           ))}
         </View>
       )}
 
-      {/* More sections coming later... */}
+      {/* Skills */}
+      {data.content?.skills && data.content.skills.length > 0 && (
+        <View>
+          <Text style={styles.sectionHeader}>Skills</Text>
+          {data.content.skills.map((group, idx) => (
+            <View key={idx} style={styles.subItem}>
+              <Text style={styles.bold}>{group.category}</Text>
+              <Text style={styles.small}>{group.items.join(", ")}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* Awards */}
+      {data.content?.awards && data.content.awards.length > 0 && (
+        <View>
+          <Text style={styles.sectionHeader}>Awards</Text>
+          {data.content.awards.map((award, idx) => (
+            <View key={idx} style={styles.subItem}>
+              <View style={styles.row}>
+                <Text style={styles.bold}>{award.title}</Text>
+                <Text style={styles.bold}>
+                  {award.organizer} | {award.location}
+                </Text>
+              </View>
+              <Text style={styles.small}>{award.date.from}</Text>
+              {award.description && (
+                <Text style={styles.text}>{award.description}</Text>
+              )}
+            </View>
+          ))}
+        </View>
+      )}
     </Page>
   </Document>
 );
