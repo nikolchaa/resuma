@@ -3,8 +3,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { loadResume, saveResume } from "@/lib/resumesStore";
 import { ResumeData } from "@/lib/resumesStore";
 import { ResumeWizard } from "@/components/ResumeWizard";
-import Logo from "../assets/Logo.svg?react";
-import { ArrowLeft, Download, Minus, Plus, RotateCcw } from "lucide-react";
+import { Download, Minus, Plus, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ResumePDFDocument } from "@/components/ResumePreview";
 import { pdf } from "@react-pdf/renderer";
@@ -13,9 +12,9 @@ import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
 import worker from "pdfjs-dist/build/pdf.worker?url";
-import { Input } from "@/components/ui/input";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeFile } from "@tauri-apps/plugin-fs";
+import { Sidebar } from "./Editor/Sidebar";
 pdfjs.GlobalWorkerOptions.workerSrc = worker;
 
 export const Editor = () => {
@@ -90,40 +89,12 @@ export const Editor = () => {
   return (
     <div className='flex h-screen'>
       {/* Sidebar */}
-      <div className='bg-background min-w-96 border-r-1 shadow-sm flex flex-col justify-between'>
-        <Logo className='w-full p-8' />
-        <div className='h-full flex flex-col justify-between px-4'>
-          <Input
-            type='text'
-            value={draft?.content?.personal?.fullName || ""}
-            onChange={(e) => {
-              if (draft) {
-                setDraft({
-                  ...draft,
-                  content: {
-                    ...draft.content,
-                    personal: {
-                      ...draft.content?.personal,
-                      fullName: e.target.value,
-                    },
-                  },
-                });
-              }
-            }}
-            placeholder='John Doe'
-            className='border p-2 rounded-md'
-          />
-        </div>
-
-        <div className='flex gap-4 p-4'>
-          <Button onClick={handleDiscard} variant='outline'>
-            <ArrowLeft className='h-4 w-4' />
-          </Button>
-          <Button onClick={handleSave} className='flex-1'>
-            Save
-          </Button>
-        </div>
-      </div>
+      <Sidebar
+        draft={draft}
+        setDraft={setDraft}
+        handleDiscard={handleDiscard}
+        handleSave={handleSave}
+      />
 
       {/* PDF Preview */}
       <div className='w-full h-full bg-secondary dark:bg-background text-black overflow-auto'>
@@ -156,7 +127,7 @@ export const Editor = () => {
             <div className='text-gray-500 mt-40'>Generating preview…</div>
           )}
 
-          <div className='absolute bottom-8 left-[calc(calc(100vw/2)+calc(24rem/2))] -translate-x-1/2 bg-background border shadow-sm rounded-lg flex items-center gap-2 p-2 z-50 text-foreground'>
+          <div className='absolute bottom-8 left-[calc(calc(100vw/2)+calc(28rem/2))] -translate-x-1/2 bg-background border shadow-sm rounded-lg flex items-center gap-2 p-2 z-50 text-foreground'>
             <Button
               size='sm'
               variant='outline'
