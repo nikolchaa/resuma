@@ -151,7 +151,7 @@ export const Home = () => {
       </div>
 
       {/* Resume cards grid */}
-      <div className='grid grid-cols-4 max-w-[75rem] w-[calc(100vw-12.5rem)] gap-4 mx-auto'>
+      <div className='grid grid-cols-4 max-w-[75rem] w-[calc(100vw-12.5rem)] gap-4 mx-auto mb-20'>
         {filteredAndSorted.length > 0 ? (
           filteredAndSorted.map((res) => (
             <Card key={res.id} className='w-full overflow-hidden'>

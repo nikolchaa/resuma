@@ -156,13 +156,19 @@ export const Editor = () => {
             <div className='text-gray-500 mt-40'>Generating preview…</div>
           )}
 
-          <div className='absolute bottom-8 left-[calc(calc(100vw/2)+calc(24rem/2))] -translate-x-1/2 bg-background border shadow-sm rounded-lg flex items-center gap-2 p-2 z-50'>
-            <Button size='sm' variant='outline' onClick={() => setZoomLevel(1)}>
+          <div className='absolute bottom-8 left-[calc(calc(100vw/2)+calc(24rem/2))] -translate-x-1/2 bg-background border shadow-sm rounded-lg flex items-center gap-2 p-2 z-50 text-foreground'>
+            <Button
+              size='sm'
+              variant='outline'
+              className='hover:text-muted-foreground'
+              onClick={() => setZoomLevel(1)}
+            >
               <RotateCcw className='h-4 w-4' />
             </Button>
             <Button
               size='sm'
               variant='outline'
+              className='hover:text-muted-foreground'
               onClick={() => setZoomLevel((z) => Math.max(z - 0.1, 0.5))}
             >
               <Minus className='h-4 w-4' />
@@ -173,6 +179,7 @@ export const Editor = () => {
             <Button
               size='sm'
               variant='outline'
+              className='hover:text-muted-foreground'
               onClick={() => setZoomLevel((z) => Math.min(z + 0.1, 2))}
             >
               <Plus className='h-4 w-4' />

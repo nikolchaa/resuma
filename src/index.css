@@ -289,3 +289,9 @@ html.content-md {
 html.content-lg {
   font-size: 125%; /* upscale everything to 20px */
 }
+
+@media (max-width: 1440px) {
+  html.content-lg .grid-cols-4 {
+    @apply grid-cols-3;
+  }
+}
