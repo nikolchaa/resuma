@@ -217,7 +217,7 @@ const Education = () => {
 
         <div className='flex items-center gap-2'>
           <Button variant='ghost' onClick={addEntry} className='text-primary'>
-            <PlusCircle className='h-4 w-4 mr-1' /> Add Education
+            <PlusCircle className='h-4 w-4 mr-1' /> Add School
           </Button>
         </div>
 
