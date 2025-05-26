@@ -55,7 +55,6 @@ export default function Settings() {
       fullName: "",
       email: "",
       location: "",
-      headline: "",
       socials: [],
     },
     education: [],

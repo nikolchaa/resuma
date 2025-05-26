@@ -73,17 +73,6 @@ export const PersonalSettings = ({ settings, updateSettings }: Props) => {
         />
       </div>
 
-      {/* Headline */}
-      <div className='flex items-center justify-between'>
-        <Label className='w-1/3'>Headline</Label>
-        <Input
-          className='w-2/3 text-right'
-          value={settings.headline}
-          onChange={(e) => updateField("headline", e.target.value)}
-          placeholder='Web Developer, Designer...'
-        />
-      </div>
-
       {/* Social Links */}
       <div className='flex flex-col gap-2'>
         <Label>

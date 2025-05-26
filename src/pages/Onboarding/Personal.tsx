@@ -19,8 +19,7 @@ const Personal = () => {
   const isValid =
     state.personal.fullName.trim() !== "" &&
     state.personal.email.trim() !== "" &&
-    state.personal.location.trim() !== "" &&
-    state.personal.headline.trim() !== "";
+    state.personal.location.trim() !== "";
 
   const socials = state.personal.socials ?? [];
 
@@ -84,18 +83,6 @@ const Personal = () => {
             value={state.personal.location}
             onChange={(e) => update("personal", { location: e.target.value })}
             placeholder='San Francisco, CA'
-          />
-        </div>
-
-        {/* Headline */}
-        <div className='flex flex-col gap-2'>
-          <Label>
-            Headline<span className='text-destructive'>*</span>
-          </Label>
-          <Input
-            value={state.personal.headline}
-            onChange={(e) => update("personal", { headline: e.target.value })}
-            placeholder='Frontend Developer, UX Designer...'
           />
         </div>
 
