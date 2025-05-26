@@ -19,20 +19,31 @@ export const ResumeWizard = () => {
   const [jobDesc, setJobDesc] = useState("");
   const [loading, setLoading] = useState(false);
   const [suggestedId, setSuggestedId] = useState("untitled");
+  const [loadingProgress, setLoadingProgress] = useState<
+    Record<string, boolean>
+  >({});
+  const [trim, setTrim] = useState(false);
 
-  const slugify = (text: string) => {
-    return text
+  const sections = [
+    "Personal",
+    "Education",
+    "Experience",
+    "Projects",
+    "Skills",
+    "Awards",
+  ];
+
+  const slugify = (text: string) =>
+    text
       .toLowerCase()
       .trim()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "");
-  };
 
   const getUniqueId = async (base: string): Promise<string> => {
     const existing = await listResumes();
     const ids = new Set(existing.map((r) => r.id));
     if (!ids.has(base)) return base;
-
     let suffix = 1;
     let candidate = `${base}-${suffix}`;
     while (ids.has(candidate)) {
@@ -51,35 +62,75 @@ export const ResumeWizard = () => {
     updateId();
   }, [title]);
 
-  const handleFinish = async (useAI: boolean) => {
-    setLoading(true);
+  const handleFinish = async (enhance: boolean) => {
     const settings = await getSettings();
+
+    let content: ResumeContent = {
+      personal: settings.personal ?? {
+        fullName: "",
+        email: "",
+        location: "",
+        socials: [],
+      },
+      education: settings.education ?? [],
+      experience: settings.experience ?? [],
+      projects: settings.projects ?? [],
+      skills: settings.skills ?? [],
+      awards: settings.awards ?? [],
+    };
+
+    // If neither trim nor enhance, just save and exit
+    if (!trim && !enhance) {
+      const newResume: ResumeData = {
+        id: suggestedId,
+        title,
+        updated: new Date().toISOString(),
+        image: "https://placehold.co/210x297?text=New+Resume",
+        content,
+        jobDesc: jobDesc || undefined,
+      };
+
+      await saveResume(newResume);
+      navigate(`/editor/${newResume.id}`);
+      return;
+    }
+
+    // If we need to trim/enhance, show step 5 loading animation
+    setStep(5);
+    setLoading(true);
+
+    const progress: Record<string, boolean> = {};
+    for (const section of sections) {
+      progress[section] = false;
+    }
+    setLoadingProgress(progress);
+
+    for (const section of sections) {
+      await new Promise((res) => setTimeout(res, 1000));
+      setLoadingProgress((prev) => ({ ...prev, [section]: true }));
+    }
+
+    // Apply Trim + Enhance if needed
+    if (trim) {
+      content = await mockTrim(content, jobDesc);
+      console.log("Content after trim:", content);
+    }
+
+    if (enhance) {
+      content = await mockEnhance(content, jobDesc);
+      console.log("Content after enhance:", content);
+    }
+
+    await new Promise((res) => setTimeout(res, 1500)); // Final delay
 
     const newResume: ResumeData = {
       id: suggestedId,
       title,
       updated: new Date().toISOString(),
       image: "https://placehold.co/210x297?text=New+Resume",
-      content: {
-        personal: settings.personal ?? {
-          fullName: "",
-          email: "",
-          location: "",
-          headline: "",
-          socials: [],
-        },
-        education: settings.education ?? [],
-        experience: settings.experience ?? [],
-        projects: settings.projects ?? [],
-        skills: settings.skills ?? [],
-        awards: settings.awards ?? [],
-      },
-      jobDesc: jobDesc ?? undefined,
+      content,
+      jobDesc: jobDesc || undefined,
     };
-
-    if (useAI && jobDesc) {
-      newResume.content = await simulateAI(newResume.content!, jobDesc);
-    }
 
     await saveResume(newResume);
     setLoading(false);
@@ -93,7 +144,11 @@ export const ResumeWizard = () => {
       case 2:
         return "Paste Job Description (Optional)";
       case 3:
-        return "Trim Content with AI?";
+        return "Trim Unrelated Content?";
+      case 4:
+        return "Enhance Resume for ATS?";
+      case 5:
+        return "Processing Your Resume...";
       default:
         return "";
     }
@@ -102,11 +157,13 @@ export const ResumeWizard = () => {
   const getDescText = () => {
     switch (step) {
       case 1:
-        return "This will be the name of your resume. It will be used to identify your resume in the app. You can change it later.";
+        return "This will be the name of your resume. You can change it later.";
       case 2:
-        return "Paste the job description you're targeting to help tailor your resume. This step is optional.";
+        return "Not doing this might result in a generic resume that isn't optimized!";
       case 3:
-        return "AI can help trim unrelated content from your resume based on the job description you provided.";
+        return "AI can remove unrelated content based on the job description.";
+      case 4:
+        return "AI can enhance your resume with keywords for better ATS compatibility.";
       default:
         return "";
     }
@@ -133,6 +190,7 @@ export const ResumeWizard = () => {
               <h2 className='text-xl font-semibold'>{getTitleText()}</h2>
               <p className='text-sm text-muted-foreground'>{getDescText()}</p>
             </div>
+
             {step === 1 && (
               <div className='flex flex-col gap-4'>
                 <Input
@@ -145,6 +203,7 @@ export const ResumeWizard = () => {
                 <Button onClick={() => setStep(2)}>Next</Button>
               </div>
             )}
+
             {step === 2 && (
               <div className='flex flex-col gap-4'>
                 <Textarea
@@ -162,7 +221,7 @@ export const ResumeWizard = () => {
                     disabled={jobDesc.trim().length === 0}
                     title={
                       jobDesc.trim().length === 0
-                        ? "Job description is required"
+                        ? "Job description required"
                         : ""
                     }
                   >
@@ -171,20 +230,64 @@ export const ResumeWizard = () => {
                 </div>
               </div>
             )}
+
             {step === 3 && (
               <div className='flex flex-col gap-4'>
-                <p className='text-md'>
-                  Would you like AI to trim your resume down to only what's
-                  relevant to the job?
+                <p>
+                  Would you like AI to trim your resume based on the job
+                  description?
+                </p>
+                <div className='flex gap-2 justify-end'>
+                  <Button variant='outline' onClick={() => setStep(4)}>
+                    No, skip
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setStep(4);
+                      setTrim(true);
+                    }}
+                  >
+                    Yes, trim it
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {step === 4 && (
+              <div className='flex flex-col gap-4'>
+                <p>
+                  Would you like AI to enhance your resume for ATS
+                  compatibility?
                 </p>
                 <div className='flex gap-2 justify-end'>
                   <Button variant='outline' onClick={() => handleFinish(false)}>
-                    No, keep everything
+                    No, keep it simple
                   </Button>
-                  <Button disabled={loading} onClick={() => handleFinish(true)}>
-                    {loading ? "Cleaning..." : "Yes, trim it"}
+                  <Button
+                    disabled={loading}
+                    onClick={() => {
+                      handleFinish(true);
+                    }}
+                  >
+                    {loading ? "Enhancing..." : "Yes, enhance it"}
                   </Button>
                 </div>
+              </div>
+            )}
+
+            {step === 5 && (
+              <div className='flex flex-col gap-4'>
+                {sections.map((section) => (
+                  <div
+                    key={section}
+                    className='flex items-center justify-between'
+                  >
+                    <span>
+                      {loadingProgress[section] ? `✅` : `🔄`} Processing{" "}
+                      {section}...
+                    </span>
+                  </div>
+                ))}
               </div>
             )}
           </motion.div>
@@ -194,12 +297,23 @@ export const ResumeWizard = () => {
   );
 };
 
-// Temporary mock function
-async function simulateAI(
+// 🧪 Mock Functions
+async function mockTrim(
   content: ResumeContent,
   jobDesc: string
 ): Promise<ResumeContent> {
-  console.log(`Simulating AI processing... ${jobDesc}}`); // Stop annoying error
+  console.log(`Trimming content... based on: ${jobDesc}`);
+  content.personal.fullName = "Trimmed Name";
+  await new Promise((res) => setTimeout(res, 1500));
+  return content;
+}
+
+async function mockEnhance(
+  content: ResumeContent,
+  jobDesc: string
+): Promise<ResumeContent> {
+  content.personal.fullName = `${content.personal.fullName} (Enhanced)`;
+  console.log(`Enhancing content... based on: ${jobDesc}`);
   await new Promise((res) => setTimeout(res, 1500));
   return content;
 }
