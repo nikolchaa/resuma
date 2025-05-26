@@ -133,7 +133,7 @@ export const Editor = () => {
             <div className='text-gray-500 mt-40'>Generating preview…</div>
           )}
 
-          <div className='absolute bottom-8 left-[calc(calc(100vw/2)+calc(28rem/2))] -translate-x-1/2 bg-background border shadow-sm rounded-lg flex items-center gap-2 p-2 z-50 text-foreground'>
+          <div className='absolute bottom-8 left-[calc(calc(100vw/2)+calc(28rem/2))] -translate-x-1/2 bg-background border shadow-sm rounded-lg flex items-center gap-2 p-2 z-30 text-foreground'>
             <Button
               size='sm'
               variant='outline'
