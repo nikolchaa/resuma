@@ -64,119 +64,127 @@ const styles = StyleSheet.create({
   },
 });
 
-export const ResumePDFDocument = ({ data }: { data: ResumeData }) => (
-  <Document>
-    <Page size='A4' style={styles.page}>
-      {/* Header */}
-      {data.content?.personal && (
-        <View>
-          <Text style={styles.name}>{data.content.personal.fullName}</Text>
-          <Text style={styles.contact}>
-            {data.content.personal.email} | {data.content.personal.location}
-          </Text>
-        </View>
-      )}
+export const ResumePDFDocument = ({
+  data,
+  format,
+}: {
+  data: ResumeData;
+  format?: "A4" | "LETTER";
+}) => {
+  return (
+    <Document>
+      <Page size={format ?? "A4"} style={styles.page}>
+        {/* Header */}
+        {data.content?.personal && (
+          <View>
+            <Text style={styles.name}>{data.content.personal.fullName}</Text>
+            <Text style={styles.contact}>
+              {data.content.personal.email} | {data.content.personal.location}
+            </Text>
+          </View>
+        )}
 
-      {/* Education */}
-      {data.content?.education && data.content.education.length > 0 && (
-        <View>
-          <Text style={styles.sectionHeader}>Education</Text>
-          {data.content.education.map((edu, idx) => (
-            <View key={idx} style={styles.subItem}>
-              <View style={styles.row}>
-                <Text style={styles.bold}>{edu.degree}</Text>
-                <Text style={styles.bold}>{edu.school}</Text>
-              </View>
-              <Text style={styles.small}>
-                {edu.location} | {edu.date.from} – {edu.date.to || "Present"}
-              </Text>
-              {edu.gpa && <Text style={styles.small}>GPA: {edu.gpa}</Text>}
-              {edu.courses && edu.courses.length > 0 && (
+        {/* Education */}
+        {data.content?.education && data.content.education.length > 0 && (
+          <View>
+            <Text style={styles.sectionHeader}>Education</Text>
+            {data.content.education.map((edu, idx) => (
+              <View key={idx} style={styles.subItem}>
+                <View style={styles.row}>
+                  <Text style={styles.bold}>{edu.degree}</Text>
+                  <Text style={styles.bold}>{edu.school}</Text>
+                </View>
                 <Text style={styles.small}>
-                  Courses: {edu.courses.join(", ")}
+                  {edu.location} | {edu.date.from} – {edu.date.to || "Present"}
                 </Text>
-              )}
-            </View>
-          ))}
-        </View>
-      )}
-
-      {/* Experience */}
-      {data.content?.experience && data.content.experience.length > 0 && (
-        <View>
-          <Text style={styles.sectionHeader}>Experience</Text>
-          {data.content.experience.map((exp, idx) => (
-            <View key={idx} style={styles.subItem}>
-              <View style={styles.row}>
-                <Text style={styles.bold}>{exp.jobTitle}</Text>
-                <Text style={styles.bold}>{exp.company}</Text>
+                {edu.gpa && <Text style={styles.small}>GPA: {edu.gpa}</Text>}
+                {edu.courses && edu.courses.length > 0 && (
+                  <Text style={styles.small}>
+                    Courses: {edu.courses.join(", ")}
+                  </Text>
+                )}
               </View>
-              <Text style={styles.small}>
-                {exp.location} | {exp.date.from} – {exp.date.to || "Present"}
-              </Text>
-              {exp.description && (
-                <Text style={styles.text}>{exp.description}</Text>
-              )}
-              {exp.notes && exp.notes.length > 0 && (
-                <Text style={styles.text}>• {exp.notes.join("\n• ")}</Text>
-              )}
-            </View>
-          ))}
-        </View>
-      )}
+            ))}
+          </View>
+        )}
 
-      {/* Projects */}
-      {data.content?.projects && data.content.projects.length > 0 && (
-        <View>
-          <Text style={styles.sectionHeader}>Projects</Text>
-          {data.content.projects.map((proj, idx) => (
-            <View key={idx} style={styles.subItem}>
-              <Text style={styles.bold}>{proj.name}</Text>
-              {proj.link && <Text style={styles.small}>{proj.link}</Text>}
-              <Text style={styles.text}>{proj.description}</Text>
-              {proj.technologies && proj.technologies.length > 0 && (
+        {/* Experience */}
+        {data.content?.experience && data.content.experience.length > 0 && (
+          <View>
+            <Text style={styles.sectionHeader}>Experience</Text>
+            {data.content.experience.map((exp, idx) => (
+              <View key={idx} style={styles.subItem}>
+                <View style={styles.row}>
+                  <Text style={styles.bold}>{exp.jobTitle}</Text>
+                  <Text style={styles.bold}>{exp.company}</Text>
+                </View>
                 <Text style={styles.small}>
-                  Tech: {proj.technologies.join(", ")}
+                  {exp.location} | {exp.date.from} – {exp.date.to || "Present"}
                 </Text>
-              )}
-            </View>
-          ))}
-        </View>
-      )}
-
-      {/* Skills */}
-      {data.content?.skills && data.content.skills.length > 0 && (
-        <View>
-          <Text style={styles.sectionHeader}>Skills</Text>
-          {data.content.skills.map((group, idx) => (
-            <View key={idx} style={styles.subItem}>
-              <Text style={styles.bold}>{group.category}</Text>
-              <Text style={styles.small}>{group.items.join(", ")}</Text>
-            </View>
-          ))}
-        </View>
-      )}
-
-      {/* Awards */}
-      {data.content?.awards && data.content.awards.length > 0 && (
-        <View>
-          <Text style={styles.sectionHeader}>Awards</Text>
-          {data.content.awards.map((award, idx) => (
-            <View key={idx} style={styles.subItem}>
-              <View style={styles.row}>
-                <Text style={styles.bold}>{award.title}</Text>
-                <Text style={styles.bold}>
-                  {award.organizer} | {award.location}
-                </Text>
+                {exp.description && (
+                  <Text style={styles.text}>{exp.description}</Text>
+                )}
+                {exp.notes && exp.notes.length > 0 && (
+                  <Text style={styles.text}>• {exp.notes.join("\n• ")}</Text>
+                )}
               </View>
-              <Text style={styles.small}>{award.date.from}</Text>
-              {award.description && (
-                <Text style={styles.text}>{award.description}</Text>
-              )}
-            </View>
-          ))}
-        </View>
-      )}
-    </Page>
-  </Document>
-);
+            ))}
+          </View>
+        )}
+
+        {/* Projects */}
+        {data.content?.projects && data.content.projects.length > 0 && (
+          <View>
+            <Text style={styles.sectionHeader}>Projects</Text>
+            {data.content.projects.map((proj, idx) => (
+              <View key={idx} style={styles.subItem}>
+                <Text style={styles.bold}>{proj.name}</Text>
+                {proj.link && <Text style={styles.small}>{proj.link}</Text>}
+                <Text style={styles.text}>{proj.description}</Text>
+                {proj.technologies && proj.technologies.length > 0 && (
+                  <Text style={styles.small}>
+                    Tech: {proj.technologies.join(", ")}
+                  </Text>
+                )}
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Skills */}
+        {data.content?.skills && data.content.skills.length > 0 && (
+          <View>
+            <Text style={styles.sectionHeader}>Skills</Text>
+            {data.content.skills.map((group, idx) => (
+              <View key={idx} style={styles.subItem}>
+                <Text style={styles.bold}>{group.category}</Text>
+                <Text style={styles.small}>{group.items.join(", ")}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Awards */}
+        {data.content?.awards && data.content.awards.length > 0 && (
+          <View>
+            <Text style={styles.sectionHeader}>Awards</Text>
+            {data.content.awards.map((award, idx) => (
+              <View key={idx} style={styles.subItem}>
+                <View style={styles.row}>
+                  <Text style={styles.bold}>{award.title}</Text>
+                  <Text style={styles.bold}>
+                    {award.organizer} | {award.location}
+                  </Text>
+                </View>
+                <Text style={styles.small}>{award.date.from}</Text>
+                {award.description && (
+                  <Text style={styles.text}>{award.description}</Text>
+                )}
+              </View>
+            ))}
+          </View>
+        )}
+      </Page>
+    </Document>
+  );
+};

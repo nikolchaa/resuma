@@ -170,7 +170,7 @@ export const Home = () => {
                   <img
                     src={res.image}
                     alt={res.title}
-                    className='w-full object-cover rounded-sm aspect-[1/1.4142]'
+                    className='w-full object-cover rounded-sm aspect-[1/1.4142] border'
                   />
                 </div>
                 <CardHeader className='mt-auto'>

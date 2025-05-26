@@ -11,6 +11,13 @@ import {
 } from "@/lib/resumesStore";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
+import Spinner from "@/assets/infinite-spinner.svg?react";
+
+import { pdf as pdfRenderer } from "@react-pdf/renderer";
+import { ResumePDFDocument } from "./ResumePreview";
+import * as pdfjsLib from "pdfjs-dist";
+import workerSrc from "pdfjs-dist/build/pdf.worker?url";
+pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
 export const ResumeWizard = () => {
   const navigate = useNavigate();
@@ -19,10 +26,8 @@ export const ResumeWizard = () => {
   const [jobDesc, setJobDesc] = useState("");
   const [loading, setLoading] = useState(false);
   const [suggestedId, setSuggestedId] = useState("untitled");
-  const [loadingProgress, setLoadingProgress] = useState<
-    Record<string, boolean>
-  >({});
   const [trim, setTrim] = useState(false);
+  const [currentSection, setCurrentSection] = useState<string | null>(null);
 
   const sections = [
     "Personal",
@@ -32,6 +37,25 @@ export const ResumeWizard = () => {
     "Skills",
     "Awards",
   ];
+
+  async function generateThumbnail(data: ResumeData): Promise<string> {
+    const pdfBlob = await pdfRenderer(
+      <ResumePDFDocument data={data} format='A4' />
+    ).toBlob();
+    const pdf = await pdfjsLib.getDocument({
+      data: await pdfBlob.arrayBuffer(),
+    }).promise;
+    const page = await pdf.getPage(1);
+    const viewport = page.getViewport({ scale: 1 });
+
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d")!;
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+
+    await page.render({ canvasContext: context, viewport }).promise;
+    return canvas.toDataURL("image/png");
+  }
 
   const slugify = (text: string) =>
     text
@@ -79,7 +103,6 @@ export const ResumeWizard = () => {
       awards: settings.awards ?? [],
     };
 
-    // If neither trim nor enhance, just save and exit
     if (!trim && !enhance) {
       const newResume: ResumeData = {
         id: suggestedId,
@@ -89,39 +112,33 @@ export const ResumeWizard = () => {
         content,
         jobDesc: jobDesc || undefined,
       };
+      newResume.image = await generateThumbnail(newResume);
 
       await saveResume(newResume);
       navigate(`/editor/${newResume.id}`);
       return;
     }
 
-    // If we need to trim/enhance, show step 5 loading animation
     setStep(5);
     setLoading(true);
 
-    const progress: Record<string, boolean> = {};
     for (const section of sections) {
-      progress[section] = false;
-    }
-    setLoadingProgress(progress);
+      setCurrentSection(`Processing ${section}...`);
 
-    for (const section of sections) {
-      await new Promise((res) => setTimeout(res, 1000));
-      setLoadingProgress((prev) => ({ ...prev, [section]: true }));
-    }
+      if (trim) {
+        await mockTrim(section, jobDesc);
+        console.log(`Trimmed ${section}`);
+      }
 
-    // Apply Trim + Enhance if needed
-    if (trim) {
-      content = await mockTrim(content, jobDesc);
-      console.log("Content after trim:", content);
+      if (enhance) {
+        await mockEnhance(section, jobDesc);
+        console.log(`Enhanced ${section}`);
+      }
     }
 
-    if (enhance) {
-      content = await mockEnhance(content, jobDesc);
-      console.log("Content after enhance:", content);
-    }
-
-    await new Promise((res) => setTimeout(res, 1500)); // Final delay
+    // Show "Finalizing..." for 1.5s after everything else is done
+    setCurrentSection("Finalizing...");
+    await new Promise((res) => setTimeout(res, 1500));
 
     const newResume: ResumeData = {
       id: suggestedId,
@@ -131,6 +148,7 @@ export const ResumeWizard = () => {
       content,
       jobDesc: jobDesc || undefined,
     };
+    newResume.image = await generateThumbnail(newResume);
 
     await saveResume(newResume);
     setLoading(false);
@@ -147,8 +165,6 @@ export const ResumeWizard = () => {
         return "Trim Unrelated Content?";
       case 4:
         return "Enhance Resume for ATS?";
-      case 5:
-        return "Processing Your Resume...";
       default:
         return "";
     }
@@ -186,10 +202,12 @@ export const ResumeWizard = () => {
             transition={{ duration: 0.2, ease: "easeInOut" }}
             className='bg-background rounded-lg border shadow-lg w-full max-w-md p-6'
           >
-            <div className='flex flex-col gap-2 mb-4'>
-              <h2 className='text-xl font-semibold'>{getTitleText()}</h2>
-              <p className='text-sm text-muted-foreground'>{getDescText()}</p>
-            </div>
+            {step != 5 && (
+              <div className='flex flex-col gap-2 mb-4'>
+                <h2 className='text-xl font-semibold'>{getTitleText()}</h2>
+                <p className='text-sm text-muted-foreground'>{getDescText()}</p>
+              </div>
+            )}
 
             {step === 1 && (
               <div className='flex flex-col gap-4'>
@@ -277,17 +295,21 @@ export const ResumeWizard = () => {
 
             {step === 5 && (
               <div className='flex flex-col gap-4'>
-                {sections.map((section) => (
-                  <div
-                    key={section}
-                    className='flex items-center justify-between'
-                  >
-                    <span>
-                      {loadingProgress[section] ? `✅` : `🔄`} Processing{" "}
-                      {section}...
-                    </span>
-                  </div>
-                ))}
+                <Spinner className='w-12 h-12 mx-auto' />
+                <AnimatePresence mode='wait'>
+                  {currentSection && (
+                    <motion.div
+                      key={currentSection}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      transition={{ duration: 0.2 }}
+                      className='text-center text-md'
+                    >
+                      {currentSection}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             )}
           </motion.div>
@@ -298,22 +320,14 @@ export const ResumeWizard = () => {
 };
 
 // 🧪 Mock Functions
-async function mockTrim(
-  content: ResumeContent,
-  jobDesc: string
-): Promise<ResumeContent> {
+async function mockTrim(section: string, jobDesc: string): Promise<string> {
   console.log(`Trimming content... based on: ${jobDesc}`);
-  content.personal.fullName = "Trimmed Name";
   await new Promise((res) => setTimeout(res, 1500));
-  return content;
+  return section;
 }
 
-async function mockEnhance(
-  content: ResumeContent,
-  jobDesc: string
-): Promise<ResumeContent> {
-  content.personal.fullName = `${content.personal.fullName} (Enhanced)`;
+async function mockEnhance(section: string, jobDesc: string): Promise<string> {
   console.log(`Enhancing content... based on: ${jobDesc}`);
   await new Promise((res) => setTimeout(res, 1500));
-  return content;
+  return section;
 }
