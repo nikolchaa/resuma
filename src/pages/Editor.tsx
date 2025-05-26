@@ -50,8 +50,14 @@ export const Editor = () => {
 
   const handleSave = async () => {
     if (draft) {
-      await saveResume(draft);
-      setResume(structuredClone(draft)); // Sync resume to draft
+      const updatedDraft = {
+        ...draft,
+        updated: new Date().toISOString(), // ISO format for easy handling
+      };
+
+      await saveResume(updatedDraft);
+      setResume(structuredClone(updatedDraft)); // Sync resume to draft
+      setDraft(updatedDraft); // Also update the draft state itself
     }
   };
 

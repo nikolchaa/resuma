@@ -113,103 +113,84 @@ export const ResumeWizard = () => {
   };
 
   return (
-    <div className='fixed inset-0 z-40 flex items-center justify-center bg-background/50 backdrop-blur-sm'>
-      <div className='bg-background rounded-lg border shadow-lg w-full max-w-md p-6'>
+    <AnimatePresence mode='wait'>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className='fixed inset-0 z-40 flex items-center justify-center bg-background/50 backdrop-blur-sm'
+      >
         <AnimatePresence mode='wait'>
           <motion.div
-            key={`header-${step}`}
-            initial={{ opacity: 0, y: -8 }}
+            key={`step-${step}`}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
-            transition={{ duration: 0.2 }}
-            className='flex flex-col gap-2 mb-4'
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            className='bg-background rounded-lg border shadow-lg w-full max-w-md p-6'
           >
-            <h2 className='text-xl font-semibold'>{getTitleText()}</h2>
-            <p className='text-sm text-muted-foreground'>{getDescText()}</p>
+            <div className='flex flex-col gap-2 mb-4'>
+              <h2 className='text-xl font-semibold'>{getTitleText()}</h2>
+              <p className='text-sm text-muted-foreground'>{getDescText()}</p>
+            </div>
+            {step === 1 && (
+              <div className='flex flex-col gap-4'>
+                <Input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                />
+                <p className='text-sm text-muted-foreground'>
+                  Filename: <code>{suggestedId}.resume</code>
+                </p>
+                <Button onClick={() => setStep(2)}>Next</Button>
+              </div>
+            )}
+            {step === 2 && (
+              <div className='flex flex-col gap-4'>
+                <Textarea
+                  placeholder='Paste job description from Infostud, Indeed, etc.'
+                  value={jobDesc}
+                  onChange={(e) => setJobDesc(e.target.value)}
+                  rows={6}
+                />
+                <div className='flex gap-2 justify-end'>
+                  <Button variant='outline' onClick={() => handleFinish(false)}>
+                    Skip
+                  </Button>
+                  <Button
+                    onClick={() => setStep(3)}
+                    disabled={jobDesc.trim().length === 0}
+                    title={
+                      jobDesc.trim().length === 0
+                        ? "Job description is required"
+                        : ""
+                    }
+                  >
+                    Continue
+                  </Button>
+                </div>
+              </div>
+            )}
+            {step === 3 && (
+              <div className='flex flex-col gap-4'>
+                <p className='text-md'>
+                  Would you like AI to trim your resume down to only what's
+                  relevant to the job?
+                </p>
+                <div className='flex gap-2 justify-end'>
+                  <Button variant='outline' onClick={() => handleFinish(false)}>
+                    No, keep everything
+                  </Button>
+                  <Button disabled={loading} onClick={() => handleFinish(true)}>
+                    {loading ? "Cleaning..." : "Yes, trim it"}
+                  </Button>
+                </div>
+              </div>
+            )}
           </motion.div>
         </AnimatePresence>
-
-        <AnimatePresence mode='wait'>
-          {step === 1 && (
-            <motion.div
-              key='step1'
-              layout
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2 }}
-              className='flex flex-col gap-4'
-            >
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} />
-              <p className='text-sm text-muted-foreground'>
-                Filename: <code>{suggestedId}.resume</code>
-              </p>
-              <Button onClick={() => setStep(2)}>Next</Button>
-            </motion.div>
-          )}
-
-          {step === 2 && (
-            <motion.div
-              key='step2'
-              layout
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2 }}
-              className='flex flex-col gap-4'
-            >
-              <Textarea
-                placeholder='Paste job description from Infostud, Indeed, etc.'
-                value={jobDesc}
-                onChange={(e) => setJobDesc(e.target.value)}
-                rows={6}
-              />
-              <div className='flex gap-2 justify-end'>
-                <Button variant='outline' onClick={() => handleFinish(false)}>
-                  Skip
-                </Button>
-                <Button
-                  onClick={() => setStep(3)}
-                  disabled={jobDesc.trim().length === 0}
-                  title={
-                    jobDesc.trim().length === 0
-                      ? "Job description is required"
-                      : ""
-                  }
-                >
-                  Continue
-                </Button>
-              </div>
-            </motion.div>
-          )}
-
-          {step === 3 && (
-            <motion.div
-              key='step3'
-              layout
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2 }}
-              className='flex flex-col gap-4'
-            >
-              <p className='text-md'>
-                Would you like AI to trim your resume down to only what's
-                relevant to the job?
-              </p>
-              <div className='flex gap-2 justify-end'>
-                <Button variant='outline' onClick={() => handleFinish(false)}>
-                  No, keep everything
-                </Button>
-                <Button disabled={loading} onClick={() => handleFinish(true)}>
-                  {loading ? "Cleaning..." : "Yes, trim it"}
-                </Button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </div>
+      </motion.div>
+    </AnimatePresence>
   );
 };
 

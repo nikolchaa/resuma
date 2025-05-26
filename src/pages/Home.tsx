@@ -27,6 +27,7 @@ import {
 } from "@/lib/resumesStore";
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { open, save } from "@tauri-apps/plugin-dialog";
+import { DeleteConfirmation } from "@/components/DeleteConfirmation";
 
 export const Home = () => {
   const navigate = useNavigate();
@@ -38,12 +39,21 @@ export const Home = () => {
     listResumes().then(setResumes);
   }, []);
 
-  const handleDelete = async (id: string) => {
-    if (confirm("Are you sure you want to delete this resume?")) {
-      await deleteResume(id);
-      const updated = await listResumes();
-      setResumes(updated);
-    }
+  const [showDelete, setShowDelete] = useState(false);
+  const [targetId, setTargetId] = useState<string | null>(null);
+
+  const handleDeleteClick = (id: string) => {
+    setTargetId(id);
+    setShowDelete(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!targetId) return;
+    await deleteResume(targetId);
+    const updated = await listResumes();
+    setResumes(updated);
+    setShowDelete(false);
+    setTargetId(null);
   };
 
   const handleExport = async (id: string) => {
@@ -195,7 +205,7 @@ export const Home = () => {
                     size='icon'
                     variant='ghost'
                     className='text-destructive hover:bg-destructive/10'
-                    onClick={() => handleDelete(res.id)}
+                    onClick={() => handleDeleteClick(res.id)}
                   >
                     <Trash className='w-4 h-4' />
                   </Button>
@@ -210,6 +220,11 @@ export const Home = () => {
             </p>
           </div>
         )}
+        <DeleteConfirmation
+          open={showDelete}
+          onCancel={() => setShowDelete(false)}
+          onConfirm={confirmDelete}
+        />
       </div>
 
       <SettingsButton />
