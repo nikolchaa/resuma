@@ -64,7 +64,7 @@ export const PersonalEditor: React.FC<Props> = ({ settings, updateDraft }) => {
           className='w-2/3 text-right'
           value={settings.phone ?? ""}
           onChange={(e) => updateField("phone", e.target.value)}
-          placeholder='+381 60 123 4567'
+          placeholder='+1 (123) 456-7890'
         />
       </div>
 
