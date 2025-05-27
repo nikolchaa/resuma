@@ -15,6 +15,7 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import modelList from "@/data/models.json";
 import { updateSection } from "@/lib/store";
+import { showError, showSuccess, showWarning } from "@/lib/toastUtils";
 
 type Props = {
   settings: SettingsType["app"];
@@ -48,7 +49,7 @@ export const BasicSettings = ({
     key: keyof SettingsType["app"],
     value: string
   ) => {
-    // 1) update local React state
+    // 1) Update local React state
     setDraftSettings((prev) => ({
       ...prev,
       app: { ...prev.app, [key]: value },
@@ -58,15 +59,18 @@ export const BasicSettings = ({
       app: { ...prev.app, [key]: value },
     }));
 
-    // 2) apply to the running UI immediately
+    // 2) Apply to the running UI immediately
     if (key === "theme") setTheme(value as "light" | "dark" | "system");
     if (key === "contentSize") applyContentSizeClass(value as "md" | "lg");
 
-    // 3) persist to settings.dat
+    // 3) Persist to settings.dat
     try {
       await updateSection("app", { ...draftSettings.app, [key]: value });
     } catch (err) {
-      console.error("Failed to save app settings:", err);
+      showError(
+        "Failed to save settings",
+        (err as Error).message || "An unexpected error occurred"
+      );
     }
   };
 
@@ -77,22 +81,29 @@ export const BasicSettings = ({
         defaultPath: "settings.resuma",
       });
 
-      if (filePath) {
-        const { llm, ...rest } = draftSettings;
-        const exportData = {
-          ...rest,
-          llm: {
-            ...llm,
-            model: "",
-            runtime: "",
-          },
-        };
-        const content = JSON.stringify(exportData, null, 2);
-        // Remove the model and runtime properties from the llm object
-        await writeTextFile(filePath, content);
+      if (!filePath) {
+        showWarning("Export canceled");
+        return;
       }
+
+      const { llm, ...rest } = draftSettings;
+      const exportData = {
+        ...rest,
+        llm: {
+          ...llm,
+          model: "",
+          runtime: "",
+        },
+      };
+      const content = JSON.stringify(exportData, null, 2);
+      await writeTextFile(filePath, content);
+
+      showSuccess("Settings exported successfully", `Saved at: ${filePath}`);
     } catch (error) {
-      console.error("Export failed:", error);
+      showError(
+        "Export failed",
+        (error as Error).message || "An unexpected error occurred."
+      );
     }
   };
 
@@ -103,14 +114,19 @@ export const BasicSettings = ({
         multiple: false,
       });
 
+      if (!selected) {
+        showWarning("Import canceled");
+        return;
+      }
+
       if (typeof selected === "string") {
         const content = await readTextFile(selected);
         const parsed = JSON.parse(content);
 
         setDraftSettings((prev) => {
           const currentModelId = prev.llm.model;
-          const modelMeta = modelList.find((m) => m.name === currentModelId)!;
-          const maxGpuLayers = modelMeta.layers;
+          const modelMeta = modelList.find((m) => m.name === currentModelId);
+          const maxGpuLayers = modelMeta?.layers || prev.llm.settings.gpuLayers;
 
           const parsedSettings = {
             ...parsed,
@@ -130,9 +146,17 @@ export const BasicSettings = ({
 
           return { ...prev, ...parsedSettings };
         });
+
+        showSuccess(
+          "Settings imported successfully",
+          `Imported from: ${selected}`
+        );
       }
     } catch (error) {
-      console.error("Import failed:", error);
+      showError(
+        "Import failed",
+        (error as Error).message || "An unexpected error occurred."
+      );
     }
   };
 

@@ -83,8 +83,6 @@ export const Editor = () => {
     const fetchPaperSize = async () => {
       const settings = await getSection<SettingsType["app"]>("app");
       const format = settings?.paperSize === "US" ? "LETTER" : "A4";
-      console.log("Paper size from settings:", format);
-      console.log("settings:", settings);
       setPdfFormat(format);
     };
 
@@ -109,7 +107,9 @@ export const Editor = () => {
       pdf(<ResumePreview data={draft} format={pdfFormat} />)
         .toBlob()
         .then((blob) => setPdfUrl(URL.createObjectURL(blob)))
-        .catch((err) => console.error("PDF generation failed:", err));
+        .catch((err) =>
+          showError("Failed to generate PDF", (err as Error).message)
+        );
     }
   }, [draft, pdfFormat]);
 
@@ -159,7 +159,6 @@ export const Editor = () => {
 
       showSuccess("PDF exported successfully", filePath);
     } catch (error) {
-      console.error("Export failed:", error);
       showError(
         "Export failed",
         (error as Error).message || "Something went wrong"
@@ -188,7 +187,9 @@ export const Editor = () => {
               <Document
                 key={pdfUrl}
                 file={pdfUrl}
-                onLoadError={(err) => console.error(err)}
+                onLoadError={(err) =>
+                  showError("Failed to load document", (err as Error).message)
+                }
                 onLoadSuccess={({ numPages: n }) => setNumPages(n)}
               >
                 {Array.from(new Array(numPages), (_, index) => (

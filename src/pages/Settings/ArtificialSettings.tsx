@@ -41,6 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { showError } from "@/lib/toastUtils";
 
 type Props = {
   llm: SettingsType["llm"];
@@ -81,7 +82,10 @@ export const ArtificialSettings = ({
 
       return folders;
     } catch (error) {
-      console.error("Error reading downloaded models:", error);
+      showError(
+        "Error reading downloaded models",
+        (error as Error).message || "An unexpected error occurred"
+      );
       return [];
     }
   };
@@ -98,7 +102,10 @@ export const ArtificialSettings = ({
 
       return folders;
     } catch (error) {
-      console.error("Error reading downloaded models:", error);
+      showError(
+        "Error reading downloaded runtimes",
+        (error as Error).message || "An unexpected error occurred"
+      );
       return [];
     }
   };
@@ -165,7 +172,10 @@ export const ArtificialSettings = ({
         return updated;
       });
     } catch (error) {
-      console.error("Failed to delete model:", error);
+      showError(
+        "Failed to delete model",
+        (error as Error).message || "An unexpected error occurred"
+      );
     }
   };
 
@@ -182,7 +192,10 @@ export const ArtificialSettings = ({
         return updated;
       });
     } catch (error) {
-      console.error("Failed to delete model:", error);
+      showError(
+        "Failed to delete runtime",
+        (error as Error).message || "An unexpected error occurred"
+      );
     }
   };
 
@@ -209,7 +222,10 @@ export const ArtificialSettings = ({
         }));
       },
       onError: (error) => {
-        console.error(`Download error for ${safeName}: ${error}`);
+        showError(
+          `Download error for ${safeName}`,
+          error || "An unexpected error occurred"
+        );
         setDownloadStatusMap((prev) => ({
           ...prev,
           [safeName]: {
@@ -224,55 +240,59 @@ export const ArtificialSettings = ({
   });
 
   getRuntimes(system).forEach((entry) => {
-    useDownloadListeners(entry.runtime.name, {
+    const name = entry.runtime.name;
+    if (!name) return;
+
+    useDownloadListeners(name, {
       onProgress: (progress) => {
-        if (!entry.runtime.name) return;
         setDownloadStatusMap((prev) => ({
           ...prev,
-          [entry.runtime.name]: {
+          [name]: {
             state: "downloading",
             progress,
           },
         }));
       },
       onComplete: () => {
-        if (!entry.runtime.name) return;
         setDownloadStatusMap((prev) => ({
           ...prev,
-          [entry.runtime.name]: {
-            ...prev[entry.runtime.name],
+          [name]: {
+            ...prev[name],
             state: "extracting",
           },
         }));
       },
       onError: (error) => {
-        if (!entry.runtime.name) return;
-        console.error(`Download error for ${entry.runtime.name}: ${error}`);
+        showError(
+          `Download error for ${name}`,
+          error || "An unexpected error occurred"
+        );
         setDownloadStatusMap((prev) => ({
           ...prev,
-          [entry.runtime.name]: {
-            ...prev[entry.runtime.name],
+          [name]: {
+            ...prev[name],
             state: "error",
           },
         }));
       },
       onExtractComplete: () => {
-        if (!entry.runtime.name) return;
         setDownloadStatusMap((prev) => ({
           ...prev,
-          [entry.runtime.name]: {
+          [name]: {
             state: "ready",
             progress: 100,
           },
         }));
       },
       onExtractError: (error) => {
-        if (!entry.runtime.name) return;
-        console.error(`Extraction error for ${entry.runtime.name}: ${error}`);
+        showError(
+          `Extraction error for ${name}`,
+          error || "An unexpected error occurred"
+        );
         setDownloadStatusMap((prev) => ({
           ...prev,
-          [entry.runtime.name]: {
-            ...prev[entry.runtime.name],
+          [name]: {
+            ...prev[name],
             state: "error",
           },
         }));
@@ -302,8 +322,12 @@ export const ArtificialSettings = ({
         noExtract: assetType === "model",
         assetType,
       });
-    } catch (error) {
-      console.error(`Error downloading ${assetName}:`, error);
+    } catch (err) {
+      showError(
+        `Error downloading ${assetName}`,
+        (err as Error).message || "An unexpected error occurred"
+      );
+
       setDownloadStatusMap((prev) => ({
         ...prev,
         [assetName]: {
@@ -567,7 +591,6 @@ export const ArtificialSettings = ({
                     entry.model.download,
                     "model"
                   );
-                  console.log("download: ", entry.model.download);
                 }}
                 className='flex-grow'
               >
