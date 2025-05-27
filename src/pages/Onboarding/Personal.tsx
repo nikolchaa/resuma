@@ -74,7 +74,7 @@ const Personal = () => {
           <Input
             value={state.personal.phone || ""}
             onChange={(e) => update("personal", { phone: e.target.value })}
-            placeholder='+381 60 123 4567'
+            placeholder='+1 (123) 456-7890'
           />
         </div>
 
