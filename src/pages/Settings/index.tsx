@@ -77,17 +77,25 @@ export default function Settings() {
       .then((v) => {
         setVersion(v);
       })
-      .catch(console.error);
+      .catch((error) =>
+        showError("Failed to fetch app version", (error as Error).message)
+      );
+
     getIdentifier()
       .then((id) => {
         setIdentifier(id);
       })
-      .catch(console.error);
+      .catch((error) =>
+        showError("Failed to fetch identifier", (error as Error).message)
+      );
+
     getTauriVersion()
       .then((v) => {
         setTauriVersion(v);
       })
-      .catch(console.error);
+      .catch((error) =>
+        showError("Failed to fetch Tauri version", (error as Error).message)
+      );
   }, []);
 
   const updateSettings = <K extends keyof SettingsType>(

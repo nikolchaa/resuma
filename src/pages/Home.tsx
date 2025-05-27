@@ -28,7 +28,7 @@ import {
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { DeleteConfirmation } from "@/components/DeleteConfirmation";
-import { toast } from "sonner";
+import { showError, showSuccess, showWarning } from "@/lib/toastUtils";
 
 export const Home = () => {
   const navigate = useNavigate();
@@ -61,7 +61,7 @@ export const Home = () => {
     try {
       const resume = await loadResume(id);
       if (!resume) {
-        toast.error("Resume not found");
+        showError("Resume not found");
         return;
       }
 
@@ -71,21 +71,19 @@ export const Home = () => {
       });
 
       if (!filePath) {
-        toast.warning("Export canceled");
+        showWarning("Export canceled");
         return;
       }
 
       const content = JSON.stringify(resume, null, 2);
       await writeTextFile(filePath, content);
 
-      toast.success("Resume exported successfully", {
-        description: `Saved at: ${filePath}`,
-      });
+      showSuccess("Resume exported successfully", `Saved at: ${filePath}`);
     } catch (error) {
-      console.error("Export failed:", error);
-      toast.error("Export failed", {
-        description: (error as Error).message || "An error occurred",
-      });
+      showError(
+        "Export failed",
+        (error as Error).message || "An unexpected error occurred."
+      );
     }
   };
 
@@ -96,26 +94,32 @@ export const Home = () => {
         multiple: false,
       });
 
-      if (typeof selected === "string") {
-        const raw = await readTextFile(selected);
-        const parsed = JSON.parse(raw) as ResumeData;
-
-        const resumeToSave: ResumeData = {
-          id: parsed.id,
-          title: parsed.title || "Imported Resume",
-          updated: new Date().toISOString(),
-          image:
-            parsed.image || "https://placehold.co/210x297?text=Imported+Resume",
-          content: parsed.content,
-          jobDesc: parsed.jobDesc ?? undefined,
-        };
-
-        await saveResume(resumeToSave);
-        const navigate = useNavigate();
-        navigate(`/editor/${resumeToSave.id}`);
+      if (!selected) {
+        showWarning("Import canceled");
+        return;
       }
+
+      const raw = await readTextFile(selected);
+      const parsed = JSON.parse(raw) as ResumeData;
+
+      const resumeToSave: ResumeData = {
+        id: parsed.id,
+        title: parsed.title || "Imported Resume",
+        updated: new Date().toISOString(),
+        image:
+          parsed.image || "https://placehold.co/210x297?text=Imported+Resume",
+        content: parsed.content,
+        jobDesc: parsed.jobDesc ?? undefined,
+      };
+
+      await saveResume(resumeToSave);
+      showSuccess(
+        "Resume imported successfully",
+        `Title: ${resumeToSave.title}`
+      );
+      navigate(`/editor/${resumeToSave.id}`);
     } catch (err) {
-      console.error("Failed to import resume:", err);
+      showError("Failed to import resume", (err as Error).message);
     }
   };
 

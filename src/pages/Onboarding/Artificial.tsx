@@ -48,6 +48,7 @@ import {
   selectRecommendedModel,
 } from "@/lib/selectRecommendedModel";
 import { useOnboarding } from "@/contexts/OnboardingContext";
+import { showError } from "@/lib/toastUtils";
 
 const Artificial = () => {
   const { state, update, apply, exists } = useOnboarding();
@@ -188,7 +189,7 @@ const Artificial = () => {
     },
     onError: (error) => {
       if (!runtime?.name) return;
-      console.error(`Download error for ${runtime.name}: ${error}`);
+      showError(`Download error for ${runtime.name}`, error);
       setDownloadStatusMap((prev) => ({
         ...prev,
         [runtime.name]: {
@@ -209,7 +210,7 @@ const Artificial = () => {
     },
     onExtractError: (error) => {
       if (!runtime?.name) return;
-      console.error(`Extraction error for ${runtime.name}: ${error}`);
+      showError(`Extraction error for ${runtime.name}`, error);
       setDownloadStatusMap((prev) => ({
         ...prev,
         [runtime.name]: {
@@ -222,41 +223,53 @@ const Artificial = () => {
 
   useDownloadListeners(model?.model.name.replace(/\./g, "_"), {
     onProgress: (progress) => {
-      if (!model?.model.name.replace(/\./g, "_")) return;
+      const safeName = model?.model.name.replace(/\./g, "_");
+      if (!safeName) return;
       setDownloadStatusMap((prev) => ({
         ...prev,
-        [model.model.name.replace(/\./g, "_")]: {
+        [safeName]: {
           state: "downloading",
           progress,
         },
       }));
     },
     onComplete: () => {
-      if (!model?.model.name.replace(/\./g, "_")) return;
+      const safeName = model?.model.name.replace(/\./g, "_");
+      if (!safeName) return;
       setDownloadStatusMap((prev) => ({
         ...prev,
-        [model.model.name.replace(/\./g, "_")]: {
-          ...prev[model.model.name.replace(/\./g, "_")],
+        [safeName]: {
+          ...prev[safeName],
           state: "ready",
           progress: 100,
         },
       }));
     },
     onError: (error) => {
-      if (!model?.model.name.replace(/\./g, "_")) return;
-      console.error(
-        `Download error for ${model.model.name.replace(/\./g, "_")}: ${error}`
-      );
+      const safeName = model?.model.name.replace(/\./g, "_");
+      if (!safeName) return;
+      showError(`Download error for ${safeName}`, error);
       setDownloadStatusMap((prev) => ({
         ...prev,
-        [model.model.name.replace(/\./g, "_")]: {
-          ...prev[model.model.name.replace(/\./g, "_")],
+        [safeName]: {
+          ...prev[safeName],
           state: "error",
         },
       }));
     },
     onExtractComplete: () => {},
-    onExtractError: () => {},
+    onExtractError: (error) => {
+      const safeName = model?.model.name.replace(/\./g, "_");
+      if (!safeName) return;
+      showError(`Extraction error for ${safeName}`, error);
+      setDownloadStatusMap((prev) => ({
+        ...prev,
+        [safeName]: {
+          ...prev[safeName],
+          state: "error",
+        },
+      }));
+    },
   });
 
   const handleDownloadClick = async (
@@ -282,7 +295,7 @@ const Artificial = () => {
         assetType,
       });
     } catch (error) {
-      console.error(`Error downloading ${assetName}:`, error);
+      showError(`Error downloading ${assetName}`, (error as Error).message);
       setDownloadStatusMap((prev) => ({
         ...prev,
         [assetName]: {
