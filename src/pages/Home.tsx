@@ -28,6 +28,7 @@ import {
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { DeleteConfirmation } from "@/components/DeleteConfirmation";
+import { toast } from "sonner";
 
 export const Home = () => {
   const navigate = useNavigate();
@@ -59,20 +60,32 @@ export const Home = () => {
   const handleExport = async (id: string) => {
     try {
       const resume = await loadResume(id);
-      if (!resume) return;
+      if (!resume) {
+        toast.error("Resume not found");
+        return;
+      }
 
       const filePath = await save({
         defaultPath: `${resume.id}.resume`,
         filters: [{ name: "Resume File", extensions: ["resume"] }],
       });
 
-      if (filePath) {
-        const content = JSON.stringify(resume, null, 2);
-        await writeTextFile(filePath, content);
-        alert("Resume exported successfully.");
+      if (!filePath) {
+        toast.warning("Export canceled");
+        return;
       }
+
+      const content = JSON.stringify(resume, null, 2);
+      await writeTextFile(filePath, content);
+
+      toast.success("Resume exported successfully", {
+        description: `Saved at: ${filePath}`,
+      });
     } catch (error) {
       console.error("Export failed:", error);
+      toast.error("Export failed", {
+        description: (error as Error).message || "An error occurred",
+      });
     }
   };
 

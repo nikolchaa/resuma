@@ -6,6 +6,7 @@ import { applyContentSizeClass } from "./lib/ui";
 import { useTheme } from "./contexts/ThemeContext";
 import { invoke } from "@tauri-apps/api/core";
 import { SettingsType } from "./contexts/OnboardingContext";
+import { showError } from "./lib/toastUtils";
 
 export default function App() {
   const location = useLocation();
@@ -44,26 +45,11 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const path = location.pathname;
     let details = "Idling";
     let state = "Home";
-    let smallImage = "homeblack";
-    let smallText = "Home";
 
-    if (path.includes("/editor")) {
-      details = "Editing a resume";
-      state = "Editor";
-      smallImage = "writingblack";
-      smallText = "Editor";
-    } else if (path.includes("/new")) {
-      details = "Creating a new resume";
-      state = "New Resume";
-      smallImage = "writingblack";
-      smallText = "Editor";
-    }
-
-    invoke("set_activity", { details, state, smallImage, smallText }).catch(
-      console.error
+    invoke("set_activity", { details, state }).catch((error) =>
+      showError("Failed to update Discord presence", (error as Error).message)
     );
   }, [location.pathname]);
 

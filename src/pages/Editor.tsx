@@ -18,6 +18,8 @@ import { writeFile } from "@tauri-apps/plugin-fs";
 import { Sidebar } from "./Editor/Sidebar";
 import { getSection } from "@/lib/store";
 import { SettingsType } from "@/contexts/OnboardingContext";
+import { showError, showSuccess, showWarning } from "@/lib/toastUtils";
+import { invoke } from "@tauri-apps/api/core";
 pdfjs.GlobalWorkerOptions.workerSrc = worker;
 
 export const Editor = () => {
@@ -49,6 +51,33 @@ export const Editor = () => {
     await page.render({ canvasContext: context, viewport }).promise;
     return canvas.toDataURL("image/png");
   }
+
+  useEffect(() => {
+    const updateDiscordPresence = async () => {
+      let details = "Editing a resume";
+      let state = "Editor";
+
+      if (location.pathname.startsWith("/editor")) {
+        details = draft?.title ? `Editing ${draft.title}` : "Editing a resume";
+      } else if (location.pathname.startsWith("/new")) {
+        details = "Creating a new resume";
+      }
+
+      try {
+        await invoke("set_activity", {
+          details,
+          state,
+        });
+      } catch (error) {
+        showError(
+          "Failed to update Discord presence",
+          (error as Error).message
+        );
+      }
+    };
+
+    updateDiscordPresence();
+  }, [location.pathname, draft?.title]);
 
   useEffect(() => {
     const fetchPaperSize = async () => {
@@ -116,18 +145,25 @@ export const Editor = () => {
         defaultPath: `${draft.title || "resume"}.pdf`,
       });
 
-      if (filePath) {
-        const blob = await pdf(
-          <ResumePreview data={draft} format={pdfFormat} />
-        ).toBlob();
-        console.log(pdfFormat, "PDF format used for export");
-        const arrayBuffer = await blob.arrayBuffer();
-        const uint8Array = new Uint8Array(arrayBuffer);
-        await writeFile(filePath, uint8Array);
-        console.log("PDF saved at:", filePath);
+      if (!filePath) {
+        showWarning("Export canceled", "No file was saved");
+        return;
       }
+
+      const blob = await pdf(
+        <ResumePreview data={draft} format={pdfFormat} />
+      ).toBlob();
+      const arrayBuffer = await blob.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+      await writeFile(filePath, uint8Array);
+
+      showSuccess("PDF exported successfully", filePath);
     } catch (error) {
       console.error("Export failed:", error);
+      showError(
+        "Export failed",
+        (error as Error).message || "Something went wrong"
+      );
     }
   };
 
