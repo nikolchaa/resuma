@@ -4,7 +4,7 @@ import { getSection, updateSection } from "@/lib/store";
 export type SettingsType = {
   app: {
     theme: "light" | "dark" | "system";
-    paperSize: "A4" | "US Letter";
+    paperSize: "A4" | "US";
     language: "en";
     contentSize: "md" | "lg";
   };

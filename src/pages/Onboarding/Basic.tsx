@@ -70,7 +70,7 @@ const Basic = () => {
           <Select
             value={paperSize}
             onValueChange={(v) =>
-              update("app", { paperSize: v as "A4" | "US Letter" })
+              update("app", { paperSize: v as "A4" | "US" })
             }
           >
             <SelectTrigger className='w-2/3'>

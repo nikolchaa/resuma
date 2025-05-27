@@ -15,6 +15,8 @@ import worker from "pdfjs-dist/build/pdf.worker?url";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeFile } from "@tauri-apps/plugin-fs";
 import { Sidebar } from "./Editor/Sidebar";
+import { getSection } from "@/lib/store";
+import { SettingsType } from "@/contexts/OnboardingContext";
 pdfjs.GlobalWorkerOptions.workerSrc = worker;
 
 export const Editor = () => {
@@ -25,6 +27,20 @@ export const Editor = () => {
   const [draft, setDraft] = useState<ResumeData | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const isNew = location.pathname === "/new";
+
+  const [pdfFormat, setPdfFormat] = useState<"A4" | "LETTER">("A4"); // Default
+
+  useEffect(() => {
+    const fetchPaperSize = async () => {
+      const settings = await getSection<SettingsType["app"]>("app");
+      const format = settings?.paperSize === "US" ? "LETTER" : "A4";
+      console.log("Paper size from settings:", format);
+      console.log("settings:", settings);
+      setPdfFormat(format);
+    };
+
+    fetchPaperSize();
+  }, []);
 
   useEffect(() => {
     if (!isNew && id) {
@@ -41,12 +57,12 @@ export const Editor = () => {
 
   useEffect(() => {
     if (draft) {
-      pdf(<ResumePDFDocument data={draft} />)
+      pdf(<ResumePDFDocument data={draft} format={pdfFormat} />)
         .toBlob()
         .then((blob) => setPdfUrl(URL.createObjectURL(blob)))
         .catch((err) => console.error("PDF generation failed:", err));
     }
-  }, [draft]);
+  }, [draft, pdfFormat]);
 
   const handleSave = async () => {
     if (draft) {
@@ -78,7 +94,10 @@ export const Editor = () => {
       });
 
       if (filePath) {
-        const blob = await pdf(<ResumePDFDocument data={draft} />).toBlob();
+        const blob = await pdf(
+          <ResumePDFDocument data={draft} format={pdfFormat} />
+        ).toBlob();
+        console.log(pdfFormat, "PDF format used for export");
         const arrayBuffer = await blob.arrayBuffer();
         const uint8Array = new Uint8Array(arrayBuffer);
         await writeFile(filePath, uint8Array);
