@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use tauri::async_runtime::spawn;
 use tauri::Emitter;
 use zip::ZipArchive;
+use tauri_plugin_prevent_default::{Builder as PreventDefaultBuilder, PlatformOptions};
 
 mod rpc;
 use rpc::{set_activity, start_rpc, stop_rpc};
@@ -161,12 +162,20 @@ pub fn run() {
 
     start_rpc(client_id).expect("Failed to start Discord RPC");
 
+    let prevent_default_plugin = PreventDefaultBuilder::new()
+        .platform(PlatformOptions {
+            general_autofill: false,
+            password_autosave: false,
+        })
+        .build();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_hwinfo::init())
+        .plugin(prevent_default_plugin)
         .invoke_handler(tauri::generate_handler![
             download_and_extract,
             check_asset_ready,
