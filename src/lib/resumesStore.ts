@@ -24,7 +24,10 @@ export interface ResumeContent {
     fullName: string;
     email: string;
     location: string;
-    socials: string[];
+    phone?: string;
+    website?: string;
+    linkedin?: string;
+    github?: string;
   };
   education: {
     school: string;

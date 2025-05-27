@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MinusCircle, PlusCircle, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 
@@ -20,24 +20,6 @@ const Personal = () => {
     state.personal.fullName.trim() !== "" &&
     state.personal.email.trim() !== "" &&
     state.personal.location.trim() !== "";
-
-  const socials = state.personal.socials ?? [];
-
-  const updateSocials = (index: number, value: string) => {
-    const updated = [...socials];
-    updated[index] = value;
-    update("personal", { socials: updated });
-  };
-
-  const addSocial = () => {
-    update("personal", { socials: [...socials, ""] });
-  };
-
-  const removeSocial = (index: number) => {
-    const updated = [...socials];
-    updated.splice(index, 1);
-    update("personal", { socials: updated });
-  };
 
   return (
     <Card className='w-full max-w-lg mx-auto'>
@@ -86,35 +68,44 @@ const Personal = () => {
           />
         </div>
 
-        {/* Links */}
+        {/* Phone */}
         <div className='flex flex-col gap-2'>
-          <Label>
-            Links <span className='text-muted-foreground'>(optional)</span>
-          </Label>
-          {socials.map((link, index) => (
-            <div key={index} className='flex gap-2'>
-              <Input
-                value={link}
-                onChange={(e) => updateSocials(index, e.target.value)}
-                placeholder='https://linkedin.com/in/something'
-              />
-              <Button
-                variant='ghost'
-                className='text-destructive'
-                onClick={() => removeSocial(index)}
-              >
-                <MinusCircle className='h-4 w-4' />
-              </Button>
-            </div>
-          ))}
-          <Button
-            variant='ghost'
-            className='text-primary w-fit'
-            onClick={addSocial}
-          >
-            <PlusCircle className='h-4 w-4 mr-1' />
-            Add Links
-          </Button>
+          <Label>Phone</Label>
+          <Input
+            value={state.personal.phone || ""}
+            onChange={(e) => update("personal", { phone: e.target.value })}
+            placeholder='+381 60 123 4567'
+          />
+        </div>
+
+        {/* LinkedIn */}
+        <div className='flex flex-col gap-2'>
+          <Label>LinkedIn</Label>
+          <Input
+            value={state.personal.linkedin || ""}
+            onChange={(e) => update("personal", { linkedin: e.target.value })}
+            placeholder='https://linkedin.com/in/username'
+          />
+        </div>
+
+        {/* GitHub */}
+        <div className='flex flex-col gap-2'>
+          <Label>GitHub</Label>
+          <Input
+            value={state.personal.github || ""}
+            onChange={(e) => update("personal", { github: e.target.value })}
+            placeholder='https://github.com/username'
+          />
+        </div>
+
+        {/* Website */}
+        <div className='flex flex-col gap-2'>
+          <Label>Website</Label>
+          <Input
+            value={state.personal.website || ""}
+            onChange={(e) => update("personal", { website: e.target.value })}
+            placeholder='https://yourwebsite.com'
+          />
         </div>
 
         {/* Continue */}
