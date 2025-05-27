@@ -23,7 +23,10 @@ export type SettingsType = {
     fullName: string;
     email: string;
     location: string;
-    socials: string[];
+    phone?: string;
+    website?: string;
+    linkedin?: string;
+    github?: string;
   };
   education: {
     school: string;
@@ -34,7 +37,7 @@ export type SettingsType = {
       from: string;
       to?: string;
     };
-    courses?: string[]; // ← added field for relevant coursework
+    courses?: string[];
   }[];
   experience: {
     jobTitle: string;
@@ -50,9 +53,9 @@ export type SettingsType = {
   projects: {
     name: string;
     link?: string;
-    date: { from: string }; // e.g. "Apr 2024"
+    date: { from: string };
     description: string;
-    technologies: string[]; // optional tags/keywords
+    technologies: string[];
   }[];
   skills: {
     category: string;
@@ -61,7 +64,7 @@ export type SettingsType = {
   awards: {
     title: string;
     organizer: string;
-    date: { from: string }; // e.g. "Apr 2024"
+    date: { from: string };
     description: string;
     location: string;
   }[];
@@ -89,7 +92,10 @@ export const defaultState: SettingsType = {
     fullName: "",
     email: "",
     location: "",
-    socials: [],
+    phone: undefined,
+    website: undefined,
+    linkedin: undefined,
+    github: undefined,
   },
   education: [
     {

@@ -1,7 +1,5 @@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { MinusCircle, PlusCircle } from "lucide-react";
 import { SettingsType } from "@/contexts/OnboardingContext";
 
 type Props = {
@@ -18,23 +16,6 @@ export const PersonalSettings = ({ settings, updateSettings }: Props) => {
     value: SettingsType["personal"][K]
   ) => {
     updateSettings("personal", { [key]: value });
-  };
-
-  const updateSocial = (index: number, value: string) => {
-    const socials = [...(settings.socials ?? [])];
-    socials[index] = value;
-    updateField("socials", socials);
-  };
-
-  const addSocial = () => {
-    const socials = [...(settings.socials ?? []), ""];
-    updateField("socials", socials);
-  };
-
-  const removeSocial = (index: number) => {
-    const socials = [...(settings.socials ?? [])];
-    socials.splice(index, 1);
-    updateField("socials", socials);
   };
 
   return (
@@ -73,35 +54,48 @@ export const PersonalSettings = ({ settings, updateSettings }: Props) => {
         />
       </div>
 
-      {/* Social Links */}
-      <div className='flex flex-col gap-2'>
-        <Label>
-          Links <span className='text-muted-foreground'>(optional)</span>
-        </Label>
-        {(settings.socials ?? []).map((link, index) => (
-          <div key={index} className='flex items-center gap-2'>
-            <Input
-              value={link}
-              onChange={(e) => updateSocial(index, e.target.value)}
-              placeholder='https://linkednin.com/in/someone'
-              className='w-full'
-            />
-            <Button
-              variant='ghost'
-              className='text-destructive'
-              onClick={() => removeSocial(index)}
-            >
-              <MinusCircle className='h-4 w-4' />
-            </Button>
-          </div>
-        ))}
-        <Button
-          variant='ghost'
-          className='text-primary w-fit'
-          onClick={addSocial}
-        >
-          <PlusCircle className='h-4 w-4 mr-1' /> Add Link
-        </Button>
+      {/* Phone */}
+      <div className='flex items-center justify-between'>
+        <Label className='w-1/3'>Phone</Label>
+        <Input
+          className='w-2/3 text-right'
+          value={settings.phone || ""}
+          onChange={(e) => updateField("phone", e.target.value)}
+          placeholder='+1 (123) 456-7890'
+        />
+      </div>
+
+      {/* LinkedIn */}
+      <div className='flex items-center justify-between'>
+        <Label className='w-1/3'>LinkedIn</Label>
+        <Input
+          className='w-2/3 text-right'
+          value={settings.linkedin || ""}
+          onChange={(e) => updateField("linkedin", e.target.value)}
+          placeholder='https://linkedin.com/in/username'
+        />
+      </div>
+
+      {/* GitHub */}
+      <div className='flex items-center justify-between'>
+        <Label className='w-1/3'>GitHub</Label>
+        <Input
+          className='w-2/3 text-right'
+          value={settings.github || ""}
+          onChange={(e) => updateField("github", e.target.value)}
+          placeholder='https://github.com/username'
+        />
+      </div>
+
+      {/* Website */}
+      <div className='flex items-center justify-between'>
+        <Label className='w-1/3'>Website</Label>
+        <Input
+          className='w-2/3 text-right'
+          value={settings.website || ""}
+          onChange={(e) => updateField("website", e.target.value)}
+          placeholder='https://yourwebsite.com'
+        />
       </div>
     </div>
   );

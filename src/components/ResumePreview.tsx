@@ -39,13 +39,8 @@ const styles = StyleSheet.create({
   },
   contact: {
     fontSize: 10,
-    color: "#6b7280",
-    marginBottom: 8,
-  },
-  link: {
-    fontSize: 10,
-    color: "#6b7280",
-    marginBottom: 2,
+    color: "#3f434c",
+    marginBottom: 4,
   },
   sectionHeader: {
     fontSize: 12,
@@ -71,7 +66,7 @@ const styles = StyleSheet.create({
   },
   small: {
     fontSize: 9,
-    color: "#6b7280",
+    color: "#3f434c",
   },
   subItem: {
     marginBottom: 8,
@@ -90,20 +85,30 @@ export const ResumePreview = ({
       <Page size={format ?? "A4"} style={styles.page}>
         {/* Header */}
         {data.content?.personal && (
-          <View style={styles.row}>
-            <View>
-              <Text style={styles.name}>{data.content.personal.fullName}</Text>
+          <View>
+            <Text style={styles.name}>{data.content.personal.fullName}</Text>
+            <Text style={styles.contact}>
+              {[
+                data.content.personal.email,
+                data.content.personal.location,
+                data.content.personal.phone,
+              ]
+                .filter((item) => item && item.trim() !== "")
+                .join(" | ")}
+            </Text>
+            {(data.content.personal.linkedin ||
+              data.content.personal.github ||
+              data.content.personal.website) && (
               <Text style={styles.contact}>
-                {data.content.personal.email} | {data.content.personal.location}
+                {[
+                  data.content.personal.linkedin,
+                  data.content.personal.github,
+                  data.content.personal.website,
+                ]
+                  .filter((item) => item && item.trim() !== "")
+                  .join(" | ")}
               </Text>
-            </View>
-            <View>
-              {data.content.personal.socials.map((social) => (
-                <Text key={social} style={styles.link}>
-                  {social}
-                </Text>
-              ))}
-            </View>
+            )}
           </View>
         )}
 
@@ -162,26 +167,17 @@ export const ResumePreview = ({
             {data.content.projects.map((proj, idx) => (
               <View key={idx} style={styles.subItem}>
                 <Text style={styles.bold}>{proj.name}</Text>
-                {proj.link && <Text style={styles.small}>{proj.link}</Text>}
+                {proj.link && (
+                  <Text style={styles.small}>
+                    {proj.link} {proj.date.from && `| ${proj.date.from}`}
+                  </Text>
+                )}
                 <Text style={styles.text}>{proj.description}</Text>
                 {proj.technologies && proj.technologies.length > 0 && (
                   <Text style={styles.small}>
                     Tech: {proj.technologies.join(", ")}
                   </Text>
                 )}
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* Skills */}
-        {data.content?.skills && data.content.skills.length > 0 && (
-          <View>
-            <Text style={styles.sectionHeader}>Skills</Text>
-            {data.content.skills.map((group, idx) => (
-              <View key={idx} style={styles.subItem}>
-                <Text style={styles.bold}>{group.category}</Text>
-                <Text style={styles.small}>{group.items.join(", ")}</Text>
               </View>
             ))}
           </View>
@@ -203,6 +199,19 @@ export const ResumePreview = ({
                 {award.description && (
                   <Text style={styles.text}>{award.description}</Text>
                 )}
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Skills */}
+        {data.content?.skills && data.content.skills.length > 0 && (
+          <View>
+            <Text style={styles.sectionHeader}>Skills</Text>
+            {data.content.skills.map((group, idx) => (
+              <View key={idx} style={styles.subItem}>
+                <Text style={styles.bold}>{group.category}</Text>
+                <Text style={styles.small}>{group.items.join(", ")}</Text>
               </View>
             ))}
           </View>
