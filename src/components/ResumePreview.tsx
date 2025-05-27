@@ -25,7 +25,7 @@ Font.register({
 
 const styles = StyleSheet.create({
   page: {
-    padding: 40,
+    padding: 48,
     fontSize: 11,
     fontFamily: "Figtree",
     backgroundColor: "#ffffff",
