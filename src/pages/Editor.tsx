@@ -5,9 +5,10 @@ import { ResumeData } from "@/lib/resumesStore";
 import { ResumeWizard } from "@/components/ResumeWizard";
 import { Download, Minus, Plus, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ResumePDFDocument } from "@/components/ResumePreview";
+import { ResumePreview } from "@/components/ResumePreview";
 import { pdf } from "@react-pdf/renderer";
 
+import { pdf as pdfRenderer } from "@react-pdf/renderer";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
@@ -29,6 +30,25 @@ export const Editor = () => {
   const isNew = location.pathname === "/new";
 
   const [pdfFormat, setPdfFormat] = useState<"A4" | "LETTER">("A4"); // Default
+
+  async function generateThumbnail(data: ResumeData): Promise<string> {
+    const pdfBlob = await pdfRenderer(
+      <ResumePreview data={data} format='A4' />
+    ).toBlob();
+    const pdf = await pdfjs.getDocument({
+      data: await pdfBlob.arrayBuffer(),
+    }).promise;
+    const page = await pdf.getPage(1);
+    const viewport = page.getViewport({ scale: 1 });
+
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d")!;
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+
+    await page.render({ canvasContext: context, viewport }).promise;
+    return canvas.toDataURL("image/png");
+  }
 
   useEffect(() => {
     const fetchPaperSize = async () => {
@@ -57,7 +77,7 @@ export const Editor = () => {
 
   useEffect(() => {
     if (draft) {
-      pdf(<ResumePDFDocument data={draft} format={pdfFormat} />)
+      pdf(<ResumePreview data={draft} format={pdfFormat} />)
         .toBlob()
         .then((blob) => setPdfUrl(URL.createObjectURL(blob)))
         .catch((err) => console.error("PDF generation failed:", err));
@@ -66,9 +86,12 @@ export const Editor = () => {
 
   const handleSave = async () => {
     if (draft) {
+      const thumbnail = await generateThumbnail(draft);
+
       const updatedDraft = {
         ...draft,
-        updated: new Date().toISOString(), // ISO format for easy handling
+        updated: new Date().toISOString(),
+        image: thumbnail, // Update image field with generated thumbnail
       };
 
       await saveResume(updatedDraft);
@@ -95,7 +118,7 @@ export const Editor = () => {
 
       if (filePath) {
         const blob = await pdf(
-          <ResumePDFDocument data={draft} format={pdfFormat} />
+          <ResumePreview data={draft} format={pdfFormat} />
         ).toBlob();
         console.log(pdfFormat, "PDF format used for export");
         const arrayBuffer = await blob.arrayBuffer();
@@ -124,7 +147,7 @@ export const Editor = () => {
       {/* PDF Preview */}
       <div className='w-full h-full bg-secondary dark:bg-background text-black overflow-auto'>
         <div className='flex'>
-          {pdfUrl ? (
+          {pdfUrl && !isNew && (
             <div className='py-20 px-8 xl:px-20 mx-auto'>
               <Document
                 key={pdfUrl}
@@ -148,8 +171,6 @@ export const Editor = () => {
                 ))}
               </Document>
             </div>
-          ) : (
-            <div className='text-gray-500 mt-40'>Generating preview…</div>
           )}
 
           <div className='absolute bottom-8 left-[calc(calc(100vw/2)+calc(28rem/2))] -translate-x-1/2 bg-background border shadow-sm rounded-lg flex items-center gap-2 p-2 z-30 text-foreground'>
@@ -188,7 +209,7 @@ export const Editor = () => {
       </div>
 
       {/* Resume Wizard */}
-      {isNew && <ResumeWizard />}
+      {isNew && <ResumeWizard generateThumbnail={generateThumbnail} />}
     </div>
   );
 };

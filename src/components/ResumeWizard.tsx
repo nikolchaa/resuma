@@ -13,13 +13,11 @@ import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import Spinner from "@/assets/infinite-spinner.svg?react";
 
-import { pdf as pdfRenderer } from "@react-pdf/renderer";
-import { ResumePDFDocument } from "./ResumePreview";
-import * as pdfjsLib from "pdfjs-dist";
-import workerSrc from "pdfjs-dist/build/pdf.worker?url";
-pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
+type ResumeWizardProps = {
+  generateThumbnail: (data: ResumeData) => Promise<string>;
+};
 
-export const ResumeWizard = () => {
+export const ResumeWizard = ({ generateThumbnail }: ResumeWizardProps) => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [title, setTitle] = useState("Untitled");
@@ -37,25 +35,6 @@ export const ResumeWizard = () => {
     "Skills",
     "Awards",
   ];
-
-  async function generateThumbnail(data: ResumeData): Promise<string> {
-    const pdfBlob = await pdfRenderer(
-      <ResumePDFDocument data={data} format='A4' />
-    ).toBlob();
-    const pdf = await pdfjsLib.getDocument({
-      data: await pdfBlob.arrayBuffer(),
-    }).promise;
-    const page = await pdf.getPage(1);
-    const viewport = page.getViewport({ scale: 1 });
-
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d")!;
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-
-    await page.render({ canvasContext: context, viewport }).promise;
-    return canvas.toDataURL("image/png");
-  }
 
   const slugify = (text: string) =>
     text

@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
   },
 });
 
-export const ResumePDFDocument = ({
+export const ResumePreview = ({
   data,
   format,
 }: {
