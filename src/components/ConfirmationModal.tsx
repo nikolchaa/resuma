@@ -1,23 +1,32 @@
-// components/DeleteConfirmation.tsx
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 
-type DeleteConfirmationProps = {
+type ConfirmationModalProps = {
   open: boolean;
+  title: string;
+  description?: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
   onCancel: () => void;
   onConfirm: () => void;
+  confirmVariant?: "default" | "destructive" | "outline" | "secondary"; // Tailwind variants
 };
 
-export const DeleteConfirmation = ({
+export const ConfirmationModal = ({
   open,
+  title,
+  description,
+  confirmLabel = "Confirm",
+  cancelLabel = "Cancel",
   onCancel,
   onConfirm,
-}: DeleteConfirmationProps) => {
+  confirmVariant = "default",
+}: ConfirmationModalProps) => {
   return (
     <AnimatePresence>
       {open && (
         <motion.div
-          key='delete-confirmation'
+          key='confirmation-modal'
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
@@ -25,17 +34,18 @@ export const DeleteConfirmation = ({
           className='fixed inset-0 z-40 flex items-center justify-center bg-background/50 backdrop-blur-sm'
         >
           <div className='bg-background rounded-lg border shadow-lg w-full max-w-md p-6'>
-            <h2 className='text-xl font-semibold'>Delete Resume?</h2>
-            <p className='text-sm text-muted-foreground mt-2'>
-              This action will permanently delete the resume and cannot be
-              undone.
-            </p>
+            <h2 className='text-xl font-semibold'>{title}</h2>
+            {description && (
+              <p className='text-sm text-muted-foreground mt-2'>
+                {description}
+              </p>
+            )}
             <div className='flex justify-end gap-2 mt-6'>
               <Button variant='outline' onClick={onCancel}>
-                Cancel
+                {cancelLabel}
               </Button>
-              <Button variant='destructive' onClick={onConfirm}>
-                Confirm
+              <Button variant={confirmVariant} onClick={onConfirm}>
+                {confirmLabel}
               </Button>
             </div>
           </div>

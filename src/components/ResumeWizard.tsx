@@ -11,7 +11,7 @@ import {
 } from "@/lib/resumesStore";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import Spinner from "@/assets/infinite-spinner.svg?react";
+import Loader from "@/assets/loader.svg?react";
 
 type ResumeWizardProps = {
   generateThumbnail: (data: ResumeData) => Promise<string>;
@@ -274,7 +274,7 @@ export const ResumeWizard = ({ generateThumbnail }: ResumeWizardProps) => {
 
             {step === 5 && (
               <div className='flex flex-col gap-4'>
-                <Spinner className='w-12 h-12 mx-auto' />
+                <Loader className='w-12 h-12 mx-auto' />
                 <AnimatePresence mode='wait'>
                   {currentSection && (
                     <motion.div
