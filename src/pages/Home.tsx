@@ -27,8 +27,8 @@ import {
 } from "@/lib/resumesStore";
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { open, save } from "@tauri-apps/plugin-dialog";
-import { DeleteConfirmation } from "@/components/DeleteConfirmation";
 import { showError, showSuccess, showWarning } from "@/lib/toastUtils";
+import { ConfirmationModal } from "@/components/ConfirmationModal";
 
 export const Home = () => {
   const navigate = useNavigate();
@@ -50,11 +50,17 @@ export const Home = () => {
 
   const confirmDelete = async () => {
     if (!targetId) return;
-    await deleteResume(targetId);
-    const updated = await listResumes();
-    setResumes(updated);
-    setShowDelete(false);
-    setTargetId(null);
+    try {
+      await deleteResume(targetId);
+      const updated = await listResumes();
+      setResumes(updated);
+      setShowDelete(false);
+      setTargetId(null);
+
+      showSuccess("Resume deleted", "The resume has been permanently removed.");
+    } catch (error) {
+      showError("Failed to delete resume", (error as Error).message);
+    }
   };
 
   const handleExport = async (id: string) => {
@@ -237,8 +243,13 @@ export const Home = () => {
             </p>
           </div>
         )}
-        <DeleteConfirmation
+        <ConfirmationModal
           open={showDelete}
+          title='Delete Resume?'
+          description='This action will permanently delete the resume and cannot be undone.'
+          confirmVariant='destructive'
+          confirmLabel='Confirm'
+          cancelLabel='Cancel'
           onCancel={() => setShowDelete(false)}
           onConfirm={confirmDelete}
         />

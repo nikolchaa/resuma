@@ -193,18 +193,19 @@ export const Editor = () => {
                 onLoadSuccess={({ numPages: n }) => setNumPages(n)}
               >
                 {Array.from(new Array(numPages), (_, index) => (
-                  <Page
-                    key={`page_${index + 1}`}
-                    pageNumber={index + 1}
-                    width={800 * zoomLevel}
-                    className={`border mb-8`}
-                    renderTextLayer={false}
-                    renderAnnotationLayer={false}
-                  >
-                    <div className='text-xs text-center text-gray-500 mt-2'>
+                  <>
+                    <Page
+                      key={`page_${index + 1}`}
+                      pageNumber={index + 1}
+                      width={800 * zoomLevel}
+                      className={`border`}
+                      renderTextLayer={false}
+                      renderAnnotationLayer={false}
+                    ></Page>
+                    <div className='text-xs text-center text-gray-500 mb-[4rem]'>
                       Page {index + 1} of {numPages}
                     </div>
-                  </Page>
+                  </>
                 ))}
               </Document>
             </div>
