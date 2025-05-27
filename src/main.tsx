@@ -22,6 +22,7 @@ import Artificial from "./pages/Onboarding/Artificial";
 import { SystemProvider } from "./contexts/SystemContext";
 import { OnboardingProvider } from "./contexts/OnboardingContext";
 import Awards from "./pages/Onboarding/Awards";
+import { Toaster } from "./components/ui/sonner";
 
 const router = createBrowserRouter([
   {
@@ -61,6 +62,7 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
     <ThemeProvider>
       <SystemProvider>
         <Titlebar />
+        <Toaster />
         <RouterProvider router={router} />
       </SystemProvider>
     </ThemeProvider>

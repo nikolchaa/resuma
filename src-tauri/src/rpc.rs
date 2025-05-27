@@ -21,8 +21,6 @@ pub fn start_rpc(client_id: String) -> Result<(), String> {
 pub fn set_activity(
     details: String,
     state: String,
-    small_image: String,
-    small_text: String,
 ) -> Result<(), String> {
     let payload = Activity::new()
         .details(&details)
@@ -31,9 +29,7 @@ pub fn set_activity(
         .assets(
             Assets::new()
                 .large_image("resuma")
-                .large_text("https://resuma.download")
-                .small_image(&small_image)
-                .small_text(&small_text),
+                .large_text("https://resuma.download/")
         );
 
     if let Some(client) = &mut *DISCORD_CLIENT.lock().unwrap() {

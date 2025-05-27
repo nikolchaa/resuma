@@ -1,5 +1,6 @@
 import { Progress } from "@/components/ui/progress";
 import { SettingsType, useOnboarding } from "@/contexts/OnboardingContext";
+import { showError } from "@/lib/toastUtils";
 import { invoke } from "@tauri-apps/api/core";
 import { ArrowLeft } from "lucide-react";
 import { motion as m, AnimatePresence } from "motion/react";
@@ -34,8 +35,6 @@ export const Onboarding = () => {
   useEffect(() => {
     let details = "Setting up Resuma";
     let state = "Onboarding";
-    let smallImage = "settingsblack";
-    let smallText = "Onboarding";
 
     const stepActivityMap: Record<string, { details: string; state: string }> =
       {
@@ -76,12 +75,9 @@ export const Onboarding = () => {
       state = stepActivityMap[currentPath].state;
     }
 
-    invoke("set_activity", {
-      details,
-      state,
-      smallImage,
-      smallText,
-    }).catch(console.error);
+    invoke("set_activity", { details, state }).catch((error) =>
+      showError("Failed to update Discord presence", (error as Error).message)
+    );
   }, [currentPath]);
 
   return (

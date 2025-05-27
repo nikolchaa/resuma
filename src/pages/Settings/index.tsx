@@ -30,6 +30,7 @@ import {
   getTauriVersion,
   getVersion,
 } from "@tauri-apps/api/app";
+import { showError } from "@/lib/toastUtils";
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState("basic");
@@ -224,8 +225,6 @@ export default function Settings() {
   useEffect(() => {
     let details = "Adjusting settings";
     let state = "Settings";
-    let smallImage = "settingsblack";
-    let smallText = "Settings";
 
     switch (activeTab) {
       case "basic":
@@ -262,8 +261,8 @@ export default function Settings() {
         break;
     }
 
-    invoke("set_activity", { details, state, smallImage, smallText }).catch(
-      console.error
+    invoke("set_activity", { details, state }).catch((error) =>
+      showError("Failed to update Discord presence", (error as Error).message)
     );
   }, [activeTab]);
 
