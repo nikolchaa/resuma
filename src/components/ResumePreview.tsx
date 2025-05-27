@@ -7,11 +7,20 @@ import {
   Font,
 } from "@react-pdf/renderer";
 import { ResumeData } from "@/lib/resumesStore";
-import figtree from "@/assets/fonts/Figtree-Variable.ttf";
+// import figtree from "@/assets/fonts/Figtree-Variable.ttf";
+import figtree_bold from "@/assets/fonts/Figtree-Bold.ttf";
+import figtree_light from "@/assets/fonts/Figtree-Light.ttf";
 
 Font.register({
   family: "Figtree",
-  src: figtree,
+  src: figtree_bold,
+  fontWeight: "bold",
+});
+
+Font.register({
+  family: "Figtree",
+  src: figtree_light,
+  fontWeight: "normal",
 });
 
 const styles = StyleSheet.create({
@@ -32,6 +41,11 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: "#6b7280",
     marginBottom: 8,
+  },
+  link: {
+    fontSize: 10,
+    color: "#6b7280",
+    marginBottom: 2,
   },
   sectionHeader: {
     fontSize: 12,
@@ -76,11 +90,20 @@ export const ResumePreview = ({
       <Page size={format ?? "A4"} style={styles.page}>
         {/* Header */}
         {data.content?.personal && (
-          <View>
-            <Text style={styles.name}>{data.content.personal.fullName}</Text>
-            <Text style={styles.contact}>
-              {data.content.personal.email} | {data.content.personal.location}
-            </Text>
+          <View style={styles.row}>
+            <View>
+              <Text style={styles.name}>{data.content.personal.fullName}</Text>
+              <Text style={styles.contact}>
+                {data.content.personal.email} | {data.content.personal.location}
+              </Text>
+            </View>
+            <View>
+              {data.content.personal.socials.map((social) => (
+                <Text key={social} style={styles.link}>
+                  {social}
+                </Text>
+              ))}
+            </View>
           </View>
         )}
 
