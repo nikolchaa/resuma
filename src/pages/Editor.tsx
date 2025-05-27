@@ -126,6 +126,8 @@ export const Editor = () => {
       await saveResume(updatedDraft);
       setResume(structuredClone(updatedDraft)); // Sync resume to draft
       setDraft(updatedDraft); // Also update the draft state itself
+
+      showSuccess("Resume saved", "Your changes have been saved successfully.");
     }
   };
 
@@ -193,19 +195,18 @@ export const Editor = () => {
                 onLoadSuccess={({ numPages: n }) => setNumPages(n)}
               >
                 {Array.from(new Array(numPages), (_, index) => (
-                  <>
+                  <div key={`page_${index + 1}`}>
                     <Page
-                      key={`page_${index + 1}`}
                       pageNumber={index + 1}
                       width={800 * zoomLevel}
                       className={`border`}
                       renderTextLayer={false}
                       renderAnnotationLayer={false}
-                    ></Page>
+                    />
                     <div className='text-xs text-center text-gray-500 mb-[4rem]'>
                       Page {index + 1} of {numPages}
                     </div>
-                  </>
+                  </div>
                 ))}
               </Document>
             </div>

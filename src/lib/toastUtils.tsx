@@ -8,7 +8,9 @@ export const showSuccess = (title: string, description?: string) => {
       <div>
         <p className='text-primary'>{title}</p>
         {description && (
-          <p className='text-sm text-muted-foreground'>{description}</p>
+          <p className='text-sm text-muted-foreground font-[400]'>
+            {description}
+          </p>
         )}
       </div>
     </div>
@@ -22,7 +24,9 @@ export const showWarning = (title: string, description?: string) => {
       <div>
         <p className='text-yellow-500'>{title}</p>
         {description && (
-          <p className='text-sm text-muted-foreground'>{description}</p>
+          <p className='text-sm text-muted-foreground font-[400]'>
+            {description}
+          </p>
         )}
       </div>
     </div>
@@ -36,7 +40,9 @@ export const showError = (title: string, description?: string) => {
       <div>
         <p className='text-destructive'>{title}</p>
         {description && (
-          <p className='text-sm text-muted-foreground'>{description}</p>
+          <p className='text-sm text-muted-foreground font-[400]'>
+            {description}
+          </p>
         )}
       </div>
     </div>
