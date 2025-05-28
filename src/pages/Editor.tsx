@@ -8,11 +8,6 @@ import { Button } from "@/components/ui/button";
 import { ResumePreview } from "@/components/ResumePreview";
 import { pdf } from "@react-pdf/renderer";
 
-import { pdf as pdfRenderer } from "@react-pdf/renderer";
-import { Document, Page, pdfjs } from "react-pdf";
-import "react-pdf/dist/esm/Page/AnnotationLayer.css";
-import "react-pdf/dist/esm/Page/TextLayer.css";
-import worker from "pdfjs-dist/build/pdf.worker?url";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeFile } from "@tauri-apps/plugin-fs";
 import { Sidebar } from "./Editor/Sidebar";
@@ -20,6 +15,13 @@ import { getSection } from "@/lib/store";
 import { SettingsType } from "@/contexts/OnboardingContext";
 import { showError, showSuccess, showWarning } from "@/lib/toastUtils";
 import { invoke } from "@tauri-apps/api/core";
+
+import { pdf as pdfRenderer } from "@react-pdf/renderer";
+import { Document, Page, pdfjs } from "react-pdf";
+import "react-pdf/dist/esm/Page/AnnotationLayer.css";
+import "react-pdf/dist/esm/Page/TextLayer.css";
+import worker from "react-pdf/node_modules/pdfjs-dist/build/pdf.worker.min.mjs?url";
+
 pdfjs.GlobalWorkerOptions.workerSrc = worker;
 
 export const Editor = () => {

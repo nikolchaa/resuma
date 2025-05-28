@@ -10,7 +10,7 @@ import {
   ResumeContent,
 } from "@/lib/resumesStore";
 import { useNavigate } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import Loader from "@/assets/loader.svg?react";
 
 type ResumeWizardProps = {
