@@ -17,6 +17,7 @@ import {
 import { showError, showSuccess, showWarning } from "@/lib/toastUtils";
 import { writeFile } from "@tauri-apps/plugin-fs";
 import { save } from "@tauri-apps/plugin-dialog";
+import { Input } from "@/components/ui/input";
 
 type Props = {
   draft: any;
@@ -71,6 +72,17 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
 
   return (
     <div className='flex flex-col gap-6'>
+      {/* Resume Title */}
+      <div className='flex items-center justify-between'>
+        <Label className='w-1/3'>Resume Title</Label>
+        <Input
+          placeholder='Enter resume title...'
+          value={draft?.title || ""}
+          onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+          className='w-2/3'
+        />
+      </div>
+
       {/* Template Switcher */}
       <div className='flex items-center justify-between'>
         <Label className='w-1/3'>Template</Label>
