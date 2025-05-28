@@ -132,3 +132,42 @@ export const cleanSpecialCharacters = (text: string): string => {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
 };
+
+export const buzzwords = [
+  "synergy",
+  "leverage",
+  "disrupt",
+  "innovative",
+  "passionate",
+  "strategic",
+  "dynamic",
+  "driven",
+  "result-oriented",
+  "impactful",
+  "visionary",
+  "forward-thinking",
+  "team player",
+  "out-of-the-box",
+  "motivated",
+  "detail-oriented",
+  "fast-paced",
+  "multi-task",
+];
+
+export const detectBuzzwords = (
+  content: ResumeData["content"]
+): { word: string; count: number }[] => {
+  const text = formatResumeTxt(content).toLowerCase();
+
+  const results: { word: string; count: number }[] = [];
+
+  buzzwords.forEach((buzzword) => {
+    const regex = new RegExp(`\\b${buzzword}\\b`, "gi");
+    const matches = text.match(regex);
+    if (matches?.length) {
+      results.push({ word: buzzword, count: matches.length });
+    }
+  });
+
+  return results;
+};

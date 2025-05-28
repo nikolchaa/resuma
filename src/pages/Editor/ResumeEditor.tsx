@@ -9,7 +9,11 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { cleanSpecialCharacters, formatResumeTxt } from "@/lib/resumeUtils";
+import {
+  cleanSpecialCharacters,
+  detectBuzzwords,
+  formatResumeTxt,
+} from "@/lib/resumeUtils";
 import { showError, showSuccess, showWarning } from "@/lib/toastUtils";
 import { writeFile } from "@tauri-apps/plugin-fs";
 import { save } from "@tauri-apps/plugin-dialog";
@@ -145,7 +149,23 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
       {/* Detect Buzzwords */}
       <div className='flex items-center justify-between'>
         <Label>Detect Buzzwords</Label>
-        <Button variant='outline' className='w-1/2'>
+        <Button
+          variant='outline'
+          className='w-1/2'
+          onClick={() => {
+            if (!draft) return;
+
+            const results = detectBuzzwords(draft.content);
+            if (results.length === 0) {
+              showSuccess("No buzzwords detected!");
+            } else {
+              const msg = results
+                .map((r) => `${r.word} (${r.count})`)
+                .join(", ");
+              showWarning(`Buzzwords detected!`, msg);
+            }
+          }}
+        >
           Run Detection
         </Button>
       </div>
