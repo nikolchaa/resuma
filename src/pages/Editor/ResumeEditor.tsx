@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { formatResumeTxt } from "@/lib/formatResumeTxt";
+import { cleanSpecialCharacters, formatResumeTxt } from "@/lib/resumeUtils";
 import { showError, showSuccess, showWarning } from "@/lib/toastUtils";
 import { writeFile } from "@tauri-apps/plugin-fs";
 import { save } from "@tauri-apps/plugin-dialog";
@@ -19,7 +19,23 @@ type Props = {
   setDraft: any; // will need it later
 };
 
-export const ResumeEditor = ({ draft }: Props) => {
+export const ResumeEditor = ({ draft, setDraft }: Props) => {
+  const cleanResumeContent = (content: any): any => {
+    if (typeof content === "string") {
+      return cleanSpecialCharacters(content);
+    } else if (Array.isArray(content)) {
+      return content.map(cleanResumeContent);
+    } else if (typeof content === "object" && content !== null) {
+      const cleanedObj: any = {};
+      for (const key in content) {
+        cleanedObj[key] = cleanResumeContent(content[key]);
+      }
+      return cleanedObj;
+    } else {
+      return content;
+    }
+  };
+
   const handleExportTxt = async () => {
     if (!draft?.content) return;
 
@@ -109,7 +125,19 @@ export const ResumeEditor = ({ draft }: Props) => {
       {/* Clean Special Characters */}
       <div className='flex flex-col gap-2'>
         <Label>Clean Special Characters</Label>
-        <Button variant='outline'>Clean</Button>
+        <Button
+          variant='outline'
+          onClick={() => {
+            if (!draft) return;
+
+            const cleanedContent = cleanResumeContent(draft.content);
+            setDraft({ ...draft, content: cleanedContent });
+
+            showSuccess("Special characters cleaned successfully!");
+          }}
+        >
+          Clean
+        </Button>
       </div>
 
       {/* Detect Buzzwords */}
