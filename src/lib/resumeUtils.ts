@@ -120,3 +120,15 @@ export const formatResumeTxt = (content: ResumeData["content"]): string => {
 
   return textOutput;
 };
+
+export const cleanSpecialCharacters = (text: string): string => {
+  const manualMap: Record<string, string> = {
+    đ: "dj",
+    Đ: "Dj",
+  };
+
+  return text
+    .replace(/[đĐ]/g, (match) => manualMap[match] || match)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+};
