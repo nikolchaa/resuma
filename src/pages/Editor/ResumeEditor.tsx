@@ -97,15 +97,6 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
         </Select>
       </div>
 
-      {/* ATS Keyword Matcher */}
-      <div className='flex flex-col gap-2'>
-        <Label>ATS Keyword Matcher</Label>
-        <Textarea placeholder='Paste job description here...' />
-        <Button variant='outline' className='self-end'>
-          Match Keywords
-        </Button>
-      </div>
-
       {/* TXT Export */}
       <div className='flex items-center justify-between'>
         <Label className='w-1/3'>Export as TXT</Label>
@@ -116,17 +107,28 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
 
       <Separator />
 
-      {/* Readability Score */}
       <div className='flex flex-col gap-2'>
-        <Label>Readability Score</Label>
-        <Button variant='outline'>Check Readability</Button>
+        <Label className='text-lg font-semibold'>Optimization Tools</Label>
+        <Label className='text-sm text-muted-foreground'>
+          Use these tools to enhance your resume content
+        </Label>
+      </div>
+
+      {/* ATS Keyword Matcher */}
+      <div className='flex flex-col gap-2'>
+        <Label>ATS Keyword Matcher</Label>
+        <Textarea placeholder='Paste job description here...' />
+        <Button variant='outline' className='self-end'>
+          Match Keywords
+        </Button>
       </div>
 
       {/* Clean Special Characters */}
-      <div className='flex flex-col gap-2'>
+      <div className='flex items-center justify-between'>
         <Label>Clean Special Characters</Label>
         <Button
           variant='outline'
+          className='w-1/2'
           onClick={() => {
             if (!draft) return;
 
@@ -141,9 +143,11 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
       </div>
 
       {/* Detect Buzzwords */}
-      <div className='flex flex-col gap-2'>
+      <div className='flex items-center justify-between'>
         <Label>Detect Buzzwords</Label>
-        <Button variant='outline'>Run Detection</Button>
+        <Button variant='outline' className='w-1/2'>
+          Run Detection
+        </Button>
       </div>
     </div>
   );
