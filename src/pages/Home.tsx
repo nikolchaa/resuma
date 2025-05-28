@@ -77,7 +77,7 @@ export const Home = () => {
       });
 
       if (!filePath) {
-        showWarning("Export canceled");
+        showWarning("Export canceled", "No file was saved");
         return;
       }
 
