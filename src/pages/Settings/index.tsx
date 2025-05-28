@@ -56,7 +56,6 @@ export default function Settings() {
       fullName: "",
       email: "",
       location: "",
-      socials: [],
     },
     education: [],
     experience: [],
@@ -402,10 +401,10 @@ export default function Settings() {
           {/* Version */}
           <div className='flex flex-col gap-4 w-[13.125rem] p-4 mt-2'>
             <Label>
-              Version <span className='text-muted-foreground'>{version}</span>
+              Version: <span className='text-muted-foreground'>{version}</span>
             </Label>
             <Label>
-              Identifier{" "}
+              Identifier:{" "}
               <span className='text-muted-foreground'>{identifier}</span>
             </Label>
             <Label>
