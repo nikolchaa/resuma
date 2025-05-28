@@ -121,7 +121,11 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
       {/* ATS Keyword Matcher */}
       <div className='flex flex-col gap-2'>
         <Label>ATS Keyword Matcher</Label>
-        <Textarea placeholder='Paste job description here...' />
+        <Textarea
+          placeholder='Paste job description here...'
+          value={draft?.jobDesc}
+          onChange={(e) => setDraft({ ...draft, jobDesc: e.target.value })}
+        />
         <Button variant='outline' className='self-end'>
           Match Keywords
         </Button>
