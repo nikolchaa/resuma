@@ -67,17 +67,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Custom Tabs */}
       <div className='flex flex-wrap gap-2 p-4 border-b sticky top-0 z-10 bg-background w-full'>
         {TABS.map((tab) => (
-          <button
+          <Button
             key={tab.id}
+            variant={"ghost"}
             onClick={() => setActiveTab(tab.id)}
             className={`px-3 py-1 text-sm rounded-md ${
               activeTab === tab.id
-                ? "bg-primary text-primary-foreground"
+                ? "bg-primary text-primary-foreground hover:bg-primary/80"
                 : "hover:bg-muted"
             }`}
           >
             {tab.label}
-          </button>
+          </Button>
         ))}
       </div>
 
