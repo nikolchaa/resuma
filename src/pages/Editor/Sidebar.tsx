@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ResumeData } from "@/lib/resumesStore";
 import Logo from "@/assets/Logo.svg?react";
 import { AnimatePresence, motion as m } from "motion/react";
+import { ResumeEditor } from "./ResumeEditor";
 
 type SidebarProps = {
   draft: ResumeData | null;
@@ -19,6 +20,7 @@ type SidebarProps = {
 };
 
 const TABS = [
+  { id: "resume", label: "Resume" },
   { id: "personal", label: "Personal" },
   { id: "experience", label: "Experience" },
   { id: "education", label: "Education" },
@@ -33,7 +35,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   handleDiscard,
   handleSave,
 }) => {
-  const [activeTab, setActiveTab] = useState<string>("personal");
+  const [activeTab, setActiveTab] = useState<string>("resume");
 
   const updateDraft = <K extends keyof ResumeData["content"]>(
     section: K,
@@ -167,6 +169,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 settings={draft?.content?.awards}
                 updateDraft={updateDraft}
               />
+            </m.div>
+          )}
+          {activeTab === "resume" && (
+            <m.div
+              key='resume'
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <ResumeEditor draft={draft} setDraft={setDraft} />
             </m.div>
           )}
         </AnimatePresence>
