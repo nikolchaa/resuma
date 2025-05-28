@@ -7,7 +7,6 @@ import {
   Font,
 } from "@react-pdf/renderer";
 import { ResumeData } from "@/lib/resumesStore";
-// import figtree from "@/assets/fonts/Figtree-Variable.ttf";
 import figtree_bold from "@/assets/fonts/Figtree-Bold.ttf";
 import figtree_light from "@/assets/fonts/Figtree-Light.ttf";
 
@@ -169,7 +168,7 @@ export const ResumePreview = ({
                 <Text style={styles.bold}>{proj.name}</Text>
                 {proj.link && (
                   <Text style={styles.small}>
-                    {proj.link} {proj.date.from && `| ${proj.date.from}`}
+                    {proj.date.from && `${proj.date.from} |`} {proj.link}
                   </Text>
                 )}
                 <Text style={styles.text}>{proj.description}</Text>
