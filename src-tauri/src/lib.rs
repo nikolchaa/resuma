@@ -9,6 +9,7 @@ use zip::ZipArchive;
 use tauri_plugin_prevent_default::{Builder as PreventDefaultBuilder, PlatformOptions};
 
 mod rpc;
+mod llm;
 use rpc::{set_activity, start_rpc, stop_rpc};
 
 use dotenvy::dotenv;
@@ -155,6 +156,11 @@ async fn check_asset_ready(asset_type: String, asset_name: String) -> Result<boo
     Ok(base_dir.exists())
 }
 
+#[tauri::command]
+async fn call_llm(prompt: String, llm_settings: serde_json::Value) -> Result<String, String> {
+    llm::call_llm(prompt, llm_settings).await
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     dotenv().ok(); // Load .env
@@ -177,6 +183,7 @@ pub fn run() {
         .plugin(tauri_plugin_hwinfo::init())
         .plugin(prevent_default_plugin)
         .invoke_handler(tauri::generate_handler![
+            call_llm,
             download_and_extract,
             check_asset_ready,
             set_activity,
