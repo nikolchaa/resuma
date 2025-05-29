@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
     color: "#3f434c",
   },
   subItem: {
-    marginBottom: 8,
+    marginBottom: 4,
   },
 });
 
@@ -80,7 +80,13 @@ export const ResumePreview = ({
   format?: "A4" | "LETTER";
 }) => {
   return (
-    <Document>
+    <Document
+      title={data.title || "Resume"}
+      author={data.content?.personal?.fullName || "Unknown"}
+      subject='Resume'
+      creator='Resuma'
+      producer='Resuma PDF Renderer'
+    >
       <Page size={format ?? "A4"} style={styles.page}>
         {/* Header */}
         {data.content?.personal && (
