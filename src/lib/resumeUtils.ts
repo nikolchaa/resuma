@@ -252,8 +252,15 @@ export const knownKeywordMap: Record<string, string> = {
   "ui design": "figma",
   ux: "ux",
   "user experience": "ux",
-  "user interface": "ux",
+  ui: "ui",
+  "user interface": "ui",
   seo: "seo",
+  "search engine optimization": "seo",
+  analytics: "analytics",
+  "data analysis": "analytics",
+  "data science": "data science",
+  "data engineering": "data engineering",
+  "data visualization": "data visualization",
   ai: "ai",
   artificial: "ai",
   ml: "machine learning",
@@ -299,6 +306,9 @@ export const knownKeywordMap: Record<string, string> = {
   affinity: "affinity",
   blender: "blender",
   cinema4d: "cinema4d",
+  "cinema 4d": "cinema4d",
+  c4d: "cinema4d",
+  autodesk: "autodesk",
   maya: "maya",
   substance: "substance",
   zbrush: "zbrush",
@@ -391,28 +401,33 @@ export const knownKeywordMap: Record<string, string> = {
   independence: "autonomy",
 };
 
+export const extractKeywordsFromText = (text: string): string[] => {
+  const words = text
+    .toLowerCase()
+    .split(/\W+/)
+    .filter((word) => word.length > 2);
+
+  const canonicalKeywords = new Set<string>();
+
+  words.forEach((word) => {
+    const canonical = knownKeywordMap[word];
+    if (canonical) canonicalKeywords.add(canonical);
+  });
+
+  return Array.from(canonicalKeywords);
+};
+
 export const matchATSKeywords = (
   content: ResumeData["content"],
   jobDescription: string
 ): { present: string[]; missing: string[] } => {
   const resumeText = formatResumeTxt(content).toLowerCase();
-  const jobWords = jobDescription
-    .toLowerCase()
-    .split(/\W+/)
-    .filter((word) => word.length > 2);
-
-  const presentKeywordsSet = new Set<string>();
-
-  // Map job words to canonical forms
-  jobWords.forEach((word) => {
-    const canonical = knownKeywordMap[word];
-    if (canonical) presentKeywordsSet.add(canonical);
-  });
+  const jobKeywords = extractKeywordsFromText(jobDescription);
 
   const present: string[] = [];
   const missing: string[] = [];
 
-  presentKeywordsSet.forEach((keyword) => {
+  jobKeywords.forEach((keyword) => {
     const regex = new RegExp(`\\b${keyword}\\b`, "gi");
     if (resumeText.match(regex)) {
       present.push(keyword);
