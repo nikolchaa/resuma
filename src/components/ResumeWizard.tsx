@@ -204,7 +204,7 @@ export const ResumeWizard = ({ generateThumbnail }: ResumeWizardProps) => {
             {step === 2 && (
               <div className='flex flex-col gap-4'>
                 <Textarea
-                  placeholder='Paste job description from Infostud, Indeed, etc.'
+                  placeholder='Paste job description from Indeed, LinkedIn, etc.'
                   value={jobDesc}
                   onChange={(e) => setJobDesc(e.target.value)}
                   rows={6}

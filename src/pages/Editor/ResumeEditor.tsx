@@ -13,11 +13,14 @@ import {
   cleanSpecialCharacters,
   detectBuzzwords,
   formatResumeTxt,
+  matchATSKeywords,
 } from "@/lib/resumeUtils";
 import { showError, showSuccess, showWarning } from "@/lib/toastUtils";
 import { writeFile } from "@tauri-apps/plugin-fs";
 import { save } from "@tauri-apps/plugin-dialog";
 import { Input } from "@/components/ui/input";
+import { useState } from "react";
+import { AnimatePresence, motion as m } from "motion/react";
 
 type Props = {
   draft: any;
@@ -25,6 +28,12 @@ type Props = {
 };
 
 export const ResumeEditor = ({ draft, setDraft }: Props) => {
+  const [atsModalOpen, setAtsModalOpen] = useState(false);
+  const [atsResults, setAtsResults] = useState<{
+    present: string[];
+    missing: string[];
+  }>({ present: [], missing: [] });
+
   const cleanResumeContent = (content: any): any => {
     if (typeof content === "string") {
       return cleanSpecialCharacters(content);
@@ -134,11 +143,21 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
       <div className='flex flex-col gap-2'>
         <Label>ATS Keyword Matcher</Label>
         <Textarea
-          placeholder='Paste job description here...'
+          placeholder='Paste job description from Indeed, LinkedIn, etc.'
           value={draft?.jobDesc}
           onChange={(e) => setDraft({ ...draft, jobDesc: e.target.value })}
         />
-        <Button variant='outline' className='self-end'>
+        <Button
+          variant='outline'
+          className='self-end'
+          onClick={() => {
+            if (!draft?.content || !draft.jobDesc) return;
+
+            const results = matchATSKeywords(draft.content, draft.jobDesc);
+            setAtsResults(results);
+            setAtsModalOpen(true);
+          }}
+        >
           Match Keywords
         </Button>
       </div>
@@ -185,6 +204,65 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
           Run Detection
         </Button>
       </div>
+
+      {/* ATS Results Modal */}
+      <AnimatePresence>
+        {atsModalOpen && (
+          <m.div
+            key='ats-modal'
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+            className='fixed inset-0 z-40 flex items-center justify-center bg-background/50 backdrop-blur-sm'
+          >
+            <div className='bg-background rounded-lg border shadow-lg w-full max-w-md p-6'>
+              <h2 className='text-xl font-semibold'>ATS Keyword Results</h2>
+
+              <div className='mt-4 flex flex-col gap-4 overflow-y-auto'>
+                <div>
+                  <h3 className='font-semibold mb-1'>Present Keywords:</h3>
+                  {atsResults.present.length > 0 ? (
+                    <ul className='list-disc list-inside text-green-600'>
+                      {atsResults.present.map((word) => (
+                        <li key={word}>{word}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className='text-sm text-muted-foreground'>
+                      No keywords found in resume.
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <h3 className='font-semibold mb-1'>Missing Keywords:</h3>
+                  {atsResults.missing.length > 0 ? (
+                    <ul className='list-disc list-inside text-red-600'>
+                      {atsResults.missing.map((word) => (
+                        <li key={word}>{word}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className='text-sm text-muted-foreground'>
+                      No missing keywords!
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className='flex justify-end mt-6'>
+                <Button
+                  variant='outline'
+                  onClick={() => setAtsModalOpen(false)}
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          </m.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

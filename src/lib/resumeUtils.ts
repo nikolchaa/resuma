@@ -171,3 +171,202 @@ export const detectBuzzwords = (
 
   return results;
 };
+
+export const knownKeywordMap: Record<string, string> = {
+  // === TECH SKILLS ===
+  react: "react",
+  reactjs: "react",
+  javascript: "javascript",
+  js: "javascript",
+  typescript: "typescript",
+  ts: "typescript",
+  node: "node",
+  nodejs: "node",
+  express: "express",
+  docker: "docker",
+  kubernetes: "kubernetes",
+  k8s: "kubernetes",
+  aws: "aws",
+  "amazon web services": "aws",
+  azure: "azure",
+  gcp: "gcp",
+  "google cloud": "gcp",
+  tauri: "tauri",
+  tailwind: "tailwind",
+  tailwindcss: "tailwind",
+  html: "html",
+  css: "css",
+  scss: "css",
+  sass: "css",
+  graphql: "graphql",
+  api: "api",
+  rest: "api",
+  restful: "api",
+  soap: "api",
+  postman: "api",
+  nextjs: "nextjs",
+  next: "nextjs",
+  remix: "remix",
+  vite: "vite",
+  webpack: "webpack",
+  babel: "babel",
+  python: "python",
+  pandas: "python",
+  numpy: "python",
+  django: "django",
+  flask: "flask",
+  fastapi: "fastapi",
+  java: "java",
+  spring: "spring",
+  "spring boot": "spring",
+  springboot: "spring",
+  kotlin: "kotlin",
+  rust: "rust",
+  go: "go",
+  golang: "go",
+  cplusplus: "c++",
+  "c++": "c++",
+  cpp: "c++",
+  "c#": "c#",
+  "c sharp": "c#",
+  dotnet: ".net",
+  ".net": ".net",
+  sql: "sql",
+  mysql: "sql",
+  postgresql: "postgresql",
+  postgres: "postgresql",
+  nosql: "nosql",
+  mongodb: "mongodb",
+  mongo: "mongodb",
+  redis: "redis",
+  firebase: "firebase",
+  supabase: "supabase",
+  prisma: "prisma",
+  git: "git",
+  github: "github",
+  gitlab: "gitlab",
+  bitbucket: "bitbucket",
+  vscode: "vscode",
+  "visual studio code": "vscode",
+  figma: "figma",
+  "ui design": "figma",
+  ux: "ux",
+  "user experience": "ux",
+  "user interface": "ux",
+  seo: "seo",
+  ai: "ai",
+  artificial: "ai",
+  ml: "machine learning",
+  "machine learning": "machine learning",
+  "deep learning": "machine learning",
+  tensorflow: "machine learning",
+  pytorch: "machine learning",
+  huggingface: "huggingface",
+  openai: "openai",
+  chatgpt: "openai",
+  gpt4: "openai",
+  llama: "llama",
+  "llama.cpp": "llama",
+  ollama: "ollama",
+  mistral: "mistral",
+  falcon: "falcon",
+  langchain: "langchain",
+  scikit: "python",
+  jupyter: "python",
+
+  // === SOFT SKILLS ===
+  leadership: "leadership",
+  teamwork: "teamwork",
+  "team work": "teamwork",
+  "team-work": "teamwork",
+  collaboration: "collaboration",
+  communication: "communication",
+  presentation: "presentation",
+  publicspeaking: "presentation",
+  "public speaking": "presentation",
+  writing: "writing",
+  documentation: "documentation",
+  "technical writing": "documentation",
+  "problem-solving": "problem-solving",
+  "problem solving": "problem-solving",
+  "critical thinking": "critical thinking",
+  "strategic thinking": "strategic thinking",
+  initiative: "initiative",
+  responsibility: "responsibility",
+  accountability: "responsibility",
+  adaptability: "adaptability",
+  flexibility: "adaptability",
+  "time management": "time management",
+  organization: "organization",
+  organized: "organization",
+  planning: "organization",
+  prioritization: "organization",
+  multitask: "multi-task",
+  "multi-task": "multi-task",
+  multitasking: "multi-task",
+  creativity: "creativity",
+  innovation: "creativity",
+  curiosity: "creativity",
+  motivation: "motivation",
+  driven: "motivation",
+  proactive: "motivation",
+  "self-motivated": "motivation",
+  independent: "motivation",
+  "fast-paced": "fast-paced",
+  "fast paced": "fast-paced",
+  "high-paced": "fast-paced",
+  "detail-oriented": "detail-oriented",
+  "detail oriented": "detail-oriented",
+  "attention to detail": "detail-oriented",
+  empathy: "empathy",
+  compassion: "empathy",
+  patience: "empathy",
+  learning: "learning",
+  growth: "learning",
+  mentoring: "mentoring",
+  coaching: "mentoring",
+  teaching: "mentoring",
+  negotiation: "negotiation",
+  decisionmaking: "decision making",
+  "decision making": "decision making",
+  analytical: "analytical",
+  research: "research",
+  resourceful: "resourceful",
+  dependability: "reliability",
+  reliability: "reliability",
+  autonomy: "autonomy",
+  independence: "autonomy",
+};
+
+export const matchATSKeywords = (
+  content: ResumeData["content"],
+  jobDescription: string
+): { present: string[]; missing: string[] } => {
+  const resumeText = formatResumeTxt(content).toLowerCase();
+  const jobWords = jobDescription
+    .toLowerCase()
+    .split(/\W+/)
+    .filter((word) => word.length > 2);
+
+  const presentKeywordsSet = new Set<string>();
+
+  // Map job words to canonical forms
+  jobWords.forEach((word) => {
+    const canonical = knownKeywordMap[word];
+    if (canonical) presentKeywordsSet.add(canonical);
+  });
+
+  const present: string[] = [];
+  const missing: string[] = [];
+
+  presentKeywordsSet.forEach((keyword) => {
+    const regex = new RegExp(`\\b${keyword}\\b`, "gi");
+    if (resumeText.match(regex)) {
+      present.push(keyword);
+    } else {
+      missing.push(keyword);
+    }
+  });
+
+  return { present, missing };
+};
