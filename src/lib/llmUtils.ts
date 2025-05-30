@@ -50,7 +50,7 @@ ${jobDesc}
 Entry:
 ${JSON.stringify(entry, null, 2)}
 
-Rewrite the entry's description and notes fields to make it more concise, clear, and directly relevant to the job description. For notes, keep the number of notes the same, while expanding on the content inside the notes themselves. Focus on skills, tools, and tasks mentioned in both the entry and the job description. Retain original dates and locations exactly as they are—do not modify them. Do not invent or add any new information not present in the original entry. Return the enhanced entry as a JSON object only, no markdown formatting.`;
+Rewrite the description and notes fields to make them clearer, more concise, and directly relevant to the job description. You can add new notes, but do not remove any existing notes. Keep all other fields the same (dates, locations, etc.). Do not add new information not related to the job description. Return the updated entry as a JSON object only, no codeblock formatting.`;
 
   const result = await callLLM(prompt);
   return result.trim();

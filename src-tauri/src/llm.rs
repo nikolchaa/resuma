@@ -10,9 +10,11 @@ pub async fn call_llm(prompt: String, llm_settings: Value) -> Result<String, Str
     let settings = &llm_settings["settings"];
 
     let appdata = env::var("APPDATA").map_err(|e| format!("Failed to get APPDATA: {}", e))?;
+    let normalized_model = model.replace(".", "_");
+
     let model_path = PathBuf::from(&appdata)
         .join("com.resuma.app/models")
-        .join(model)
+        .join(&normalized_model)
         .join(format!("{}.gguf", model));
 
     let runtime_path = PathBuf::from(&appdata)
