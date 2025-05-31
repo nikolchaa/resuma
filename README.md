@@ -22,6 +22,17 @@ Powered by Tauri, Rust, React (TSX), and llama.cpp, Resuma brings the power of p
 - ✨ Elegant onboarding and user experience
 - ⚙️ Advanced model configuration (mmap, mlock, gpu_layers, context size, etc.)
 - 👨‍💼 Customizable personal information, education, projects, skills, and more
+- 📄 Dynamic PDF generation with LaTeX-inspired layouts
+- 🖋️ AI-powered resume section enhancement and trimming based on job descriptions
+- 🧠 Local AI processing for resume tailoring, keyword optimization, and ATS-friendly formatting
+- 🖼️ PDF preview with page splitting and dynamic layout adjustments
+- 🛠️ Supports multiple local models and hardware backends (CPU, CUDA, HIP, Vulkan)
+- 🚀 Cross-platform support: Windows, macOS, and Linux
+- 🔍 Advanced search and filtering for resume entries
+- 🎨 Theming support with light/dark modes
+- 🧱 Modular and extendable architecture for future features
+- 🧑‍💻 Developer-friendly setup with clear code structure and CLI integration
+- 🔐 Secure by design: no telemetry and no analytics.
 
 ## 📦 Installation
 
