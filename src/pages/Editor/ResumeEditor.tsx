@@ -219,7 +219,7 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
 
             try {
               const result = await runResumeCleanup(
-                draft.content.education[0],
+                draft.content.education[1],
                 draft.jobDesc
               );
               console.log("LLM result:", result);

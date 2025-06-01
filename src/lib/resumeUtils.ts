@@ -328,7 +328,6 @@ export const knownKeywordMap: Record<string, string> = {
   asana: "asana",
   jira: "jira",
   confluence: "confluence",
-  monday: "monday",
   teams: "microsoft teams",
   zoom: "zoom",
   "google docs": "google docs",
