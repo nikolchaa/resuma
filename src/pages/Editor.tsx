@@ -71,10 +71,10 @@ export const Editor = () => {
           state,
         });
       } catch (error) {
-        showError(
+        console.log(
           "Failed to update Discord presence",
           (error as Error).message
-        );
+        ); // only for debugging, not shown to user
       }
     };
 
