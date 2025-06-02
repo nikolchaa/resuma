@@ -12,6 +12,8 @@ import {
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import Loader from "@/assets/loader.svg?react";
+import { runResumeCleanup, runResumeEnhancement } from "@/lib/llmUtils";
+import { cleanSpecialCharacters } from "@/lib/resumeUtils";
 
 type ResumeWizardProps = {
   generateThumbnail: (data: ResumeData) => Promise<string>;
@@ -26,15 +28,6 @@ export const ResumeWizard = ({ generateThumbnail }: ResumeWizardProps) => {
   const [suggestedId, setSuggestedId] = useState("untitled");
   const [trim, setTrim] = useState(false);
   const [currentSection, setCurrentSection] = useState<string | null>(null);
-
-  const sections = [
-    "Personal",
-    "Education",
-    "Experience",
-    "Projects",
-    "Skills",
-    "Awards",
-  ];
 
   const slugify = (text: string) =>
     text
@@ -82,6 +75,21 @@ export const ResumeWizard = ({ generateThumbnail }: ResumeWizardProps) => {
       awards: settings.awards ?? [],
     };
 
+    // Clean special characters before AI processing
+    const cleanContent = (entry: any): any => {
+      if (typeof entry === "string") return cleanSpecialCharacters(entry);
+      if (Array.isArray(entry)) return entry.map(cleanContent);
+      if (typeof entry === "object" && entry !== null) {
+        const cleaned: any = {};
+        for (const key in entry) {
+          cleaned[key] = cleanContent(entry[key]);
+        }
+        return cleaned;
+      }
+      return entry;
+    };
+    content = cleanContent(content);
+
     if (!trim && !enhance) {
       const newResume: ResumeData = {
         id: suggestedId,
@@ -101,21 +109,60 @@ export const ResumeWizard = ({ generateThumbnail }: ResumeWizardProps) => {
     setStep(5);
     setLoading(true);
 
-    for (const section of sections) {
-      setCurrentSection(`Processing ${section}...`);
-
-      if (trim) {
-        await mockTrim(section, jobDesc);
-        console.log(`Trimmed ${section}`);
-      }
-
-      if (enhance) {
-        await mockEnhance(section, jobDesc);
-        console.log(`Enhanced ${section}`);
+    // Process cleanup
+    if (trim) {
+      for (const [section, entries] of Object.entries(content)) {
+        if (
+          ["education", "experience", "projects", "skills"].includes(section)
+        ) {
+          const updated = [];
+          for (const [index, entry] of (entries as any[]).entries()) {
+            setCurrentSection(
+              `Trimming ${section} (${index + 1}/${
+                (entries as any[]).length
+              })...`
+            );
+            const result = await runResumeCleanup(entry, jobDesc);
+            if (result === "yes") {
+              updated.push(entry);
+            } else {
+              console.log(`Entry removed from ${section}:`, entry);
+            }
+          }
+          (content as any)[section] = updated;
+          console.log(`Trimmed ${section}`);
+        }
       }
     }
 
-    // Show "Finalizing..." for 1.5s after everything else is done
+    // Process enhancement
+    if (enhance) {
+      for (const section of ["experience", "projects"]) {
+        const entries = (content as any)[section];
+        if (Array.isArray(entries)) {
+          const enhanced = [];
+          for (const [index, entry] of entries.entries()) {
+            setCurrentSection(
+              `Enhancing ${section} (${index + 1}/${entries.length})...`
+            );
+            const result = await runResumeEnhancement(entry, jobDesc);
+            try {
+              const parsed = JSON.parse(result);
+              enhanced.push(parsed);
+            } catch {
+              console.warn(
+                "Failed to parse enhanced result, using original:",
+                result
+              );
+              enhanced.push(entry);
+            }
+          }
+          (content as any)[section] = enhanced;
+          console.log(`Enhanced ${section}`);
+        }
+      }
+    }
+
     setCurrentSection("Finalizing...");
     await new Promise((res) => setTimeout(res, 1500));
 
@@ -297,16 +344,3 @@ export const ResumeWizard = ({ generateThumbnail }: ResumeWizardProps) => {
     </AnimatePresence>
   );
 };
-
-// 🧪 Mock Functions
-async function mockTrim(section: string, jobDesc: string): Promise<string> {
-  console.log(`Trimming content... based on: ${jobDesc}`);
-  await new Promise((res) => setTimeout(res, 1500));
-  return section;
-}
-
-async function mockEnhance(section: string, jobDesc: string): Promise<string> {
-  console.log(`Enhancing content... based on: ${jobDesc}`);
-  await new Promise((res) => setTimeout(res, 1500));
-  return section;
-}

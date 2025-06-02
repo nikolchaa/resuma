@@ -34,7 +34,7 @@ ${jobDesc}
 Entry:
 ${JSON.stringify(entry, null, 2)}
 
-Is this entry relevant to the job description? Ignore dates, years of experience, and time-related requirements completely. Only assess based on the skills, tools, and tasks mentioned. If it's a school, courses don't have to match the job description, as long as it's in the same field of expertise, it should be present. Respond only with "yes" or "no".`;
+Is this entry relevant to the job description? Ignore dates, years of experience, and time-related requirements completely. Only assess based on the skills, tools, and tasks mentioned. If it's a school, courses don't have to match the job description, as long as it's in the same field of expertise, it should be present. If it's a skill category or group, keep it if at least one item is even slightly relevant to the job description. Respond only with "yes" or "no". If the job description is not provided or you're not 100% sure, assume the entry is relevant.`;
 
   const result = await callLLM(prompt);
   return result.trim().toLowerCase();
@@ -50,7 +50,7 @@ ${jobDesc}
 Entry:
 ${JSON.stringify(entry, null, 2)}
 
-Modify the description and notes fields to make them clearer, more concise, and directly relevant to the job description. You can add new notes, but do not remove any existing notes. Keep all other fields the same (dates, locations, etc.). Do not add new information not related to the job description. Return the updated entry as a JSON object only, no codeblock formatting.`;
+Modify the description and notes fields to make them clearer, more concise, and directly relevant to the job description. You can add new notes, but do not remove any existing notes. Keep all other fields the same (dates, locations, etc.). Do not add new information not related to the job description. Return the updated entry as a JSON object only, no codeblock formatting. If the job description is not provided or you're not 100% sure, assume the entry is perfect as is.`;
 
   let result = await callLLM(prompt);
   result = result.trim();
