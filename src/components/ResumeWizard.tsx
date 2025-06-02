@@ -90,7 +90,6 @@ export const ResumeWizard = ({ generateThumbnail }: ResumeWizardProps) => {
       }
       return entry;
     };
-    content = cleanContent(content);
 
     if (!trim && !enhance) {
       const newResume: ResumeData = {
@@ -108,6 +107,7 @@ export const ResumeWizard = ({ generateThumbnail }: ResumeWizardProps) => {
       return;
     }
 
+    content = cleanContent(content);
     setStep(5);
     setLoading(true);
 
