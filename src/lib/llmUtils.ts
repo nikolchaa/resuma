@@ -52,6 +52,16 @@ ${JSON.stringify(entry, null, 2)}
 
 Modify the description and notes fields to make them clearer, more concise, and directly relevant to the job description. You can add new notes, but do not remove any existing notes. Keep all other fields the same (dates, locations, etc.). Do not add new information not related to the job description. Return the updated entry as a JSON object only, no codeblock formatting.`;
 
-  const result = await callLLM(prompt);
-  return result.trim();
+  let result = await callLLM(prompt);
+  result = result.trim();
+
+  // Clean up code block wrapping if present
+  if (result.startsWith("```")) {
+    result = result.replace(/```(json)?/gi, "").trim();
+    if (result.endsWith("```")) {
+      result = result.slice(0, -3).trim();
+    }
+  }
+
+  return result;
 };
