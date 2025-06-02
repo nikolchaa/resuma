@@ -6,7 +6,6 @@ import { applyContentSizeClass } from "./lib/ui";
 import { useTheme } from "./contexts/ThemeContext";
 import { invoke } from "@tauri-apps/api/core";
 import { SettingsType } from "./contexts/OnboardingContext";
-import { showError } from "./lib/toastUtils";
 
 export default function App() {
   const location = useLocation();
@@ -48,8 +47,12 @@ export default function App() {
     let details = "Idling";
     let state = "Home";
 
-    invoke("set_activity", { details, state }).catch((error) =>
-      showError("Failed to update Discord presence", (error as Error).message)
+    invoke("set_activity", { details, state }).catch(
+      (error) =>
+        console.log(
+          "Failed to update Discord presence",
+          (error as Error).message
+        ) // only for debugging, not shown to user
     );
   }, [location.pathname]);
 

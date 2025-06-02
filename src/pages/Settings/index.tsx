@@ -268,8 +268,12 @@ export default function Settings() {
         break;
     }
 
-    invoke("set_activity", { details, state }).catch((error) =>
-      showError("Failed to update Discord presence", (error as Error).message)
+    invoke("set_activity", { details, state }).catch(
+      (error) =>
+        console.log(
+          "Failed to update Discord presence",
+          (error as Error).message
+        ) // only for debugging, not shown to user
     );
   }, [activeTab]);
 
