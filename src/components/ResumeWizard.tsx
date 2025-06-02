@@ -15,6 +15,7 @@ import Loader from "@/assets/loader.svg?react";
 import { runResumeCleanup, runResumeEnhancement } from "@/lib/llmUtils";
 import { cleanSpecialCharacters } from "@/lib/resumeUtils";
 import { showWarning } from "@/lib/toastUtils";
+import { ArrowLeft } from "lucide-react";
 
 type ResumeWizardProps = {
   generateThumbnail: (data: ResumeData) => Promise<string>;
@@ -91,9 +92,6 @@ export const ResumeWizard = ({ generateThumbnail }: ResumeWizardProps) => {
     };
     content = cleanContent(content);
 
-    // === Fallback flag ===
-    let aiFailed = false;
-
     if (!trim && !enhance) {
       const newResume: ResumeData = {
         id: suggestedId,
@@ -169,7 +167,6 @@ export const ResumeWizard = ({ generateThumbnail }: ResumeWizardProps) => {
       }
     } catch (error) {
       console.error("AI Processing failed:", error);
-      aiFailed = true;
       showWarning(
         "AI processing failed. Your resume will still be created, but without AI cleanup or enhancement."
       );
@@ -231,6 +228,20 @@ export const ResumeWizard = ({ generateThumbnail }: ResumeWizardProps) => {
         exit={{ opacity: 0 }}
         className='fixed inset-0 z-40 flex items-center justify-center bg-background/50 backdrop-blur-sm select-none'
       >
+        {step !== 5 && (
+          <motion.div
+            className='group bg-background fixed top-8 left-8 z-50 border shadow-sm h-9 w-9 flex items-center justify-center rounded-lg hover:bg-primary dark:hover:bg-primary transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:cursor-pointer'
+            onClick={() => {
+              if (step === 1) {
+                navigate("/");
+              } else if (step < 5) {
+                setStep((prev) => Math.max(1, prev - 1));
+              }
+            }}
+          >
+            <ArrowLeft className='group-hover:dark:stroke-background transition duration-200 h-[calc(2.25rem-0.75rem)] w-[calc(2.25rem-0.75rem)]' />
+          </motion.div>
+        )}
         <AnimatePresence mode='wait'>
           <motion.div
             key={`step-${step}`}
