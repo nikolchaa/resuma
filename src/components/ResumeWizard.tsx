@@ -14,6 +14,7 @@ import { AnimatePresence, motion } from "motion/react";
 import Loader from "@/assets/loader.svg?react";
 import { runResumeCleanup, runResumeEnhancement } from "@/lib/llmUtils";
 import { cleanSpecialCharacters } from "@/lib/resumeUtils";
+import { showWarning } from "@/lib/toastUtils";
 
 type ResumeWizardProps = {
   generateThumbnail: (data: ResumeData) => Promise<string>;
@@ -90,6 +91,9 @@ export const ResumeWizard = ({ generateThumbnail }: ResumeWizardProps) => {
     };
     content = cleanContent(content);
 
+    // === Fallback flag ===
+    let aiFailed = false;
+
     if (!trim && !enhance) {
       const newResume: ResumeData = {
         id: suggestedId,
@@ -109,58 +113,66 @@ export const ResumeWizard = ({ generateThumbnail }: ResumeWizardProps) => {
     setStep(5);
     setLoading(true);
 
-    // Process cleanup
-    if (trim) {
-      for (const [section, entries] of Object.entries(content)) {
-        if (
-          ["education", "experience", "projects", "skills"].includes(section)
-        ) {
-          const updated = [];
-          for (const [index, entry] of (entries as any[]).entries()) {
-            setCurrentSection(
-              `Trimming ${section} (${index + 1}/${
-                (entries as any[]).length
-              })...`
-            );
-            const result = await runResumeCleanup(entry, jobDesc);
-            if (result === "yes") {
-              updated.push(entry);
-            } else {
-              console.log(`Entry removed from ${section}:`, entry);
-            }
-          }
-          (content as any)[section] = updated;
-          console.log(`Trimmed ${section}`);
-        }
-      }
-    }
-
-    // Process enhancement
-    if (enhance) {
-      for (const section of ["experience", "projects"]) {
-        const entries = (content as any)[section];
-        if (Array.isArray(entries)) {
-          const enhanced = [];
-          for (const [index, entry] of entries.entries()) {
-            setCurrentSection(
-              `Enhancing ${section} (${index + 1}/${entries.length})...`
-            );
-            const result = await runResumeEnhancement(entry, jobDesc);
-            try {
-              const parsed = JSON.parse(result);
-              enhanced.push(parsed);
-            } catch {
-              console.warn(
-                "Failed to parse enhanced result, using original:",
-                result
+    try {
+      // === AI Cleanup ===
+      if (trim) {
+        for (const [section, entries] of Object.entries(content)) {
+          if (
+            ["education", "experience", "projects", "skills"].includes(section)
+          ) {
+            const updated = [];
+            for (const [index, entry] of (entries as any[]).entries()) {
+              setCurrentSection(
+                `Trimming ${section} (${index + 1}/${
+                  (entries as any[]).length
+                })...`
               );
-              enhanced.push(entry);
+              const result = await runResumeCleanup(entry, jobDesc);
+              if (result === "yes") {
+                updated.push(entry);
+              } else {
+                console.log(`Entry removed from ${section}:`, entry);
+              }
             }
+            (content as any)[section] = updated;
+            console.log(`Trimmed ${section}`);
           }
-          (content as any)[section] = enhanced;
-          console.log(`Enhanced ${section}`);
         }
       }
+
+      // === AI Enhancement ===
+      if (enhance) {
+        for (const section of ["experience", "projects"]) {
+          const entries = (content as any)[section];
+          if (Array.isArray(entries)) {
+            const enhanced = [];
+            for (const [index, entry] of entries.entries()) {
+              setCurrentSection(
+                `Enhancing ${section} (${index + 1}/${entries.length})...`
+              );
+              const result = await runResumeEnhancement(entry, jobDesc);
+              try {
+                const parsed = JSON.parse(result);
+                enhanced.push(parsed);
+              } catch {
+                console.warn(
+                  "Failed to parse enhanced result, using original:",
+                  result
+                );
+                enhanced.push(entry);
+              }
+            }
+            (content as any)[section] = enhanced;
+            console.log(`Enhanced ${section}`);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("AI Processing failed:", error);
+      aiFailed = true;
+      showWarning(
+        "AI processing failed. Your resume will still be created, but without AI cleanup or enhancement."
+      );
     }
 
     setCurrentSection("Finalizing...");
