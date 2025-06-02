@@ -6,7 +6,10 @@ use std::path::PathBuf;
 use tauri::async_runtime::spawn;
 use tauri::Emitter;
 use zip::ZipArchive;
-use tauri_plugin_prevent_default::{Builder as PreventDefaultBuilder, PlatformOptions};
+use tauri_plugin_prevent_default::Builder as PreventDefaultBuilder;
+
+#[cfg(target_os = "windows")]
+use tauri_plugin_prevent_default::PlatformOptions;
 
 mod rpc;
 mod llm;
@@ -168,12 +171,16 @@ pub fn run() {
 
     start_rpc(client_id).expect("Failed to start Discord RPC");
 
+    #[cfg(target_os = "windows")]
     let prevent_default_plugin = PreventDefaultBuilder::new()
         .platform(PlatformOptions {
             general_autofill: false,
             password_autosave: false,
         })
         .build();
+
+    #[cfg(not(target_os = "windows"))]
+    let prevent_default_plugin = PreventDefaultBuilder::new().build();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
