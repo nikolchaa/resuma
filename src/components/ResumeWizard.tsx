@@ -116,25 +116,42 @@ export const ResumeWizard = ({ generateThumbnail }: ResumeWizardProps) => {
       if (trim) {
         for (const [section, entries] of Object.entries(content)) {
           if (
-            ["education", "experience", "projects", "skills"].includes(section)
-          ) {
-            const updated = [];
-            for (const [index, entry] of (entries as any[]).entries()) {
-              setCurrentSection(
-                `Trimming ${section} (${index + 1}/${
-                  (entries as any[]).length
-                })...`
-              );
+            !["education", "experience", "projects", "skills"].includes(section)
+          )
+            continue;
+          if (!Array.isArray(entries)) continue;
+
+          const updated: any[] = [];
+
+          for (const [index, entry] of entries.entries()) {
+            setCurrentSection(
+              `Trimming ${section} (${index + 1}/${entries.length})...`
+            );
+
+            try {
               const result = await runResumeCleanup(entry, jobDesc);
+
               if (result === "yes") {
                 updated.push(entry);
               } else {
-                console.log(`Entry removed from ${section}:`, entry);
+                console.log(`🗑️ Removed from ${section}:`, entry);
               }
+            } catch (error: any) {
+              showWarning(
+                `Failed to trim ${section} (${
+                  index + 1
+                }). Keeping original entry.`
+              );
+              console.warn(
+                `[Trim Error] ${section} (${index + 1}/${entries.length}):`,
+                error
+              );
+              updated.push(entry);
             }
-            (content as any)[section] = updated;
-            console.log(`Trimmed ${section}`);
           }
+
+          (content as any)[section] = updated;
+          console.log(`✅ Trimmed section: ${section}`);
         }
       }
 
@@ -142,27 +159,45 @@ export const ResumeWizard = ({ generateThumbnail }: ResumeWizardProps) => {
       if (enhance) {
         for (const section of ["experience", "projects"]) {
           const entries = (content as any)[section];
-          if (Array.isArray(entries)) {
-            const enhanced = [];
-            for (const [index, entry] of entries.entries()) {
-              setCurrentSection(
-                `Enhancing ${section} (${index + 1}/${entries.length})...`
-              );
+
+          if (!Array.isArray(entries)) continue;
+
+          const enhanced: any[] = [];
+
+          for (const [index, entry] of entries.entries()) {
+            setCurrentSection(
+              `Enhancing ${section} (${index + 1}/${entries.length})...`
+            );
+
+            try {
               const result = await runResumeEnhancement(entry, jobDesc);
-              try {
-                const parsed = JSON.parse(result);
-                enhanced.push(parsed);
-              } catch {
-                console.warn(
-                  "Failed to parse enhanced result, using original:",
-                  result
-                );
-                enhanced.push(entry);
+              const parsed = JSON.parse(result);
+
+              enhanced.push(parsed);
+            } catch (error: any) {
+              showWarning(
+                `Failed to enhance ${section} (${
+                  index + 1
+                }). Using original entry.`
+              );
+
+              console.warn(
+                `[Enhancement Error] Failed for ${section} (${index + 1}/${
+                  entries.length
+                }):`,
+                error
+              );
+
+              if (error && typeof error === "object" && "response" in error) {
+                console.warn("Raw LLM response:", (error as any).response);
               }
+
+              enhanced.push(entry);
             }
-            (content as any)[section] = enhanced;
-            console.log(`Enhanced ${section}`);
           }
+
+          (content as any)[section] = enhanced;
+          console.log(`Enhanced ${section}`);
         }
       }
     } catch (error) {

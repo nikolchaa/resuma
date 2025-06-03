@@ -34,10 +34,19 @@ ${jobDesc}
 Entry:
 ${JSON.stringify(entry, null, 2)}
 
-Is this entry relevant to the job description? Ignore dates, years of experience, and time-related requirements completely. Only assess based on the skills, tools, and tasks mentioned. If it's a school, courses don't have to match the job description, as long as it's in the same field of expertise, it should be present. If it's a skill category or group, keep it if at least one item is even slightly relevant to the job description. Respond only with "yes" or "no". If the job description is not provided or you're not 100% sure, assume the entry is relevant.`;
+Evaluate whether this entry is relevant to the job description based strictly on skills, tools, or tasks mentioned. Ignore dates, years of experience, and time-based requirements. For education entries, relevance means the field of study aligns with the job, even if courses don't match. For skill categories or groups, keep the entry if at least one item is even slightly relevant.
 
-  const result = await callLLM(prompt);
-  return result.trim().toLowerCase();
+Respond ONLY with "yes" or "no" — no explanations, no formatting.
+
+If the job description is empty or you're unsure, assume the entry IS relevant.`;
+
+  try {
+    const result = await callLLM(prompt);
+    return result.trim().toLowerCase();
+  } catch (error) {
+    console.error("[Cleanup Error]:", error);
+    throw error;
+  }
 };
 
 export const runResumeEnhancement = async (
@@ -55,13 +64,14 @@ Modify the description and notes fields to make them clearer, more concise, and 
   let result = await callLLM(prompt);
   result = result.trim();
 
-  // Clean up code block wrapping if present
-  if (result.startsWith("```")) {
-    result = result.replace(/```(json)?/gi, "").trim();
-    if (result.endsWith("```")) {
-      result = result.slice(0, -3).trim();
-    }
-  }
+  const codeBlockRegex = /^```(?:json)?\n?([\s\S]*?)\n?```$/i;
+  const match = result.match(codeBlockRegex);
+  if (match) result = match[1].trim();
 
-  return result;
+  try {
+    return JSON.parse(result);
+  } catch (err) {
+    console.error("LLM returned invalid JSON:", result);
+    throw new Error("LLM enhancement response is not valid JSON.");
+  }
 };
