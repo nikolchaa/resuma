@@ -197,7 +197,7 @@ export const ResumeWizard = ({ generateThumbnail }: ResumeWizardProps) => {
           }
 
           (content as any)[section] = enhanced;
-          console.log(`Enhanced ${section}`);
+          console.log(`✅ Enhanced section: ${section}`);
         }
       }
     } catch (error) {
