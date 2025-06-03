@@ -1,10 +1,18 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { MinusCircle, PlusCircle, ArrowUp, ArrowDown } from "lucide-react";
+import {
+  MinusCircle,
+  PlusCircle,
+  ArrowUp,
+  ArrowDown,
+  Sparkles,
+} from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import DateRangeDropdown from "@/components/ui/daterange";
 import { ResumeData } from "@/lib/resumesStore";
+import { showWarning } from "@/lib/toastUtils";
+import { runTextEnhancement } from "@/lib/llmUtils";
 
 type Props = {
   settings?: ResumeData["content"]["awards"];
@@ -12,13 +20,52 @@ type Props = {
     section: K,
     data: Partial<ResumeData["content"][K]> | ResumeData["content"][K]
   ) => void;
+  jobDesc?: string;
+  setOpenLoader: (open: boolean) => void;
+  setCurrentSection: (section: string | undefined) => void;
 };
 
-export const AwardsEditor = ({ settings, updateDraft }: Props) => {
+export const AwardsEditor = ({
+  settings,
+  updateDraft,
+  jobDesc = "",
+  setOpenLoader,
+  setCurrentSection,
+}: Props) => {
   const entries = settings ?? [];
 
   const sync = (next: ResumeData["content"]["awards"]) => {
     updateDraft("awards", next);
+  };
+
+  const handleAIEnhance = async (idx: number) => {
+    const text = entries[idx].description ?? "";
+
+    if (!text.trim() && !jobDesc?.trim()) {
+      showWarning(
+        "No content to enhance. Add a description or job description first."
+      );
+      return;
+    }
+
+    setOpenLoader(true);
+    setCurrentSection(`Enhancing award field...`);
+
+    try {
+      const result = await runTextEnhancement(
+        text.trim() || text,
+        jobDesc.trim(),
+        "award"
+      );
+      const updated = [...entries];
+      updated[idx] = { ...updated[idx], description: result };
+      sync(updated);
+    } catch (err) {
+      console.error("AI Enhancement Error:", err);
+    } finally {
+      setOpenLoader(false);
+      setCurrentSection(undefined);
+    }
   };
 
   const handleFieldChange = (
@@ -120,7 +167,16 @@ export const AwardsEditor = ({ settings, updateDraft }: Props) => {
 
           {/* Description */}
           <div className='flex flex-col gap-2'>
-            <Label>Description</Label>
+            <div className='flex items-center justify-between'>
+              <Label>Description</Label>
+              <Button
+                size='icon'
+                variant='outline'
+                onClick={() => handleAIEnhance(idx)}
+              >
+                <Sparkles className='h-4 w-4' />
+              </Button>
+            </div>
             <Textarea
               placeholder='Awarded for outstanding contribution to...'
               value={entry.description}

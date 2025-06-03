@@ -75,3 +75,45 @@ Modify the description and notes fields to make them clearer, more concise, and 
     throw new Error("LLM enhancement response is not valid JSON.");
   }
 };
+
+export const runTextEnhancement = async (
+  text: string,
+  jobDesc: string,
+  contextType: "experience" | "project" | "award" = "experience"
+): Promise<string> => {
+  let prompt = "";
+
+  if (contextType === "experience") {
+    prompt = `Job Description:
+${jobDesc}
+
+Text:
+${text}
+
+Your task: Rewrite the above text to make it clearer, more concise, and directly relevant to the job description. It should be written from the perspective of an ex-employee, highlighting achievements and responsibilities in a professional tone. Focus on improving the grammar, sentence structure, and relevance. If the text is already clear and relevant, leave it mostly unchanged. Do NOT add any unrelated details or fabricate new information. Return the rewritten text only, without any additional comments or formatting.`;
+  } else if (contextType === "project") {
+    prompt = `Job Description:
+${jobDesc}
+
+Project Description:
+${text}
+
+Your task: Rewrite the above project description to make it clearer, more concise, and directly relevant to the job description. Write it from the perspective of a contributor or team member. Focus on highlighting the goals, challenges, solutions, and outcomes. Ensure proper grammar, sentence structure, and relevance. If the description is already clear and relevant, leave it mostly unchanged. Do NOT add any unrelated details or fabricate new information. Return the rewritten text only, without any additional comments or formatting.`;
+  } else if (contextType === "award") {
+    prompt = `Job Description:
+${jobDesc}
+
+Award Description:
+${text}
+
+Your task: Rewrite the above award description to make it clearer, more concise, and directly relevant to the job description. Write it from the perspective of a recipient, emphasizing why this award was given and how it relates to professional skills or achievements. Ensure proper grammar, sentence structure, and relevance. If the description is already clear and relevant, leave it mostly unchanged. Do NOT add any unrelated details or fabricate new information. Return the rewritten text only, without any additional comments or formatting.`;
+  }
+
+  try {
+    const result = await callLLM(prompt);
+    return result.trim();
+  } catch (error) {
+    console.error("[Text Enhancement Error]:", error);
+    throw error;
+  }
+};

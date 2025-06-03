@@ -1,10 +1,12 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { MinusCircle, PlusCircle } from "lucide-react";
+import { MinusCircle, PlusCircle, Sparkles } from "lucide-react";
 import DateRangeDropdown from "@/components/ui/daterange";
 import { Textarea } from "@/components/ui/textarea";
 import { ResumeData } from "@/lib/resumesStore";
+import { runTextEnhancement } from "@/lib/llmUtils";
+import { showWarning } from "@/lib/toastUtils";
 
 type Props = {
   settings?: ResumeData["content"]["experience"];
@@ -12,13 +14,66 @@ type Props = {
     section: K,
     data: Partial<ResumeData["content"][K]> | ResumeData["content"][K]
   ) => void;
+  jobDesc?: string;
+  setOpenLoader: (open: boolean) => void;
+  setCurrentSection: (section: string | undefined) => void;
 };
 
-export const ExperienceEditor = ({ settings, updateDraft }: Props) => {
+export const ExperienceEditor = ({
+  settings,
+  updateDraft,
+  jobDesc = "",
+  setOpenLoader,
+  setCurrentSection,
+}: Props) => {
   const entries = settings ?? [];
 
   const sync = (next: ResumeData["content"]["experience"]) => {
     updateDraft("experience", next);
+  };
+
+  const handleAIEnhance = async (
+    idx: number,
+    field: "description" | "notes",
+    noteIdx?: number
+  ) => {
+    const text =
+      field === "description"
+        ? entries[idx].description
+        : entries[idx].notes?.[noteIdx ?? 0] ?? "";
+
+    if (!text.trim() && !jobDesc?.trim()) {
+      showWarning(
+        "No content to enhance. Add text or a job description first."
+      );
+      return;
+    }
+
+    setOpenLoader(true);
+    setCurrentSection(`Enhancing experience field...`);
+
+    try {
+      const result = await runTextEnhancement(
+        text.trim() || text,
+        jobDesc.trim(),
+        "experience"
+      );
+
+      const updated = [...entries];
+      if (field === "description") {
+        updated[idx] = { ...updated[idx], description: result };
+      } else {
+        const notes = [...(updated[idx].notes || [])];
+        notes[noteIdx ?? 0] = result;
+        updated[idx] = { ...updated[idx], notes };
+      }
+      sync(updated);
+    } catch (err) {
+      console.error("AI Enhancement Error:", err);
+    } finally {
+      setOpenLoader(false);
+      setCurrentSection(undefined);
+    }
   };
 
   const handleEntryChange = (
@@ -129,7 +184,16 @@ export const ExperienceEditor = ({ settings, updateDraft }: Props) => {
 
           {/* Description */}
           <div className='flex flex-col gap-2'>
-            <Label>Description</Label>
+            <div className='flex items-center justify-between'>
+              <Label>Description</Label>
+              <Button
+                size='icon'
+                variant='outline'
+                onClick={() => handleAIEnhance(idx, "description")}
+              >
+                <Sparkles className='h-4 w-4' />
+              </Button>
+            </div>
             <Textarea
               placeholder='Worked on major UI redesign...'
               value={entry.description}
@@ -151,13 +215,20 @@ export const ExperienceEditor = ({ settings, updateDraft }: Props) => {
               Notes<span className='text-muted-foreground'>(optional)</span>
             </Label>
             {(entry.notes || []).map((note, nidx) => (
-              <div key={nidx} className='flex gap-2'>
+              <div key={nidx} className='flex gap-2 items-center'>
                 <Input
                   className='flex-1'
                   placeholder={`Note ${nidx + 1}`}
                   value={note}
                   onChange={(e) => handleNoteChange(idx, nidx, e.target.value)}
                 />
+                <Button
+                  size='icon'
+                  variant='outline'
+                  onClick={() => handleAIEnhance(idx, "notes", nidx)}
+                >
+                  <Sparkles className='h-4 w-4' />
+                </Button>
                 <Button
                   variant='ghost'
                   className='text-destructive'

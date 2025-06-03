@@ -11,6 +11,8 @@ import { ResumeData } from "@/lib/resumesStore";
 import Logo from "@/assets/Logo.svg?react";
 import { AnimatePresence, motion as m } from "motion/react";
 import { ResumeEditor } from "./ResumeEditor";
+import { Card, CardContent } from "@/components/ui/card";
+import Loader from "@/assets/loader.svg?react";
 
 type SidebarProps = {
   draft: ResumeData | null;
@@ -36,6 +38,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   handleSave,
 }) => {
   const [activeTab, setActiveTab] = useState<string>("resume");
+  const [openLoader, setOpenLoader] = useState(false);
+  const [currentSection, setCurrentSection] = useState<string | undefined>(
+    undefined
+  );
 
   const updateDraft = <K extends keyof ResumeData["content"]>(
     section: K,
@@ -112,6 +118,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <ExperienceEditor
                 settings={draft?.content?.experience}
                 updateDraft={updateDraft}
+                jobDesc={draft?.jobDesc || ""}
+                setOpenLoader={setOpenLoader}
+                setCurrentSection={setCurrentSection}
               />
             </m.div>
           )}
@@ -140,6 +149,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <ProjectsEditor
                 settings={draft?.content?.projects}
                 updateDraft={updateDraft}
+                jobDesc={draft?.jobDesc || ""}
+                setOpenLoader={setOpenLoader}
+                setCurrentSection={setCurrentSection}
               />
             </m.div>
           )}
@@ -168,6 +180,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <AwardsEditor
                 settings={draft?.content?.awards}
                 updateDraft={updateDraft}
+                jobDesc={draft?.jobDesc || ""}
+                setOpenLoader={setOpenLoader}
+                setCurrentSection={setCurrentSection}
               />
             </m.div>
           )}
@@ -193,6 +208,42 @@ export const Sidebar: React.FC<SidebarProps> = ({
           Save
         </Button>
       </div>
+
+      {/* AI Loader Modal */}
+      <AnimatePresence>
+        {openLoader && (
+          <m.div
+            key='ai-enhance-modal'
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+            className='fixed inset-0 z-40 flex items-center justify-center bg-background/50 backdrop-blur-sm'
+          >
+            <Card className='w-full max-w-md p-6'>
+              <CardContent>
+                <div className='flex flex-col gap-4'>
+                  <Loader className='w-12 h-12 mx-auto' />
+                  <AnimatePresence mode='wait'>
+                    {currentSection && (
+                      <m.div
+                        key={currentSection}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={{ duration: 0.2 }}
+                        className='text-center text-md'
+                      >
+                        {currentSection}
+                      </m.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </CardContent>
+            </Card>
+          </m.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
