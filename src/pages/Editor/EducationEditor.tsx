@@ -174,7 +174,7 @@ export const EducationEditor = ({ settings, updateDraft }: Props) => {
           {/* Remove Entry */}
           <Button
             variant='ghost'
-            className='text-destructive self-start'
+            className='text-destructive'
             onClick={() => removeEntry(idx)}
           >
             <MinusCircle className='h-4 w-4 mr-1' /> Remove Education

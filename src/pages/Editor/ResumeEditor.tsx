@@ -22,6 +22,14 @@ import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { AnimatePresence, motion as m } from "motion/react";
 import { runResumeCleanup, runResumeEnhancement } from "@/lib/llmUtils";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 type Props = {
   draft: any;
@@ -270,14 +278,22 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
             transition={{ duration: 0.2 }}
             className='fixed inset-0 z-40 flex items-center justify-center bg-background/50 backdrop-blur-sm'
           >
-            <div className='bg-background rounded-lg border shadow-lg w-full max-w-md p-6'>
-              <h2 className='text-xl font-semibold'>ATS Keyword Results</h2>
+            <Card className='w-full max-w-md'>
+              <CardHeader>
+                <CardTitle className='text-xl font-semibold'>
+                  ATS Keyword Results
+                </CardTitle>
+                <CardDescription>
+                  Review the keywords found in your resume compared to the job
+                  description.
+                </CardDescription>
+              </CardHeader>
 
-              <div className='mt-4 flex flex-col gap-4 overflow-y-auto'>
+              <CardContent className='flex flex-col gap-4 max-h-72 overflow-y-auto'>
                 <div>
                   <h3 className='font-semibold mb-1'>Present Keywords:</h3>
                   {atsResults.present.length > 0 ? (
-                    <ul className='list-disc list-inside text-green-600'>
+                    <ul className='list-disc list-inside text-primary'>
                       {atsResults.present.map((word) => (
                         <li key={word}>{word}</li>
                       ))}
@@ -292,7 +308,7 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
                 <div>
                   <h3 className='font-semibold mb-1'>Missing Keywords:</h3>
                   {atsResults.missing.length > 0 ? (
-                    <ul className='list-disc list-inside text-red-600'>
+                    <ul className='list-disc list-inside text-destructive'>
                       {atsResults.missing.map((word) => (
                         <li key={word}>{word}</li>
                       ))}
@@ -303,17 +319,17 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
                     </p>
                   )}
                 </div>
-              </div>
+              </CardContent>
 
-              <div className='flex justify-end mt-6'>
+              <CardFooter className='flex justify-end'>
                 <Button
                   variant='outline'
                   onClick={() => setAtsModalOpen(false)}
                 >
                   Close
                 </Button>
-              </div>
-            </div>
+              </CardFooter>
+            </Card>
           </m.div>
         )}
       </AnimatePresence>
