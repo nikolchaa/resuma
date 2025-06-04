@@ -93,6 +93,26 @@ export const Home = () => {
     }
   };
 
+  const slugify = (text: string) =>
+    text
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
+  const getUniqueId = async (base: string): Promise<string> => {
+    const existing = await listResumes();
+    const ids = new Set(existing.map((r) => r.id));
+    if (!ids.has(base)) return base;
+    let suffix = 1;
+    let candidate = `${base}-${suffix}`;
+    while (ids.has(candidate)) {
+      suffix++;
+      candidate = `${base}-${suffix}`;
+    }
+    return candidate;
+  };
+
   const handleImport = async () => {
     try {
       const selected = await open({
@@ -108,8 +128,12 @@ export const Home = () => {
       const raw = await readTextFile(selected);
       const parsed = JSON.parse(raw) as ResumeData;
 
+      // Create safe, unique ID
+      const baseId = slugify(parsed.id || parsed.title || "imported-resume");
+      const uniqueId = await getUniqueId(baseId);
+
       const resumeToSave: ResumeData = {
-        id: parsed.id,
+        id: uniqueId,
         title: parsed.title || "Imported Resume",
         updated: new Date().toISOString(),
         image:
