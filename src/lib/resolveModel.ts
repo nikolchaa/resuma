@@ -23,11 +23,37 @@ export function getModels(system: SystemInfo): ModelResult[] {
   const ramGb = Math.round(system.ram.sizeMb / 1024);
   const vramGb = Math.round(system.gpu.vramMb / 1024);
   const threads = system.cpu.threads ?? 0;
+  const cpuName = system.cpu.model.toLowerCase();
+  const isAppleSilicon =
+    system.cpu.manufacturer === "Apple" && /m[1-3]/.test(cpuName);
+
+  const appleTier = isAppleSilicon
+    ? cpuName.includes("ultra") || cpuName.includes("max")
+      ? "high"
+      : cpuName.includes("pro")
+      ? "medium"
+      : "base"
+    : null;
 
   return (models as ModelEntry[]).map((model) => {
     const paramNum = parseFloat(model.parameters.replace("B", ""));
     let status: CompatibilityStatus = "unsupported";
 
+    if (isAppleSilicon) {
+      if (appleTier === "high") {
+        status = "gpu"; // everything runs, maybe slowly
+      } else if (appleTier === "medium") {
+        if (paramNum <= 7) status = "gpu";
+        else if (paramNum <= 14) status = "cpu";
+      } else {
+        if (paramNum <= 4) status = "gpu";
+        else if (paramNum <= 7) status = "cpu";
+      }
+
+      return { model, status };
+    }
+
+    // Non-Apple platforms
     if (paramNum === 32) {
       const ramOk = vramGb >= 16 ? ramGb >= 32 : ramGb >= 64;
       if (vramGb >= 20) status = "gpu";
