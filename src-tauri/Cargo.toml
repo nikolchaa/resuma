@@ -35,4 +35,5 @@ lazy_static = "1.5.0"
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-prevent-default = { version = "2.0", features = ["unstable-windows"] }
+dirs-next = "2.0.0"
 
