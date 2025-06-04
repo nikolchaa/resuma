@@ -345,7 +345,9 @@ const Artificial = () => {
               GPU:{" "}
               <span className='font-medium'>
                 {gpu
-                  ? `${gpu} (${Math.round(gpuVram / 1024)} GB)`
+                  ? `${gpu}${
+                      gpuVram > 0 ? ` (${Math.round(gpuVram / 1024)} GB)` : ""
+                    }`
                   : "Detecting..."}
               </span>
             </span>
