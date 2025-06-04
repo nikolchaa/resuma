@@ -1,26 +1,40 @@
 use std::process::Command;
 use std::path::PathBuf;
-use std::env;
 use serde_json::Value;
+use dirs_next::data_dir;
 
-#[cfg(target_os = "windows")]
 pub async fn call_llm(prompt: String, llm_settings: Value) -> Result<String, String> {
-    let model = llm_settings["model"].as_str().ok_or("Missing model")?;
-    let runtime = llm_settings["runtime"].as_str().ok_or("Missing runtime")?;
+    let model = llm_settings["model"]
+        .as_str()
+        .ok_or("Missing model")?;
+    let runtime = llm_settings["runtime"]
+        .as_str()
+        .ok_or("Missing runtime")?;
     let settings = &llm_settings["settings"];
 
-    let appdata = env::var("APPDATA").map_err(|e| format!("Failed to get APPDATA: {}", e))?;
+    let app_data = get_app_data_path()?;
     let normalized_model = model.replace(".", "_");
 
-    let model_path = PathBuf::from(&appdata)
-        .join("com.resuma.app/models")
+    let model_path = app_data
+        .join("models")
         .join(&normalized_model)
         .join(format!("{}.gguf", model));
 
-    let runtime_path = PathBuf::from(&appdata)
-        .join("com.resuma.app/runtimes")
+    #[cfg(target_os = "windows")]
+    let runtime_path = app_data
+        .join("runtimes")
         .join(runtime)
         .join("llama-cli.exe");
+
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    let runtime_path = app_data
+        .join("runtimes")
+        .join(runtime)
+        .join("build/bin/llama-cli");
+
+    if !runtime_path.exists() {
+        return Err(format!("Runtime not found at {:?}", runtime_path));
+    }
 
     let mut args = vec![
         "--model".to_string(),
@@ -37,13 +51,17 @@ pub async fn call_llm(prompt: String, llm_settings: Value) -> Result<String, Str
         args.push(ctx.to_string());
     }
 
-    if settings.get("flashAttn").and_then(|v| v.as_bool()) == Some(true) {
-        args.push("--flash-attn".to_string());
-    }
+    let is_cpu_runtime = runtime.to_lowercase().contains("cpu");
 
-    if let Some(gpu) = settings.get("gpuLayers").and_then(|v| v.as_u64()) {
-        args.push("--gpu-layers".to_string());
-        args.push(gpu.to_string());
+    if !is_cpu_runtime {
+        if settings.get("flashAttn").and_then(|v| v.as_bool()) == Some(true) {
+            args.push("--flash-attn".to_string());
+        }
+
+        if let Some(gpu) = settings.get("gpuLayers").and_then(|v| v.as_u64()) {
+            args.push("--gpu-layers".to_string());
+            args.push(gpu.to_string());
+        }
     }
 
     if settings.get("mlock").and_then(|v| v.as_bool()) == Some(true) {
@@ -67,11 +85,18 @@ pub async fn call_llm(prompt: String, llm_settings: Value) -> Result<String, Str
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+
     if let Some(extracted) = extract_think_to_end(&stdout) {
         Ok(extracted)
     } else {
         Ok(stdout.trim().to_string())
     }
+}
+
+fn get_app_data_path() -> Result<PathBuf, String> {
+    data_dir()
+        .map(|base| base.join("com.resuma.app"))
+        .ok_or("Failed to resolve platform-specific app data directory.".to_string())
 }
 
 pub fn extract_think_to_end(text: &str) -> Option<String> {
@@ -84,9 +109,4 @@ pub fn extract_think_to_end(text: &str) -> Option<String> {
     } else {
         None
     }
-}
-
-#[cfg(not(target_os = "windows"))]
-pub async fn call_llm(_prompt: String, _llm_settings: Value) -> Result<String, String> {
-    Err("LLM integration is only implemented for Windows in this build.".to_string())
 }
