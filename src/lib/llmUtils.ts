@@ -69,7 +69,7 @@ Modify the description and notes fields to make them clearer, more concise, and 
   if (match) result = match[1].trim();
 
   try {
-    return JSON.parse(result);
+    return result.trim();
   } catch (err) {
     console.error("LLM returned invalid JSON:", result);
     throw new Error("LLM enhancement response is not valid JSON.");
