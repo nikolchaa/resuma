@@ -383,7 +383,20 @@ export const ArtificialSettings = ({
         <Label className='w-1/3'>Model</Label>
         <Select
           value={llm.model}
-          onValueChange={(value) => updateSettings("llm", { model: value })}
+          onValueChange={(value) => {
+            const modelEntry = getModels(system).find(
+              (entry) => entry.model.name === value
+            );
+            const maxLayers = modelEntry?.model.layers ?? 48;
+
+            updateSettings("llm", {
+              model: value,
+              settings: {
+                ...llm.settings,
+                gpuLayers: maxLayers,
+              },
+            });
+          }}
         >
           <SelectTrigger className='w-2/3 text-right'>
             <SelectValue placeholder='Select model' />
