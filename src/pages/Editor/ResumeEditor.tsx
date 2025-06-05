@@ -104,7 +104,15 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
       {/* Template Switcher */}
       <div className='flex items-center justify-between'>
         <Label className='w-1/3'>Template</Label>
-        <Select>
+        <Select
+          value={draft?.theme ?? "professional"}
+          onValueChange={(value) =>
+            setDraft({
+              ...draft,
+              theme: value,
+            })
+          }
+        >
           <SelectTrigger className='w-2/3 text-right'>
             <SelectValue placeholder='Select a template' />
           </SelectTrigger>
@@ -119,14 +127,22 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
       {/* Font Switcher */}
       <div className='flex items-center justify-between'>
         <Label className='w-1/3'>Font</Label>
-        <Select>
+        <Select
+          value={draft?.font ?? "figtree"}
+          onValueChange={(value) =>
+            setDraft({
+              ...draft,
+              font: value,
+            })
+          }
+        >
           <SelectTrigger className='w-2/3 text-right'>
             <SelectValue placeholder='Select a font' />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value='figtree'>Figtree</SelectItem>
             <SelectItem value='inter'>Inter</SelectItem>
-            <SelectItem value='sourceSans'>Source Sans</SelectItem>
+            <SelectItem value='spaceGrotesk'>Space Grotesk</SelectItem>
           </SelectContent>
         </Select>
       </div>

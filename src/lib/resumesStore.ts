@@ -17,6 +17,8 @@ export interface ResumeData {
   content: ResumeContent;
   image?: string; // base64 or external
   jobDesc?: string; // optional job description for AI generation
+  theme?: string; // optional theme for the resume
+  font?: string; // optional font for the resume
 }
 
 export interface ResumeContent {
