@@ -3,6 +3,9 @@ use std::path::PathBuf;
 use serde_json::Value;
 use dirs_next::data_dir;
 
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
 pub async fn call_llm(prompt: String, llm_settings: Value) -> Result<String, String> {
     let model = llm_settings["model"]
         .as_str()
@@ -72,6 +75,14 @@ pub async fn call_llm(prompt: String, llm_settings: Value) -> Result<String, Str
         args.push("--no-mmap".to_string());
     }
 
+    #[cfg(target_os = "windows")]
+    let output = Command::new(runtime_path)
+        .args(&args)
+        .creation_flags(0x08000000) // CREATE_NO_WINDOW
+        .output()
+        .map_err(|e| format!("Failed to execute process: {}", e))?;
+
+    #[cfg(not(target_os = "windows"))]
     let output = Command::new(runtime_path)
         .args(&args)
         .output()

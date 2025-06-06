@@ -15,8 +15,6 @@ mod rpc;
 mod llm;
 use rpc::{set_activity, start_rpc, stop_rpc};
 
-use dotenvy::dotenv;
-
 #[tauri::command]
 async fn download_and_extract(
     window: tauri::Window,
@@ -166,10 +164,9 @@ async fn call_llm(prompt: String, llm_settings: serde_json::Value) -> Result<Str
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    dotenv().ok(); // Load .env
-    let client_id = std::env::var("DISCORD_CLIENT_ID").expect("DISCORD_CLIENT_ID not set");
+    const DISCORD_CLIENT_ID: &str = "1368618733454495855";
 
-    start_rpc(client_id).expect("Failed to start Discord RPC");
+    start_rpc(DISCORD_CLIENT_ID.to_string()).expect("Failed to start Discord RPC");
 
     #[cfg(target_os = "windows")]
     let prevent_default_plugin = PreventDefaultBuilder::new()
