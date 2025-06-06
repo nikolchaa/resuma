@@ -41,13 +41,22 @@ export function getModels(system: SystemInfo): ModelResult[] {
 
     if (isAppleSilicon) {
       if (appleTier === "high") {
-        status = "gpu"; // everything runs, maybe slowly
+        if (paramNum <= 32 && ramGb >= 64) status = "gpu";
+        else if (paramNum <= 14 && ramGb >= 32) status = "gpu";
+        else if (paramNum <= 7 && ramGb >= 16) status = "gpu";
+        else if (paramNum <= 4 && ramGb >= 8) status = "gpu";
+        else if (paramNum <= 1.7 && ramGb >= 8) status = "gpu";
+        else if (paramNum <= 0.6) status = "cpu";
       } else if (appleTier === "medium") {
-        if (paramNum <= 7) status = "gpu";
-        else if (paramNum <= 14) status = "cpu";
+        if (paramNum <= 14 && ramGb >= 32) status = "gpu";
+        else if (paramNum <= 7 && ramGb >= 16) status = "gpu";
+        else if (paramNum <= 4 && ramGb >= 8) status = "gpu";
+        else if (paramNum <= 1.7 && ramGb >= 8) status = "cpu";
+        else if (paramNum <= 0.6) status = "cpu";
       } else {
-        if (paramNum <= 4) status = "gpu";
-        else if (paramNum <= 7) status = "cpu";
+        if (paramNum <= 4 && ramGb >= 8) status = "gpu";
+        else if (paramNum <= 1.7 && ramGb >= 8) status = "cpu";
+        else if (paramNum <= 0.6) status = "cpu";
       }
 
       return { model, status };
