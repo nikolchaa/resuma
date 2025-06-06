@@ -42,6 +42,24 @@ export function getRuntimes(system: SystemInfo): {
   const platform = normalizePlatform(system.os.name);
   const typedRuntimes = runtimes as RuntimeEntry[];
 
+  const cudaSupportedIdentifiers = [
+    "rtx",
+    "gb200",
+    "b200",
+    "gh200",
+    "h200",
+    "h100",
+    "l4",
+    "l40",
+    "a40",
+    "a10",
+    "a16",
+    "a2",
+    "a100",
+    "a30",
+    "t4",
+  ];
+
   return typedRuntimes.map((rt) => {
     let status: CompatibilityStatus = "unsupported";
 
@@ -55,10 +73,18 @@ export function getRuntimes(system: SystemInfo): {
       status = "confirmed";
     }
 
-    // ✅ Use plugin-detected support for CUDA/Vulkan
+    // ✅ Use plugin-detected support for CUDA + extended model check
     else if (rt.backend === "cuda") {
-      status = system.gpu.supportsCuda ? "confirmed" : "unsupported";
-    } else if (rt.backend === "vulkan") {
+      const modelLower = system.gpu.model.toLowerCase();
+      const matchesCudaGpu = cudaSupportedIdentifiers.some((id) =>
+        modelLower.includes(id)
+      );
+      status =
+        system.gpu.supportsCuda && matchesCudaGpu ? "confirmed" : "unsupported";
+    }
+
+    // ✅ Use plugin-detected support for Vulkan
+    else if (rt.backend === "vulkan") {
       status = system.gpu.supportsVulkan ? "confirmed" : "unsupported";
     }
 
