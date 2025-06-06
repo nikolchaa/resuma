@@ -47,7 +47,9 @@
     "download": "https://github.com/ggml-org/llama.cpp/releases/download/b5588/llama-b5588-bin-win-cuda-12.4-x64.zip",
     "platform": "windows",
     "backend": "cuda",
-    "compatibleGpus": [{ "model": "Any NVIDIA", "status": "confirmed" }]
+    "compatibleGpus": [
+      { "model": "NVIDIA RTX-series cards", "status": "confirmed" }
+    ]
   },
   {
     "name": "llama-vulkan-win",

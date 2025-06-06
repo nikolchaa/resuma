@@ -320,7 +320,7 @@ export default function Settings() {
   return (
     <div className='flex w-full h-screen items-center justify-center'>
       <Back location='/' />
-      <div className='flex max-w-[75rem] w-[calc(100vw-12.5rem)] h-screen gap-8'>
+      <div className='flex max-w-[75rem] w-[calc(100vw-12.5rem)] h-screen gap-8 select-none'>
         {/* Apply Settings popup */}
         <AnimatePresence>
           {unsavedChanges && (
