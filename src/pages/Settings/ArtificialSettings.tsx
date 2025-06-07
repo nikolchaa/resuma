@@ -19,7 +19,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { SettingsType } from "@/contexts/OnboardingContext";
-import { getModels } from "@/lib/resolveModel";
+import { getModels, ModelEntry } from "@/lib/resolveModel";
 import { useSystem } from "@/contexts/SystemContext";
 import { CardDescription, CardTitle } from "@/components/ui/card";
 import { getRuntimes } from "@/lib/resolveRuntime";
@@ -41,7 +41,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { showError } from "@/lib/toastUtils";
+import { showError, showSuccess } from "@/lib/toastUtils";
+import { RuntimeEntry } from "@/lib/selectRecommendedRuntime";
 
 type Props = {
   llm: SettingsType["llm"];
@@ -60,15 +61,37 @@ export const ArtificialSettings = ({
   const settings = llm.settings;
   const system = useSystem();
 
-  const [downloadedModelNames, setDownloadedModelNames] = useState<string[]>(
-    []
-  );
-  const [downloadedRuntimeNames, setDownloadedRuntimeNames] = useState<
-    string[]
-  >([]);
   const [downloadStatusMap, setDownloadStatusMap] = useState<DownloadStatusMap>(
     {}
   );
+  const [deletingModel, setDeletingModel] = useState<string | null>(null);
+  const [deletingRuntime, setDeletingRuntime] = useState<string | null>(null);
+  const [availableModels, setAvailableModels] = useState<ModelEntry[]>([]);
+  const [availableRuntimes, setAvailableRuntimes] = useState<RuntimeEntry[]>(
+    []
+  );
+
+  useEffect(() => {
+    const loadAvailable = async () => {
+      const modelFolders = await getDownloadedModels();
+      const runtimeFolders = await getDownloadedRuntimes();
+
+      const models = getModels(system)
+        .filter((entry) =>
+          modelFolders.includes(entry.model.name.replace(/\./g, "_"))
+        )
+        .map((entry) => entry.model);
+
+      const runtimes = getRuntimes(system)
+        .filter((entry) => runtimeFolders.includes(entry.runtime.name))
+        .map((entry) => entry.runtime);
+
+      setAvailableModels(models);
+      setAvailableRuntimes(runtimes);
+    };
+
+    loadAvailable();
+  }, [downloadStatusMap, system]);
 
   const getDownloadedModels = async (): Promise<string[]> => {
     try {
@@ -146,40 +169,38 @@ export const ArtificialSettings = ({
 
     loadDownloadedModels();
     loadDownloadedRuntimes();
-
-    getDownloadedModels().then(setDownloadedModelNames);
-    getDownloadedRuntimes().then(setDownloadedRuntimeNames);
   }, []);
 
-  const downloadedModels = getModels(system).filter((entry) => {
-    const safeName = entry.model.name.replace(/\./g, "_");
-    return downloadedModelNames.includes(safeName);
-  });
-  const downloadedRuntimes = getRuntimes(system).filter((entry) => {
-    return downloadedRuntimeNames.includes(entry.runtime.name);
-  });
-
   const handleDeleteModel = async (modelName: string) => {
+    const normalized = modelName.replace(/\./g, "_");
+    setDeletingModel(normalized);
+
     try {
-      await remove(`models/${modelName.replace(/\./g, "_")}`, {
+      await remove(`models/${normalized}`, {
         recursive: true,
         baseDir: BaseDirectory.AppData,
       });
 
       setDownloadStatusMap((prev) => {
         const updated = { ...prev };
-        delete updated[modelName.replace(/\./g, "_")];
+        delete updated[normalized];
         return updated;
       });
+
+      showSuccess("Model deleted", `"${modelName}" was removed successfully`);
     } catch (error) {
       showError(
         "Failed to delete model",
         (error as Error).message || "An unexpected error occurred"
       );
+    } finally {
+      setDeletingModel(null);
     }
   };
 
   const handleDeleteRuntime = async (runtimeName: string) => {
+    setDeletingRuntime(runtimeName);
+
     try {
       await remove(`runtimes/${runtimeName}`, {
         recursive: true,
@@ -191,11 +212,18 @@ export const ArtificialSettings = ({
         delete updated[runtimeName];
         return updated;
       });
+
+      showSuccess(
+        "Runtime deleted",
+        `"${runtimeName}" was removed successfully`
+      );
     } catch (error) {
       showError(
         "Failed to delete runtime",
         (error as Error).message || "An unexpected error occurred"
       );
+    } finally {
+      setDeletingRuntime(null);
     }
   };
 
@@ -363,15 +391,13 @@ export const ArtificialSettings = ({
           onValueChange={(value) => updateSettings("llm", { runtime: value })}
         >
           <SelectTrigger className='w-2/3 text-right'>
-            <SelectValue placeholder='Select model' />
+            <SelectValue placeholder='Select runtime' />
           </SelectTrigger>
           <SelectContent>
-            {downloadedRuntimes.map((entry) => (
-              <SelectItem key={entry.runtime.name} value={entry.runtime.name}>
-                {entry.runtime.label}{" "}
-                <Badge variant='outline'>
-                  {entry.runtime.backend.toUpperCase()}
-                </Badge>
+            {availableRuntimes.map((runtime) => (
+              <SelectItem key={runtime.name} value={runtime.name}>
+                {runtime.label}{" "}
+                <Badge variant='outline'>{runtime.backend.toUpperCase()}</Badge>
               </SelectItem>
             ))}
           </SelectContent>
@@ -402,13 +428,19 @@ export const ArtificialSettings = ({
             <SelectValue placeholder='Select model' />
           </SelectTrigger>
           <SelectContent>
-            {downloadedModels.map((entry) => (
-              <SelectItem key={entry.model.name} value={entry.model.name}>
-                {entry.model.label}{" "}
-                <Badge variant='outline'>{entry.model.size}</Badge>
-                <Badge variant='outline'>{entry.status.toUpperCase()}</Badge>
-              </SelectItem>
-            ))}
+            {availableModels.map((model) => {
+              const fullEntry = getModels(system).find(
+                (e) => e.model.name === model.name
+              );
+              const status = fullEntry?.status?.toUpperCase() ?? "UNKNOWN";
+
+              return (
+                <SelectItem key={model.name} value={model.name}>
+                  {model.label} <Badge variant='outline'>{model.size}</Badge>
+                  <Badge variant='outline'>{status}</Badge>
+                </SelectItem>
+              );
+            })}
           </SelectContent>
         </Select>
       </div>
@@ -596,7 +628,8 @@ export const ArtificialSettings = ({
                   downloadStatusMap[entry.model.name.replace(/\./g, "_")]
                     ?.state === "ready" ||
                   downloadStatusMap[entry.model.name.replace(/\./g, "_")]
-                    ?.state === "downloading"
+                    ?.state === "downloading" ||
+                  deletingModel === entry.model.name.replace(/\./g, "_")
                 }
                 onClick={() => {
                   handleDownloadClick(
@@ -717,14 +750,16 @@ export const ArtificialSettings = ({
               )}
               <Button
                 size='sm'
-                variant={"secondary"}
+                variant='secondary'
                 disabled={
                   !entry.runtime.download ||
                   entry.status === "unsupported" ||
                   downloadStatusMap[entry.runtime.name]?.state === "ready" ||
                   downloadStatusMap[entry.runtime.name]?.state ===
                     "downloading" ||
-                  downloadStatusMap[entry.runtime.name]?.state === "extracting"
+                  downloadStatusMap[entry.runtime.name]?.state ===
+                    "extracting" ||
+                  deletingRuntime === entry.runtime.name
                 }
                 onClick={() =>
                   handleDownloadClick(
