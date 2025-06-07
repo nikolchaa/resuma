@@ -86,17 +86,6 @@ const Education = () => {
     sync(updated);
   };
 
-  const validateEntries = (entries: EducationEntry[]) => {
-    return entries.every((entry) => {
-      return (
-        entry.school.trim() !== "" &&
-        entry.degree.trim() !== "" &&
-        entry.location.trim() !== "" &&
-        entry.date?.from !== ""
-      );
-    });
-  };
-
   return (
     <Card className='w-full max-w-lg mx-auto my-16'>
       <CardHeader>
@@ -110,9 +99,7 @@ const Education = () => {
         {entries.map((entry, index) => (
           <div key={index} className='flex flex-col gap-4 border-b pb-4'>
             <div className='flex flex-col gap-2'>
-              <Label>
-                School Name<span className='text-destructive'>*</span>
-              </Label>
+              <Label>School Name</Label>
               <Input
                 placeholder='San Francisco State University'
                 value={entry.school}
@@ -122,9 +109,7 @@ const Education = () => {
               />
             </div>
             <div className='flex flex-col gap-2'>
-              <Label>
-                Degree<span className='text-destructive'>*</span>
-              </Label>
+              <Label>Degree</Label>
               <Input
                 placeholder='Bachelor of Computer Science'
                 value={entry.degree}
@@ -134,9 +119,7 @@ const Education = () => {
               />
             </div>
             <div className='flex flex-col gap-2'>
-              <Label>
-                Location<span className='text-destructive'>*</span>
-              </Label>
+              <Label>Location</Label>
               <Input
                 placeholder='San Francisco, CA'
                 value={entry.location}
@@ -223,7 +206,6 @@ const Education = () => {
 
         <div className='flex justify-end mt-4'>
           <Button
-            disabled={!validateEntries(entries)}
             onClick={() =>
               apply("education").then(() => navigate("/onboarding/step5"))
             }
