@@ -28,12 +28,7 @@ import { DownloadStatusMap } from "@/types/downloadStatus";
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useDownloadListeners } from "@/hooks/useDownloadListeners";
-import {
-  BaseDirectory,
-  DirEntry,
-  readDir,
-  remove,
-} from "@tauri-apps/plugin-fs";
+import { BaseDirectory, readDir, remove } from "@tauri-apps/plugin-fs";
 import {
   Select,
   SelectContent,
@@ -72,10 +67,56 @@ export const ArtificialSettings = ({
   );
 
   useEffect(() => {
-    const loadAvailable = async () => {
-      const modelFolders = await getDownloadedModels();
-      const runtimeFolders = await getDownloadedRuntimes();
+    const loadAllDownloadedAssets = async () => {
+      let modelFolders: string[] = [];
+      let runtimeFolders: string[] = [];
 
+      try {
+        const modelEntries = await readDir("models", {
+          baseDir: BaseDirectory.AppData,
+        });
+        modelFolders = modelEntries
+          .filter((e) => e.name && e.isDirectory)
+          .map((e) => e.name as string);
+      } catch (error) {
+        showError(
+          "Error reading downloaded models",
+          (error as Error).message || "An unexpected error occurred"
+        );
+      }
+
+      try {
+        const runtimeEntries = await readDir("runtimes", {
+          baseDir: BaseDirectory.AppData,
+        });
+        runtimeFolders = runtimeEntries
+          .filter((e) => e.name && e.isDirectory)
+          .map((e) => e.name as string);
+      } catch (error) {
+        showError(
+          "Error reading downloaded runtimes",
+          (error as Error).message || "An unexpected error occurred"
+        );
+      }
+
+      // Update status map
+      const modelReadyMap: DownloadStatusMap = {};
+      modelFolders.forEach((name) => {
+        modelReadyMap[name] = { state: "ready", progress: 100 };
+      });
+
+      const runtimeReadyMap: DownloadStatusMap = {};
+      runtimeFolders.forEach((name) => {
+        runtimeReadyMap[name] = { state: "ready", progress: 100 };
+      });
+
+      setDownloadStatusMap((prev) => ({
+        ...modelReadyMap,
+        ...runtimeReadyMap,
+        ...prev,
+      }));
+
+      // Filter available models/runtimes
       const models = getModels(system)
         .filter((entry) =>
           modelFolders.includes(entry.model.name.replace(/\./g, "_"))
@@ -90,86 +131,8 @@ export const ArtificialSettings = ({
       setAvailableRuntimes(runtimes);
     };
 
-    loadAvailable();
-  }, [downloadStatusMap, system]);
-
-  const getDownloadedModels = async (): Promise<string[]> => {
-    try {
-      const entries: DirEntry[] = await readDir("models", {
-        baseDir: BaseDirectory.AppData,
-      });
-
-      const folders = entries
-        .filter((entry) => entry.name && entry.isDirectory)
-        .map((entry) => entry.name as string);
-
-      return folders;
-    } catch (error) {
-      showError(
-        "Error reading downloaded models",
-        (error as Error).message || "An unexpected error occurred"
-      );
-      return [];
-    }
-  };
-
-  const getDownloadedRuntimes = async (): Promise<string[]> => {
-    try {
-      const entries: DirEntry[] = await readDir("runtimes", {
-        baseDir: BaseDirectory.AppData,
-      });
-
-      const folders = entries
-        .filter((entry) => entry.name && entry.isDirectory)
-        .map((entry) => entry.name as string);
-
-      return folders;
-    } catch (error) {
-      showError(
-        "Error reading downloaded runtimes",
-        (error as Error).message || "An unexpected error occurred"
-      );
-      return [];
-    }
-  };
-
-  useEffect(() => {
-    const loadDownloadedModels = async () => {
-      const folders = await getDownloadedModels();
-
-      const readyMap: DownloadStatusMap = {};
-      folders.forEach((folderName) => {
-        readyMap[folderName] = {
-          state: "ready",
-          progress: 100,
-        };
-      });
-
-      setDownloadStatusMap((prev) => ({
-        ...readyMap,
-        ...prev, // don't overwrite in-progress ones
-      }));
-    };
-    const loadDownloadedRuntimes = async () => {
-      const folders = await getDownloadedRuntimes();
-
-      const readyMap: DownloadStatusMap = {};
-      folders.forEach((folderName) => {
-        readyMap[folderName] = {
-          state: "ready",
-          progress: 100,
-        };
-      });
-
-      setDownloadStatusMap((prev) => ({
-        ...readyMap,
-        ...prev, // don't overwrite in-progress ones
-      }));
-    };
-
-    loadDownloadedModels();
-    loadDownloadedRuntimes();
-  }, []);
+    loadAllDownloadedAssets();
+  }, [system]);
 
   const handleDeleteModel = async (modelName: string) => {
     const normalized = modelName.replace(/\./g, "_");
@@ -748,82 +711,69 @@ export const ArtificialSettings = ({
                   <Trash2 className='w-4 h-4' />
                 </Button>
               )}
-              <Button
-                size='sm'
-                variant='secondary'
-                disabled={
-                  !entry.runtime.download ||
-                  entry.status === "unsupported" ||
-                  downloadStatusMap[entry.runtime.name]?.state === "ready" ||
-                  downloadStatusMap[entry.runtime.name]?.state ===
-                    "downloading" ||
-                  downloadStatusMap[entry.runtime.name]?.state ===
-                    "extracting" ||
-                  deletingRuntime === entry.runtime.name
-                }
-                onClick={() =>
-                  handleDownloadClick(
-                    entry.runtime.name,
-                    entry.runtime.download,
-                    "runtime"
-                  )
-                }
-              >
-                {(entry.runtime.name
-                  ? downloadStatusMap[entry.runtime.name] ?? {
-                      state: "idle",
-                      progress: 0,
+              {entry.status !== "unsupported" && (
+                <Button
+                  size='sm'
+                  variant='secondary'
+                  disabled={
+                    !entry.runtime.download ||
+                    downloadStatusMap[entry.runtime.name]?.state === "ready" ||
+                    downloadStatusMap[entry.runtime.name]?.state ===
+                      "downloading" ||
+                    downloadStatusMap[entry.runtime.name]?.state ===
+                      "extracting" ||
+                    deletingRuntime === entry.runtime.name
+                  }
+                  onClick={() =>
+                    handleDownloadClick(
+                      entry.runtime.name,
+                      entry.runtime.download,
+                      "runtime"
+                    )
+                  }
+                >
+                  {(() => {
+                    const state =
+                      downloadStatusMap[entry.runtime.name]?.state ?? "idle";
+                    const progress =
+                      downloadStatusMap[entry.runtime.name]?.progress ?? 0;
+
+                    if (state === "ready") {
+                      return (
+                        <>
+                          <Check className='w-4 h-4 mr-1' />
+                          Ready
+                        </>
+                      );
                     }
-                  : { state: "idle", progress: 0 }
-                ).state === "ready" ? (
-                  <>
-                    <Check className='w-4 h-4 mr-1' />
-                    Ready
-                  </>
-                ) : (entry.runtime.name
-                    ? downloadStatusMap[entry.runtime.name] ?? {
-                        state: "idle",
-                        progress: 0,
-                      }
-                    : { state: "idle", progress: 0 }
-                  ).state === "downloading" ? (
-                  <>
-                    <Download className='w-4 h-4 mr-1' />
-                    Downloading... (
-                    {Math.round(
-                      (entry.runtime.name
-                        ? downloadStatusMap[entry.runtime.name] ?? {
-                            state: "idle",
-                            progress: 0,
-                          }
-                        : { state: "idle", progress: 0 }
-                      ).progress
-                    )}
-                    %)
-                  </>
-                ) : (entry.runtime.name
-                    ? downloadStatusMap[entry.runtime.name] ?? {
-                        state: "idle",
-                        progress: 0,
-                      }
-                    : { state: "idle", progress: 0 }
-                  ).state === "extracting" ? (
-                  <>
-                    <Download className='w-4 h-4 mr-1' />
-                    Extracting...
-                  </>
-                ) : entry.status === "unsupported" ? (
-                  <>
-                    <X className='w-4 h-4 mr-1' />
-                    Unsupported
-                  </>
-                ) : (
-                  <>
-                    <Download className='w-4 h-4 mr-1' />
-                    Download
-                  </>
-                )}
-              </Button>
+
+                    if (state === "downloading") {
+                      return (
+                        <>
+                          <Download className='w-4 h-4 mr-1' />
+                          Downloading... ({Math.round(progress)}%)
+                        </>
+                      );
+                    }
+
+                    if (state === "extracting") {
+                      return (
+                        <>
+                          <Download className='w-4 h-4 mr-1' />
+                          Extracting...
+                        </>
+                      );
+                    }
+
+                    return (
+                      <>
+                        <Download className='w-4 h-4 mr-1' />
+                        Download
+                      </>
+                    );
+                  })()}
+                </Button>
+              )}
             </div>
           </div>
         ))}
