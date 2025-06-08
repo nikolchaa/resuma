@@ -326,8 +326,9 @@ const Artificial = () => {
       <CardHeader>
         <CardTitle className='text-2xl font-semibold'>AI Setup</CardTitle>
         <CardDescription className='text-sm text-muted-foreground'>
-          We'll configure a default model and runtime based on your system
-          specs. You can change or download new ones later.
+          We'll configure a default runtime based on your system specs. We start
+          with a lightweight model for speed and ease of use - you can switch to
+          heavier ones in settings anytime.
         </CardDescription>
       </CardHeader>
 

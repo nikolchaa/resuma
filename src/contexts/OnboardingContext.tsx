@@ -103,7 +103,7 @@ export const defaultState: SettingsType = {
       degree: "",
       location: "",
       gpa: "",
-      date: { from: "Jan 2021", to: "Jan 2025" },
+      date: { from: "", to: "" },
       courses: [],
     },
   ],

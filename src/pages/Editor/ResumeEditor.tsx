@@ -21,7 +21,7 @@ import { save } from "@tauri-apps/plugin-dialog";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { AnimatePresence, motion as m } from "motion/react";
-import { runResumeCleanup, runResumeEnhancement } from "@/lib/llmUtils";
+// import { runResumeCleanup, runResumeEnhancement } from "@/lib/llmUtils";
 import {
   Card,
   CardContent,
@@ -33,7 +33,7 @@ import {
 
 type Props = {
   draft: any;
-  setDraft: any; // will need it later
+  setDraft: any;
 };
 
 export const ResumeEditor = ({ draft, setDraft }: Props) => {
@@ -227,59 +227,6 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
           }}
         >
           Run Detection
-        </Button>
-      </div>
-
-      <Separator />
-
-      {/* Debug */}
-      <div className='flex items-center justify-between'>
-        <Label>Test LLM Trim</Label>
-        <Button
-          variant='outline'
-          className='w-1/2'
-          onClick={async () => {
-            if (!draft) return;
-
-            try {
-              const result = await runResumeCleanup(
-                draft.content.education[1],
-                draft.jobDesc
-              );
-              console.log("LLM result:", result);
-              showSuccess("LLM Cleanup Result", result);
-            } catch (error) {
-              console.error("LLM error:", error);
-              showError("LLM call failed", String(error));
-            }
-          }}
-        >
-          Run Test
-        </Button>
-      </div>
-
-      <div className='flex items-center justify-between'>
-        <Label>Test LLM Enhance</Label>
-        <Button
-          variant='outline'
-          className='w-1/2'
-          onClick={async () => {
-            if (!draft) return;
-
-            try {
-              const result = await runResumeEnhancement(
-                draft.content.experience[0],
-                draft.jobDesc
-              );
-              console.log("LLM result:", result);
-              showSuccess("LLM Enhancement Result", result);
-            } catch (error) {
-              console.error("LLM error:", error);
-              showError("LLM call failed", String(error));
-            }
-          }}
-        >
-          Run Test
         </Button>
       </div>
 
