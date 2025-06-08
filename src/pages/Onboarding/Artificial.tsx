@@ -162,7 +162,7 @@ const Artificial = () => {
 
     checkModelExistence();
     update("llm", {
-      model: model?.model.name.replace(/\./g, "_") ?? "",
+      model: model?.model.name ?? "",
     });
   }, [model]);
 
