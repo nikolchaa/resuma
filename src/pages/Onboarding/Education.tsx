@@ -89,7 +89,10 @@ const Education = () => {
   return (
     <Card className='w-full max-w-lg mx-auto my-16'>
       <CardHeader>
-        <CardTitle className='text-2xl font-semibold'>Education</CardTitle>
+        <CardTitle className='text-2xl font-semibold'>
+          Education{" "}
+          <span className='text-muted-foreground text-xl'>(optional)</span>
+        </CardTitle>
         <CardDescription className='text-sm text-muted-foreground'>
           List your educational background, including school, degree, and
           relevant coursework.
@@ -186,15 +189,13 @@ const Education = () => {
               </Button>
             </div>
 
-            {entries.length > 1 && (
-              <Button
-                variant={"ghost"}
-                className='text-destructive'
-                onClick={() => removeEntry(index)}
-              >
-                <MinusCircle className='h-4 w-4' /> Remove School
-              </Button>
-            )}
+            <Button
+              variant={"ghost"}
+              className='text-destructive'
+              onClick={() => removeEntry(index)}
+            >
+              <MinusCircle className='h-4 w-4' /> Remove School
+            </Button>
           </div>
         ))}
 
