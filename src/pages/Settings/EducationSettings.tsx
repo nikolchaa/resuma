@@ -92,15 +92,49 @@ export const EducationSettings = ({ settings, updateSettings }: Props) => {
         <div key={idx} className='flex flex-col gap-4 border-b pb-4'>
           {/* School */}
           <div className='flex items-center justify-between'>
-            <Label className='w-1/3'>School</Label>
+            <Label className='w-1/3'>School Name</Label>
             <Input
               className='w-2/3 text-right'
               value={entry.school}
               onChange={(e) => handleEntryChange(idx, "school", e.target.value)}
-              placeholder='Harvard University'
+              placeholder='San Francisco State University'
             />
           </div>
-          {/* ... Degree, Location, GPA fields the same way ... */}
+
+          {/* Degree */}
+          <div className='flex items-center justify-between'>
+            <Label className='w-1/3'>Degree</Label>
+            <Input
+              className='w-2/3 text-right'
+              value={entry.degree}
+              onChange={(e) => handleEntryChange(idx, "degree", e.target.value)}
+              placeholder='Bachelor of Bachelor of Computer Science'
+            />
+          </div>
+
+          {/* Location */}
+          <div className='flex items-center justify-between'>
+            <Label className='w-1/3'>Location</Label>
+            <Input
+              className='w-2/3 text-right'
+              value={entry.location}
+              onChange={(e) =>
+                handleEntryChange(idx, "location", e.target.value)
+              }
+              placeholder='San Francisco, CA'
+            />
+          </div>
+
+          {/* GPA */}
+          <div className='flex items-center justify-between'>
+            <Label className='w-1/3'>GPA</Label>
+            <Input
+              className='w-2/3 text-right'
+              value={entry.gpa}
+              onChange={(e) => handleEntryChange(idx, "gpa", e.target.value)}
+              placeholder='3.8 / 4.0'
+            />
+          </div>
 
           {/* Date */}
           <DateRangeDropdown
