@@ -62,4 +62,4 @@ For any questions or concerns, please contact us at: [contact@nikolchaa.com](mai
 
 ---
 
-Thank you for using Resuma.
+Thank you for using Resuma. ✨
