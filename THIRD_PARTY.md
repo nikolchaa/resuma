@@ -35,7 +35,7 @@ This project, **Resuma**, makes use of various third-party open-source libraries
 | tauri-plugin-fs              | Apache 2.0       | [https://github.com/tauri-apps/plugins-workspace/tree/v2/plugins/fs](https://github.com/tauri-apps/plugins-workspace/tree/v2/plugins/fs)         |
 | tauri-plugin-dialog          | Apache 2.0       | [https://github.com/tauri-apps/plugins-workspace/tree/v2/plugins/dialog](https://github.com/tauri-apps/plugins-workspace/tree/v2/plugins/dialog) |
 | tauri-plugin-opener          | Apache 2.0       | [https://github.com/tauri-apps/plugins-workspace/tree/v2/plugins/opener](https://github.com/tauri-apps/plugins-workspace/tree/v2/plugins/opener) |
-| tauri-plugin-hwinfo          | GPL-3.0          | [https://github.com/nikolchaa/tauri-plugin-hwinfo](https://github.com/nikolchaa/tauri-plugin-hwinfo)                                             |
+| tauri-plugin-hwinfo          | MIT              | [https://github.com/nikolchaa/tauri-plugin-hwinfo](https://github.com/nikolchaa/tauri-plugin-hwinfo)                                             |
 | tauri-plugin-prevent-default | MIT              | [https://github.com/ferreira-tb/tauri-plugin-prevent-default](https://github.com/ferreira-tb/tauri-plugin-prevent-default)                       |
 | serde / serde_json           | MIT / Apache 2.0 | [https://serde.rs](https://serde.rs)                                                                                                             |
 | sysinfo                      | MIT              | [https://github.com/GuillaumeGomez/sysinfo](https://github.com/GuillaumeGomez/sysinfo)                                                           |
