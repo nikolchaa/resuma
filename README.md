@@ -86,6 +86,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 Questions, ideas, or contributions? Reach out to us at [contact@nikolchaa.com](mailto:contact@nikolchaa.com).
 
----
+## 📄 Legal
 
-Craft resumes the right way. Own your data. Build your future. ✨
+- [Terms of Service](./TERMS.md)
+- [Privacy Policy](./PRIVACY.md)
+- [Third-Party Software Disclosure](./THIRD_PARTY.md)
