@@ -79,7 +79,7 @@ export function getModels(system: SystemInfo): ModelResult[] {
       else if (ramGb >= 16) status = "cpu";
     } else if (paramNum === 1.7) {
       if (vramGb >= 4) status = "gpu";
-      else if (ramGb >= 16 && threads >= 16) status = "cpu";
+      else if (ramGb >= 8 && threads >= 16) status = "cpu";
     } else if (paramNum === 0.6) {
       status = vramGb >= 4 ? "gpu" : "cpu";
     }
