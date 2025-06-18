@@ -17,7 +17,6 @@ Powered by Tauri, Rust, React (TSX), and llama.cpp, Resuma brings the power of p
 
 ## 💖 Support
 
-[![Ko-fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/nikolchaa)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/nikolchaa)
 
 ## 🔧 Features
