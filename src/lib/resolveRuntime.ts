@@ -28,10 +28,19 @@ function normalizeModel(model: string): string {
 function normalizePlatform(name: string): string {
   const lower = name.toLowerCase();
   if (lower.includes("windows")) return "windows";
-  if (lower.includes("linux")) return "linux";
+  if (
+    lower.includes("linux") ||
+    lower.includes("fedora") ||
+    lower.includes("arch") ||
+    lower.includes("debian") ||
+    lower.includes("ubuntu")
+  ) {
+    return "linux";
+  }
   if (lower.includes("mac") || lower.includes("darwin")) return "macos";
   return "unknown";
 }
+
 
 // TODO: Improve iGPU vs dGPU detection, improve runtime recommendation logic (v1.1)
 // Current checks are based on the presence of certain keywords in the GPU model name. Better implementation is planned for a future version.
@@ -85,9 +94,9 @@ export function getRuntimes(system: SystemInfo): {
         system.gpu.supportsCuda && matchesCudaGpu ? "confirmed" : "unsupported";
     }
 
-    // ✅ Use plugin-detected support for Vulkan
+    // ✅ Vulkan check (all GPUs supported for now, will do proper check in later versions)
     else if (rt.backend === "vulkan") {
-      status = system.gpu.supportsVulkan ? "confirmed" : "unsupported";
+      status = "confirmed"; 
     }
 
     // ✅ HIP or other backends — check model/vendor match

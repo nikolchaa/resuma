@@ -166,7 +166,9 @@ async fn call_llm(prompt: String, llm_settings: serde_json::Value) -> Result<Str
 pub fn run() {
     const DISCORD_CLIENT_ID: &str = "1368618733454495855";
 
-    start_rpc(DISCORD_CLIENT_ID.to_string()).expect("Failed to start Discord RPC");
+    if let Err(e) = start_rpc(DISCORD_CLIENT_ID.to_string()) {
+        eprintln!("Discord RPC failed to start: {e}");
+    }
 
     #[cfg(target_os = "windows")]
     let prevent_default_plugin = PreventDefaultBuilder::new()
