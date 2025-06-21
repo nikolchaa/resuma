@@ -2,9 +2,13 @@ use std::process::Command;
 use std::path::PathBuf;
 use serde_json::Value;
 use dirs_next::data_dir;
+use std::fs;
 
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
+
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 
 pub async fn call_llm(prompt: String, llm_settings: Value) -> Result<String, String> {
     let model = llm_settings["model"]
@@ -37,6 +41,16 @@ pub async fn call_llm(prompt: String, llm_settings: Value) -> Result<String, Str
 
     if !runtime_path.exists() {
         return Err(format!("Runtime not found at {:?}", runtime_path));
+    }
+
+    // 🛠 Ensure binary is executable
+    #[cfg(unix)]
+    {
+        if let Ok(metadata) = fs::metadata(&runtime_path) {
+            let mut perms = metadata.permissions();
+            perms.set_mode(0o755);
+            let _ = fs::set_permissions(&runtime_path, perms);
+        }
     }
 
     let mut args = vec![
@@ -83,10 +97,16 @@ pub async fn call_llm(prompt: String, llm_settings: Value) -> Result<String, Str
         .map_err(|e| format!("Failed to execute process: {}", e))?;
 
     #[cfg(not(target_os = "windows"))]
-    let output = Command::new(runtime_path)
-        .args(&args)
-        .output()
-        .map_err(|e| format!("Failed to execute process: {}", e))?;
+    let output = {
+        let lib_dir = runtime_path.parent()
+            .ok_or("Could not determine runtime lib path")?;
+
+        Command::new(&runtime_path)
+            .env("LD_LIBRARY_PATH", lib_dir)
+            .args(&args)
+            .output()
+            .map_err(|e| format!("Failed to execute process: {}", e))?
+    };
 
     if !output.status.success() {
         return Err(format!(

@@ -20,8 +20,8 @@ export interface ModelResult {
 }
 
 export function getModels(system: SystemInfo): ModelResult[] {
-  const ramGb = Math.round(system.ram.sizeMb / 1024);
-  const vramGb = Math.round(system.gpu.vramMb / 1024);
+  const ramGb = Math.ceil(system.ram.sizeMb / 1024);
+  const vramGb = Math.ceil(system.gpu.vramMb / 1024);
   const threads = system.cpu.threads ?? 0;
   const cpuName = system.cpu.model.toLowerCase();
   const isAppleSilicon =
