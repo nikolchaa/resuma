@@ -2,6 +2,8 @@ use std::process::Command;
 use std::path::PathBuf;
 use serde_json::Value;
 use dirs_next::data_dir;
+
+#[cfg(unix)]
 use std::fs;
 
 #[cfg(target_os = "windows")]
