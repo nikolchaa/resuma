@@ -41,7 +41,6 @@ function normalizePlatform(name: string): string {
   return "unknown";
 }
 
-
 // TODO: Improve iGPU vs dGPU detection, improve runtime recommendation logic (v1.1)
 // Current checks are based on the presence of certain keywords in the GPU model name. Better implementation is planned for a future version.
 export function getRuntimes(system: SystemInfo): {
@@ -94,9 +93,9 @@ export function getRuntimes(system: SystemInfo): {
         system.gpu.supportsCuda && matchesCudaGpu ? "confirmed" : "unsupported";
     }
 
-    // ✅ Vulkan check (all GPUs supported for now, will do proper check in later versions)
+    // ✅ Vulkan check
     else if (rt.backend === "vulkan") {
-      status = "confirmed"; 
+      status = system.gpu.supportsVulkan ? "confirmed" : "unsupported";
     }
 
     // ✅ HIP or other backends — check model/vendor match
