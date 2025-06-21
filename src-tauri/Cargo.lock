@@ -4341,9 +4341,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-hwinfo"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a579f467820d7361b9d1b28314d20cbb34e612cdf2a35e75aa361c22075e80d9"
+checksum = "8e56937d99cdd6e199d69fe3b15c77ecd8a1bbfb88a1e416ed7f5d3ed2dce01f"
 dependencies = [
  "os_info",
  "serde",
