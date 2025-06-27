@@ -126,7 +126,10 @@ fn extract_zip(zip_path: &PathBuf, extract_to: &PathBuf) -> io::Result<()> {
 
     for i in 0..archive.len() {
         let mut file = archive.by_index(i)?;
-        let outpath = extract_to.join(file.mangled_name());
+        let outpath = match file.enclosed_name() { // mangled_name -> enclosed_name, updated for zip 4.2.0
+            Some(path) => extract_to.join(path),
+            None => continue, // Skip paths with directory traversal risks
+        };
 
         if (*file.name()).ends_with('/') {
             fs::create_dir_all(&outpath)?;

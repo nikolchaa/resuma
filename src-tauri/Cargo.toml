@@ -25,7 +25,7 @@ serde_json = "1"
 tauri-plugin-store = "2"
 sysinfo = "0.34.2"
 tauri-plugin-hwinfo = "0.2.3"
-zip = "2.6.1"
+zip = "4.2.0"
 reqwest = {version = "0.12.15", features= ["stream"] }
 futures-util = "0.3.31"
 dirs = "6.0.0"
