@@ -38,7 +38,7 @@ jobs:
             patchelf
 
       - name: Install frontend dependencies
-        run: pnpm install
+        run: npm install
 
       - name: Install Tauri CLI
         run: cargo install tauri-cli
