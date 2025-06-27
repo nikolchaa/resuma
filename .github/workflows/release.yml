@@ -43,7 +43,11 @@ jobs:
       - name: Install Tauri CLI
         run: cargo install tauri-cli
 
-      - name: Build with Tauri
+      - name: Build and release with Tauri
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__
+          releaseDraft: true
+          prerelease: false
