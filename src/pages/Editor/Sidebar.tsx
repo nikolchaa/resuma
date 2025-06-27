@@ -80,8 +80,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             variant={"ghost"}
             onClick={() => setActiveTab(tab.id)}
             className={`px-3 py-1 text-sm rounded-md ${
-              activeTab === tab.id
-                ? "bg-primary text-primary-foreground hover:bg-primary/80"
+              activeTab.toLowerCase() === tab.id.toLowerCase()
+                ? "bg-primary text-primary-foreground hover:bg-primary/80 dark:hover:bg-primary/80 dark:text-background"
                 : "hover:bg-muted"
             }`}
           >
