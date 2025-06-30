@@ -188,9 +188,11 @@ export const Modern = ({
                   {proj.link ? ` — ${proj.link}` : ""}
                 </Text>
                 <Text style={styles.entryDescription}>{proj.description}</Text>
-                <Text style={styles.entryDescription}>
-                  Tech: {proj.technologies.join(", ")}
-                </Text>
+                {proj.technologies && proj.technologies.length > 0 && (
+                  <Text style={styles.entryDescription}>
+                    Tech: {proj.technologies.join(", ")}
+                  </Text>
+                )}
               </View>
             ))}
           </View>
