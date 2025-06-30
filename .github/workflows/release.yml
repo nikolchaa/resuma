@@ -49,5 +49,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: v__VERSION__
-          releaseDraft: true
-          prerelease: false
+          releaseName: "Resuma v__VERSION__ ✨"
+          releaseBody: "See the assets to download this version and install."
+          releaseDraft: false
+          prerelease: true
