@@ -171,9 +171,11 @@ export const Compact = ({
                 </Text>
                 <Text style={styles.subText}>{proj.date.from}</Text>
                 <Text style={styles.subText}>{proj.description}</Text>
-                <Text style={styles.subText}>
-                  Tech: {proj.technologies.join(", ")}
-                </Text>
+                {proj.technologies && proj.technologies.length > 0 && (
+                  <Text style={styles.subText}>
+                    Tech: {proj.technologies.join(", ")}
+                  </Text>
+                )}
               </View>
             ))}
           </View>
