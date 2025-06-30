@@ -95,8 +95,8 @@ export const Modern = ({
 
   return (
     <Document
-      title={data.title || "Resume"}
-      author={personal.fullName || "Unknown"}
+      title={data.title?.trim() || "Resume"}
+      author={personal.fullName?.trim() || "Unknown"}
       subject='Resume'
       creator='Resuma'
       producer='Resuma PDF Renderer'
@@ -105,14 +105,14 @@ export const Modern = ({
         {/* Personal */}
         <View style={styles.nameRow}>
           <Text style={styles.firstName}>
-            {personal.fullName.split(" ")[0]}
+            {personal.fullName.trim().split(" ")[0]}
           </Text>
           <Text style={styles.lastName}>
-            {personal.fullName.split(" ").slice(1).join(" ")}
+            {personal.fullName.trim().split(" ").slice(1).join(" ")}
           </Text>
         </View>
         {personal.location && (
-          <Text style={styles.location}>{personal.location}</Text>
+          <Text style={styles.location}>{personal.location.trim()}</Text>
         )}
         <Text style={styles.contact}>
           {[
@@ -122,7 +122,8 @@ export const Modern = ({
             personal.linkedin,
             personal.github,
           ]
-            .filter(Boolean)
+            .filter((item) => item?.trim())
+            .map((item) => item!.trim())
             .join("  |  ")}
         </Text>
 
@@ -132,19 +133,21 @@ export const Modern = ({
             <Text style={styles.sectionTitle}>Education</Text>
             {education.map((edu, i) => (
               <View key={i} style={styles.entry}>
-                <Text style={styles.entryTitle}>{edu.school}</Text>
+                <Text style={styles.entryTitle}>{edu.school.trim()}</Text>
                 <Text style={styles.entrySubtitle}>
-                  {edu.degree} — {edu.location}
+                  {edu.degree.trim()} — {edu.location.trim()}
                 </Text>
                 <Text style={styles.entryDate}>
-                  {edu.date.from} - {edu.date.to || "Present"}
+                  {edu.date.from.trim()} - {edu.date.to?.trim() || "Present"}
                 </Text>
                 {edu.gpa && (
-                  <Text style={styles.entryDescription}>GPA: {edu.gpa}</Text>
-                )}
-                {edu.courses && edu.courses?.length > 0 && (
                   <Text style={styles.entryDescription}>
-                    Courses: {edu.courses.join(", ")}
+                    GPA: {edu.gpa.trim()}
+                  </Text>
+                )}
+                {edu.courses && edu.courses.length > 0 && (
+                  <Text style={styles.entryDescription}>
+                    Courses: {edu.courses.map((c) => c.trim()).join(", ")}
                   </Text>
                 )}
               </View>
@@ -158,17 +161,19 @@ export const Modern = ({
             <Text style={styles.sectionTitle}>Experience</Text>
             {experience.map((exp, i) => (
               <View key={i} style={styles.entry}>
-                <Text style={styles.entryTitle}>{exp.jobTitle}</Text>
+                <Text style={styles.entryTitle}>{exp.jobTitle.trim()}</Text>
                 <Text style={styles.entrySubtitle}>
-                  {exp.company} — {exp.location}
+                  {exp.company.trim()} — {exp.location.trim()}
                 </Text>
                 <Text style={styles.entryDate}>
-                  {exp.date.from} - {exp.date.to || "Present"}
+                  {exp.date.from.trim()} - {exp.date.to?.trim() || "Present"}
                 </Text>
-                <Text style={styles.entryDescription}>{exp.description}</Text>
-                {exp.notes && exp.notes?.length > 0 && (
+                <Text style={styles.entryDescription}>
+                  {exp.description.trim()}
+                </Text>
+                {exp.notes && exp.notes.length > 0 && (
                   <Text style={styles.entryDescription}>
-                    • {exp.notes.join("\n• ")}
+                    • {exp.notes.map((n) => n.trim()).join("\n• ")}
                   </Text>
                 )}
               </View>
@@ -182,15 +187,17 @@ export const Modern = ({
             <Text style={styles.sectionTitle}>Projects</Text>
             {projects.map((proj, i) => (
               <View key={i} style={styles.entry}>
-                <Text style={styles.entryTitle}>{proj.name}</Text>
+                <Text style={styles.entryTitle}>{proj.name.trim()}</Text>
                 <Text style={styles.entrySubtitle}>
-                  {proj.date.from}
-                  {proj.link ? ` — ${proj.link}` : ""}
+                  {proj.date.from?.trim() || ""}
+                  {proj.link ? ` — ${proj.link.trim()}` : ""}
                 </Text>
-                <Text style={styles.entryDescription}>{proj.description}</Text>
+                <Text style={styles.entryDescription}>
+                  {proj.description.trim()}
+                </Text>
                 {proj.technologies && proj.technologies.length > 0 && (
                   <Text style={styles.entryDescription}>
-                    Tech: {proj.technologies.join(", ")}
+                    Tech: {proj.technologies.map((t) => t.trim()).join(", ")}
                   </Text>
                 )}
               </View>
@@ -204,12 +211,14 @@ export const Modern = ({
             <Text style={styles.sectionTitle}>Awards</Text>
             {awards.map((award, i) => (
               <View key={i} style={styles.entry}>
-                <Text style={styles.entryTitle}>{award.title}</Text>
+                <Text style={styles.entryTitle}>{award.title.trim()}</Text>
                 <Text style={styles.entrySubtitle}>
-                  {award.organizer} — {award.location}
+                  {award.organizer.trim()} — {award.location.trim()}
                 </Text>
-                <Text style={styles.entryDate}>{award.date.from}</Text>
-                <Text style={styles.entryDescription}>{award.description}</Text>
+                <Text style={styles.entryDate}>{award.date.from.trim()}</Text>
+                <Text style={styles.entryDescription}>
+                  {award.description.trim()}
+                </Text>
               </View>
             ))}
           </View>
@@ -221,9 +230,9 @@ export const Modern = ({
             <Text style={styles.sectionTitle}>Skills</Text>
             {skills.map((skill, i) => (
               <View key={i} style={styles.entry}>
-                <Text style={styles.entryTitle}>{skill.category}</Text>
+                <Text style={styles.entryTitle}>{skill.category.trim()}</Text>
                 <Text style={styles.entryDescription}>
-                  {skill.items.join(", ")}
+                  {skill.items.map((i) => i.trim()).join(", ")}
                 </Text>
               </View>
             ))}

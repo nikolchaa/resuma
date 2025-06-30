@@ -68,8 +68,8 @@ export const Professional = ({
 
   return (
     <Document
-      title={data.title || "Resume"}
-      author={data.content?.personal?.fullName || "Unknown"}
+      title={data.title?.trim() || "Resume"}
+      author={data.content?.personal?.fullName?.trim() || "Unknown"}
       subject='Resume'
       creator='Resuma'
       producer='Resuma PDF Renderer'
@@ -78,7 +78,9 @@ export const Professional = ({
         {/* Personal */}
         {data.content?.personal && (
           <View>
-            <Text style={styles.name}>{data.content.personal.fullName}</Text>
+            <Text style={styles.name}>
+              {data.content.personal.fullName.trim()}
+            </Text>
             <Text style={styles.contact}>
               {[
                 data.content.personal.email,
@@ -86,6 +88,7 @@ export const Professional = ({
                 data.content.personal.phone,
               ]
                 .filter((item) => item?.trim() !== "")
+                .map((item) => item!.trim())
                 .join(" | ")}
             </Text>
             {(data.content.personal.linkedin ||
@@ -98,6 +101,7 @@ export const Professional = ({
                   data.content.personal.website,
                 ]
                   .filter((item) => item?.trim() !== "")
+                  .map((item) => item!.trim())
                   .join(" | ")}
               </Text>
             )}
@@ -111,16 +115,19 @@ export const Professional = ({
             {data.content.education.map((edu, idx) => (
               <View key={idx} style={styles.subItem}>
                 <View style={styles.row}>
-                  <Text style={styles.bold}>{edu.degree}</Text>
-                  <Text style={styles.bold}>{edu.school}</Text>
+                  <Text style={styles.bold}>{edu.degree.trim()}</Text>
+                  <Text style={styles.bold}>{edu.school.trim()}</Text>
                 </View>
                 <Text style={styles.small}>
-                  {edu.location} | {edu.date.from} – {edu.date.to || "Present"}
+                  {edu.location.trim()} | {edu.date.from.trim()} –{" "}
+                  {edu.date.to?.trim() || "Present"}
                 </Text>
-                {edu.gpa && <Text style={styles.small}>GPA: {edu.gpa}</Text>}
-                {edu.courses && edu.courses?.length > 0 && (
+                {edu.gpa && (
+                  <Text style={styles.small}>GPA: {edu.gpa.trim()}</Text>
+                )}
+                {edu.courses && edu.courses.length > 0 && (
                   <Text style={styles.small}>
-                    Courses: {edu.courses.join(", ")}
+                    Courses: {edu.courses.map((c) => c.trim()).join(", ")}
                   </Text>
                 )}
               </View>
@@ -135,17 +142,20 @@ export const Professional = ({
             {data.content.experience.map((exp, idx) => (
               <View key={idx} style={styles.subItem}>
                 <View style={styles.row}>
-                  <Text style={styles.bold}>{exp.jobTitle}</Text>
-                  <Text style={styles.bold}>{exp.company}</Text>
+                  <Text style={styles.bold}>{exp.jobTitle.trim()}</Text>
+                  <Text style={styles.bold}>{exp.company.trim()}</Text>
                 </View>
                 <Text style={styles.small}>
-                  {exp.location} | {exp.date.from} – {exp.date.to || "Present"}
+                  {exp.location.trim()} | {exp.date.from.trim()} –{" "}
+                  {exp.date.to?.trim() || "Present"}
                 </Text>
                 {exp.description && (
-                  <Text style={styles.text}>{exp.description}</Text>
+                  <Text style={styles.text}>{exp.description.trim()}</Text>
                 )}
-                {exp.notes && exp.notes?.length > 0 && (
-                  <Text style={styles.text}>• {exp.notes.join("\n• ")}</Text>
+                {exp.notes && exp.notes.length > 0 && (
+                  <Text style={styles.text}>
+                    • {exp.notes.map((n) => n.trim()).join("\n• ")}
+                  </Text>
                 )}
               </View>
             ))}
@@ -158,16 +168,19 @@ export const Professional = ({
             <Text style={styles.sectionHeader}>Projects</Text>
             {data.content.projects.map((proj, idx) => (
               <View key={idx} style={styles.subItem}>
-                <Text style={styles.bold}>{proj.name}</Text>
+                <Text style={styles.bold}>{proj.name.trim()}</Text>
                 {proj.link && (
                   <Text style={styles.small}>
-                    {proj.date.from && `${proj.date.from} |`} {proj.link}
+                    {proj.date.from?.trim()
+                      ? `${proj.date.from.trim()} | `
+                      : ""}
+                    {proj.link.trim()}
                   </Text>
                 )}
-                <Text style={styles.text}>{proj.description}</Text>
+                <Text style={styles.text}>{proj.description.trim()}</Text>
                 {proj.technologies?.length > 0 && (
                   <Text style={styles.small}>
-                    Tech: {proj.technologies.join(", ")}
+                    Tech: {proj.technologies.map((t) => t.trim()).join(", ")}
                   </Text>
                 )}
               </View>
@@ -182,14 +195,14 @@ export const Professional = ({
             {data.content.awards.map((award, idx) => (
               <View key={idx} style={styles.subItem}>
                 <View style={styles.row}>
-                  <Text style={styles.bold}>{award.title}</Text>
+                  <Text style={styles.bold}>{award.title.trim()}</Text>
                   <Text style={styles.bold}>
-                    {award.organizer} | {award.location}
+                    {award.organizer.trim()} | {award.location.trim()}
                   </Text>
                 </View>
-                <Text style={styles.small}>{award.date.from}</Text>
+                <Text style={styles.small}>{award.date.from.trim()}</Text>
                 {award.description && (
-                  <Text style={styles.text}>{award.description}</Text>
+                  <Text style={styles.text}>{award.description.trim()}</Text>
                 )}
               </View>
             ))}
@@ -202,8 +215,10 @@ export const Professional = ({
             <Text style={styles.sectionHeader}>Skills</Text>
             {data.content.skills.map((group, idx) => (
               <View key={idx} style={styles.subItem}>
-                <Text style={styles.bold}>{group.category}</Text>
-                <Text style={styles.small}>{group.items.join(", ")}</Text>
+                <Text style={styles.bold}>{group.category.trim()}</Text>
+                <Text style={styles.small}>
+                  {group.items.map((i) => i.trim()).join(", ")}
+                </Text>
               </View>
             ))}
           </View>
