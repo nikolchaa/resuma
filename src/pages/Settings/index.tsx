@@ -30,7 +30,7 @@ import {
   getTauriVersion,
   getVersion,
 } from "@tauri-apps/api/app";
-import { showError } from "@/lib/toastUtils";
+import { showError, showSuccess, showUpdateAvailable } from "@/lib/toastUtils";
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState("basic");
@@ -446,6 +446,59 @@ export default function Settings() {
                       setSettings={setSettings}
                       draftSettings={draftSettings}
                     />
+                  </CardContent>
+                </Card>
+                <Card className='mt-8'>
+                  <CardContent className='flex flex-col gap-4'>
+                    <Label className='text-lg'>App Updates</Label>
+                    <Button
+                      variant='outline'
+                      className='self-start'
+                      onClick={async () => {
+                        console.log("Checking GitHub for latest version...");
+
+                        try {
+                          const current = await getVersion();
+
+                          const res = await fetch(
+                            "https://api.github.com/repos/nikolchaa/resuma/releases"
+                          );
+                          const releases = await res.json();
+
+                          if (
+                            !Array.isArray(releases) ||
+                            releases.length === 0
+                          ) {
+                            throw new Error("No releases found.");
+                          }
+
+                          const latestTag = releases[0].tag_name?.replace(
+                            /^v/,
+                            ""
+                          );
+                          if (!latestTag) {
+                            throw new Error("No tag name in latest release.");
+                          }
+
+                          if (latestTag !== current) {
+                            console.log(
+                              `New version available: ${latestTag} (current: ${current})`
+                            );
+                            showUpdateAvailable(latestTag);
+                          } else {
+                            showSuccess("You're on the latest version.");
+                          }
+                        } catch (err) {
+                          console.error("Failed to check for updates:", err);
+                          showError(
+                            "Update check failed",
+                            err instanceof Error ? err.message : undefined
+                          );
+                        }
+                      }}
+                    >
+                      Check for Updates
+                    </Button>
                   </CardContent>
                 </Card>
               </m.div>
