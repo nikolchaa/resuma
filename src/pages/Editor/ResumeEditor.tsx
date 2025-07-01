@@ -30,7 +30,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { runResumeCleanup, runResumeEnhancement } from "@/lib/llmUtils";
+// import { runResumeCleanup, runResumeEnhancement } from "@/lib/llmUtils";
 
 type Props = {
   draft: any;
@@ -234,7 +234,7 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
       <Separator />
 
       {/* Debug */}
-      <div className='flex items-center justify-between'>
+      {/* <div className='flex items-center justify-between'>
         <Label>Test LLM Trim</Label>
         <Button
           variant='outline'
@@ -282,7 +282,7 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
         >
           Run Test
         </Button>
-      </div>
+      </div> */}
 
       {/* ATS Results Modal */}
       <AnimatePresence>
