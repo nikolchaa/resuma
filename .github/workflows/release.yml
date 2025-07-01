@@ -46,7 +46,7 @@ jobs:
       - name: Build and release with Tauri
         uses: tauri-apps/tauri-action@v0
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
         with:
           tagName: v__VERSION__
           releaseName: "Resuma v__VERSION__ ✨"
