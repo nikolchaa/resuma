@@ -70,38 +70,31 @@ export const Professional = ({
     <Document
       title={data.title?.trim() || "Resume"}
       author={data.content?.personal?.fullName?.trim() || "Unknown"}
-      subject='Resume'
-      creator='Resuma'
-      producer='Resuma PDF Renderer'
+      subject="Resume"
+      creator="Resuma"
+      producer="Resuma PDF Renderer"
     >
       <Page size={format ?? "A4"} style={styles.page}>
         {/* Personal */}
         {data.content?.personal && (
           <View>
             <Text style={styles.name}>
-              {data.content.personal.fullName.trim()}
+              {data.content.personal.fullName?.trim() || ""}
             </Text>
             <Text style={styles.contact}>
-              {[
-                data.content.personal.email,
-                data.content.personal.location,
-                data.content.personal.phone,
-              ]
-                .filter((item) => item?.trim() !== "")
-                .map((item) => item!.trim())
+              {[data.content.personal.email, data.content.personal.location, data.content.personal.phone]
+                .map((item) => item?.trim())
+                .filter((item) => item)
                 .join(" | ")}
             </Text>
+
             {(data.content.personal.linkedin ||
               data.content.personal.github ||
               data.content.personal.website) && (
               <Text style={styles.contact}>
-                {[
-                  data.content.personal.linkedin,
-                  data.content.personal.github,
-                  data.content.personal.website,
-                ]
-                  .filter((item) => item?.trim() !== "")
-                  .map((item) => item!.trim())
+                {[data.content.personal.linkedin, data.content.personal.github, data.content.personal.website]
+                  .map((item) => item?.trim())
+                  .filter((item) => item)
                   .join(" | ")}
               </Text>
             )}
@@ -115,19 +108,23 @@ export const Professional = ({
             {data.content.education.map((edu, idx) => (
               <View key={idx} style={styles.subItem}>
                 <View style={styles.row}>
-                  <Text style={styles.bold}>{edu.degree.trim()}</Text>
-                  <Text style={styles.bold}>{edu.school.trim()}</Text>
+                  <Text style={styles.bold}>{edu.degree?.trim() || ""}</Text>
+                  <Text style={styles.bold}>{edu.school?.trim() || ""}</Text>
                 </View>
                 <Text style={styles.small}>
-                  {edu.location.trim()} | {edu.date.from.trim()} –{" "}
-                  {edu.date.to?.trim() || "Present"}
+                  {(edu.location?.trim() || "") +
+                    " | " +
+                    (edu.date?.from?.trim() || "") +
+                    " – " +
+                    (edu.date?.to?.trim() || "Present")}
                 </Text>
                 {edu.gpa && (
-                  <Text style={styles.small}>GPA: {edu.gpa.trim()}</Text>
+                  <Text style={styles.small}>GPA: {edu.gpa?.trim()}</Text>
                 )}
                 {edu.courses && edu.courses.length > 0 && (
                   <Text style={styles.small}>
-                    Courses: {edu.courses.map((c) => c.trim()).join(", ")}
+                    Courses:{" "}
+                    {edu.courses.map((c) => c?.trim()).filter(Boolean).join(", ")}
                   </Text>
                 )}
               </View>
@@ -142,19 +139,22 @@ export const Professional = ({
             {data.content.experience.map((exp, idx) => (
               <View key={idx} style={styles.subItem}>
                 <View style={styles.row}>
-                  <Text style={styles.bold}>{exp.jobTitle.trim()}</Text>
-                  <Text style={styles.bold}>{exp.company.trim()}</Text>
+                  <Text style={styles.bold}>{exp.jobTitle?.trim() || ""}</Text>
+                  <Text style={styles.bold}>{exp.company?.trim() || ""}</Text>
                 </View>
                 <Text style={styles.small}>
-                  {exp.location.trim()} | {exp.date.from.trim()} –{" "}
-                  {exp.date.to?.trim() || "Present"}
+                  {(exp.location?.trim() || "") +
+                    " | " +
+                    (exp.date?.from?.trim() || "") +
+                    " – " +
+                    (exp.date?.to?.trim() || "Present")}
                 </Text>
                 {exp.description && (
-                  <Text style={styles.text}>{exp.description.trim()}</Text>
+                  <Text style={styles.text}>{exp.description?.trim()}</Text>
                 )}
                 {exp.notes && exp.notes.length > 0 && (
                   <Text style={styles.text}>
-                    • {exp.notes.map((n) => n.trim()).join("\n• ")}
+                    • {exp.notes.map((n) => n?.trim()).filter(Boolean).join("\n• ")}
                   </Text>
                 )}
               </View>
@@ -168,19 +168,20 @@ export const Professional = ({
             <Text style={styles.sectionHeader}>Projects</Text>
             {data.content.projects.map((proj, idx) => (
               <View key={idx} style={styles.subItem}>
-                <Text style={styles.bold}>{proj.name.trim()}</Text>
-                {proj.link && (
+                <Text style={styles.bold}>{proj.name?.trim() || ""}</Text>
+                {(proj.link || proj.date?.from) && (
                   <Text style={styles.small}>
-                    {proj.date.from?.trim()
+                    {proj.date?.from?.trim()
                       ? `${proj.date.from.trim()} | `
                       : ""}
-                    {proj.link.trim()}
+                    {proj.link?.trim() || ""}
                   </Text>
                 )}
-                <Text style={styles.text}>{proj.description.trim()}</Text>
+                <Text style={styles.text}>{proj.description?.trim() || ""}</Text>
                 {proj.technologies?.length > 0 && (
                   <Text style={styles.small}>
-                    Tech: {proj.technologies.map((t) => t.trim()).join(", ")}
+                    Tech:{" "}
+                    {proj.technologies.map((t) => t?.trim()).filter(Boolean).join(", ")}
                   </Text>
                 )}
               </View>
@@ -195,14 +196,18 @@ export const Professional = ({
             {data.content.awards.map((award, idx) => (
               <View key={idx} style={styles.subItem}>
                 <View style={styles.row}>
-                  <Text style={styles.bold}>{award.title.trim()}</Text>
+                  <Text style={styles.bold}>{award.title?.trim() || ""}</Text>
                   <Text style={styles.bold}>
-                    {award.organizer.trim()} | {award.location.trim()}
+                    {(award.organizer?.trim() || "") +
+                      " | " +
+                      (award.location?.trim() || "")}
                   </Text>
                 </View>
-                <Text style={styles.small}>{award.date.from.trim()}</Text>
+                <Text style={styles.small}>
+                  {award.date?.from?.trim() || ""}
+                </Text>
                 {award.description && (
-                  <Text style={styles.text}>{award.description.trim()}</Text>
+                  <Text style={styles.text}>{award.description?.trim()}</Text>
                 )}
               </View>
             ))}
@@ -215,9 +220,9 @@ export const Professional = ({
             <Text style={styles.sectionHeader}>Skills</Text>
             {data.content.skills.map((group, idx) => (
               <View key={idx} style={styles.subItem}>
-                <Text style={styles.bold}>{group.category.trim()}</Text>
+                <Text style={styles.bold}>{group.category?.trim() || ""}</Text>
                 <Text style={styles.small}>
-                  {group.items.map((i) => i.trim()).join(", ")}
+                  {group.items.map((i) => i?.trim()).filter(Boolean).join(", ")}
                 </Text>
               </View>
             ))}

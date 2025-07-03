@@ -75,34 +75,26 @@ export const Compact = ({
     <Document
       title={data.title?.trim() || "Resume"}
       author={personal.fullName?.trim() || "Unknown"}
-      subject='Resume'
-      creator='Resuma'
-      producer='Resuma PDF Renderer'
+      subject="Resume"
+      creator="Resuma"
+      producer="Resuma PDF Renderer"
     >
       <Page size={format ?? "A4"} style={styles.page}>
         {/* Header */}
-        <Text style={styles.name}>{personal.fullName.trim()}</Text>
+        <Text style={styles.name}>{personal.fullName?.trim() || ""}</Text>
 
         <Text style={styles.contactLine}>
           {[personal.location, personal.phone]
-            .filter((item) => item?.trim())
-            .map((item) => item!.trim())
+            .map((item) => item?.trim())
+            .filter(Boolean)
             .join("  •  ")}
         </Text>
 
         <Text style={styles.contactLine}>
-          {[
-            personal.email,
-            personal.website,
-            personal.linkedin,
-            personal.github,
-          ]
-            .filter((item) => item?.trim())
-            .map(
-              (item, i, arr) =>
-                `${item!.trim()}${i < arr.length - 1 ? "  •  " : ""}`
-            )
-            .join("")}
+          {[personal.email, personal.website, personal.linkedin, personal.github]
+            .map((item) => item?.trim())
+            .filter(Boolean)
+            .join("  •  ")}
         </Text>
 
         <View style={styles.hr} />
@@ -114,19 +106,22 @@ export const Compact = ({
             {education.map((edu, i) => (
               <View key={i} style={styles.sectionItem}>
                 <Text style={styles.bold}>
-                  {edu.degree.trim()} — {edu.school.trim()}
+                  {(edu.degree?.trim() || "") + " — " + (edu.school?.trim() || "")}
                 </Text>
                 <Text style={styles.subText}>
-                  {edu.location.trim()} · {edu.date.from.trim()} -{" "}
-                  {edu.date.to?.trim() || "Present"}
+                  {(edu.location?.trim() || "") +
+                    " · " +
+                    (edu.date?.from?.trim() || "") +
+                    " - " +
+                    (edu.date?.to?.trim() || "Present")}
                 </Text>
                 {edu.gpa && (
-                  <Text style={styles.subText}>GPA: {edu.gpa.trim()}</Text>
+                  <Text style={styles.subText}>GPA: {edu.gpa?.trim()}</Text>
                 )}
                 {edu.courses && edu.courses.length > 0 && (
                   <Text style={styles.subText}>
                     Relevant Coursework:{" "}
-                    {edu.courses.map((c) => c.trim()).join(", ")}
+                    {edu.courses.map((c) => c?.trim()).filter(Boolean).join(", ")}
                   </Text>
                 )}
               </View>
@@ -141,18 +136,27 @@ export const Compact = ({
             {experience.map((exp, i) => (
               <View key={i} style={styles.sectionItem}>
                 <Text style={styles.bold}>
-                  {exp.jobTitle.trim()} — {exp.company.trim()}
+                  {(exp.jobTitle?.trim() || "") +
+                    " — " +
+                    (exp.company?.trim() || "")}
                 </Text>
                 <Text style={styles.subText}>
-                  {exp.location.trim()} · {exp.date.from.trim()} -{" "}
-                  {exp.date.to?.trim() || "Present"}
+                  {(exp.location?.trim() || "") +
+                    " · " +
+                    (exp.date?.from?.trim() || "") +
+                    " - " +
+                    (exp.date?.to?.trim() || "Present")}
                 </Text>
-                <Text style={styles.subText}>{exp.description.trim()}</Text>
+                {exp.description && (
+                  <Text style={styles.subText}>
+                    {exp.description?.trim() || ""}
+                  </Text>
+                )}
                 {exp.notes && exp.notes.length > 0 && (
                   <View>
                     {exp.notes.map((note, j) => (
                       <Text key={j} style={styles.subText}>
-                        • {note.trim()}
+                        • {note?.trim()}
                       </Text>
                     ))}
                   </View>
@@ -169,21 +173,32 @@ export const Compact = ({
             {projects.map((proj, i) => (
               <View key={i} style={styles.sectionItem}>
                 <Text style={styles.bold}>
-                  {proj.name.trim()}
+                  {proj.name?.trim()}
                   {proj.link && (
                     <Text>
                       {" — "}
-                      <Link src={proj.link.trim()} style={styles.contactLink}>
+                      <Link
+                        src={proj.link.trim()}
+                        style={styles.contactLink}
+                      >
                         {proj.link.trim()}
                       </Link>
                     </Text>
                   )}
                 </Text>
-                <Text style={styles.subText}>{proj.date.from?.trim()}</Text>
-                <Text style={styles.subText}>{proj.description.trim()}</Text>
+                <Text style={styles.subText}>
+                  {proj.date?.from?.trim() || ""}
+                </Text>
+                <Text style={styles.subText}>
+                  {proj.description?.trim() || ""}
+                </Text>
                 {proj.technologies && proj.technologies.length > 0 && (
                   <Text style={styles.subText}>
-                    Tech: {proj.technologies.map((t) => t.trim()).join(", ")}
+                    Tech:{" "}
+                    {proj.technologies
+                      .map((t) => t?.trim())
+                      .filter(Boolean)
+                      .join(", ")}
                   </Text>
                 )}
               </View>
@@ -198,12 +213,18 @@ export const Compact = ({
             {awards.map((award, i) => (
               <View key={i} style={styles.sectionItem}>
                 <Text style={styles.bold}>
-                  {award.title.trim()} — {award.organizer.trim()}
+                  {(award.title?.trim() || "") +
+                    " — " +
+                    (award.organizer?.trim() || "")}
                 </Text>
                 <Text style={styles.subText}>
-                  {award.location.trim()} · {award.date.from.trim()}
+                  {(award.location?.trim() || "") +
+                    " · " +
+                    (award.date?.from?.trim() || "")}
                 </Text>
-                <Text style={styles.subText}>{award.description.trim()}</Text>
+                <Text style={styles.subText}>
+                  {award.description?.trim() || ""}
+                </Text>
               </View>
             ))}
           </View>
@@ -215,8 +236,10 @@ export const Compact = ({
             <Text style={styles.sectionTitle}>Skills</Text>
             {skills.map((skill, i) => (
               <Text key={i} style={styles.subText}>
-                <Text style={styles.bold}>{skill.category.trim()}: </Text>
-                {skill.items.map((item) => item.trim()).join(", ")}
+                <Text style={styles.bold}>
+                  {skill.category?.trim() || ""}:{" "}
+                </Text>
+                {skill.items.map((item) => item?.trim()).filter(Boolean).join(", ")}
               </Text>
             ))}
           </View>
