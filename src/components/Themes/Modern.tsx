@@ -1,4 +1,10 @@
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import {
+  Document,
+  Page,
+  Text,
+  View,
+  StyleSheet,
+} from "@react-pdf/renderer";
 import { ResumeData } from "@/lib/resumesStore";
 import "@/lib/pdfFonts";
 
@@ -93,37 +99,31 @@ export const Modern = ({
   const { personal, education, experience, projects, awards, skills } =
     data.content;
 
+  const fullNameParts = personal.fullName?.trim().split(" ") || [];
+  const firstName = fullNameParts[0] || "";
+  const lastName = fullNameParts.slice(1).join(" ");
+
   return (
     <Document
       title={data.title?.trim() || "Resume"}
       author={personal.fullName?.trim() || "Unknown"}
-      subject='Resume'
-      creator='Resuma'
-      producer='Resuma PDF Renderer'
+      subject="Resume"
+      creator="Resuma"
+      producer="Resuma PDF Renderer"
     >
       <Page size={format ?? "A4"} style={styles.page}>
         {/* Personal */}
         <View style={styles.nameRow}>
-          <Text style={styles.firstName}>
-            {personal.fullName.trim().split(" ")[0]}
-          </Text>
-          <Text style={styles.lastName}>
-            {personal.fullName.trim().split(" ").slice(1).join(" ")}
-          </Text>
+          <Text style={styles.firstName}>{firstName}</Text>
+          <Text style={styles.lastName}>{lastName}</Text>
         </View>
         {personal.location && (
-          <Text style={styles.location}>{personal.location.trim()}</Text>
+          <Text style={styles.location}>{personal.location?.trim() || ""}</Text>
         )}
         <Text style={styles.contact}>
-          {[
-            personal.email,
-            personal.phone,
-            personal.website,
-            personal.linkedin,
-            personal.github,
-          ]
-            .filter((item) => item?.trim())
-            .map((item) => item!.trim())
+          {[personal.email, personal.phone, personal.website, personal.linkedin, personal.github]
+            .map((item) => item?.trim())
+            .filter(Boolean)
             .join("  |  ")}
         </Text>
 
@@ -133,21 +133,26 @@ export const Modern = ({
             <Text style={styles.sectionTitle}>Education</Text>
             {education.map((edu, i) => (
               <View key={i} style={styles.entry}>
-                <Text style={styles.entryTitle}>{edu.school.trim()}</Text>
+                <Text style={styles.entryTitle}>{edu.school?.trim() || ""}</Text>
                 <Text style={styles.entrySubtitle}>
-                  {edu.degree.trim()} — {edu.location.trim()}
+                  {(edu.degree?.trim() || "") +
+                    " — " +
+                    (edu.location?.trim() || "")}
                 </Text>
                 <Text style={styles.entryDate}>
-                  {edu.date.from.trim()} - {edu.date.to?.trim() || "Present"}
+                  {(edu.date?.from?.trim() || "") +
+                    " - " +
+                    (edu.date?.to?.trim() || "Present")}
                 </Text>
                 {edu.gpa && (
                   <Text style={styles.entryDescription}>
-                    GPA: {edu.gpa.trim()}
+                    GPA: {edu.gpa?.trim() || ""}
                   </Text>
                 )}
                 {edu.courses && edu.courses.length > 0 && (
                   <Text style={styles.entryDescription}>
-                    Courses: {edu.courses.map((c) => c.trim()).join(", ")}
+                    Courses:{" "}
+                    {edu.courses.map((c) => c?.trim()).filter(Boolean).join(", ")}
                   </Text>
                 )}
               </View>
@@ -161,19 +166,23 @@ export const Modern = ({
             <Text style={styles.sectionTitle}>Experience</Text>
             {experience.map((exp, i) => (
               <View key={i} style={styles.entry}>
-                <Text style={styles.entryTitle}>{exp.jobTitle.trim()}</Text>
+                <Text style={styles.entryTitle}>{exp.jobTitle?.trim() || ""}</Text>
                 <Text style={styles.entrySubtitle}>
-                  {exp.company.trim()} — {exp.location.trim()}
+                  {(exp.company?.trim() || "") +
+                    " — " +
+                    (exp.location?.trim() || "")}
                 </Text>
                 <Text style={styles.entryDate}>
-                  {exp.date.from.trim()} - {exp.date.to?.trim() || "Present"}
+                  {(exp.date?.from?.trim() || "") +
+                    " - " +
+                    (exp.date?.to?.trim() || "Present")}
                 </Text>
                 <Text style={styles.entryDescription}>
-                  {exp.description.trim()}
+                  {exp.description?.trim() || ""}
                 </Text>
                 {exp.notes && exp.notes.length > 0 && (
                   <Text style={styles.entryDescription}>
-                    • {exp.notes.map((n) => n.trim()).join("\n• ")}
+                    • {exp.notes.map((n) => n?.trim()).filter(Boolean).join("\n• ")}
                   </Text>
                 )}
               </View>
@@ -187,17 +196,21 @@ export const Modern = ({
             <Text style={styles.sectionTitle}>Projects</Text>
             {projects.map((proj, i) => (
               <View key={i} style={styles.entry}>
-                <Text style={styles.entryTitle}>{proj.name.trim()}</Text>
+                <Text style={styles.entryTitle}>{proj.name?.trim() || ""}</Text>
                 <Text style={styles.entrySubtitle}>
-                  {proj.date.from?.trim() || ""}
-                  {proj.link ? ` — ${proj.link.trim()}` : ""}
+                  {(proj.date?.from?.trim() || "") +
+                    (proj.link?.trim() ? ` — ${proj.link.trim()}` : "")}
                 </Text>
                 <Text style={styles.entryDescription}>
-                  {proj.description.trim()}
+                  {proj.description?.trim() || ""}
                 </Text>
                 {proj.technologies && proj.technologies.length > 0 && (
                   <Text style={styles.entryDescription}>
-                    Tech: {proj.technologies.map((t) => t.trim()).join(", ")}
+                    Tech:{" "}
+                    {proj.technologies
+                      .map((t) => t?.trim())
+                      .filter(Boolean)
+                      .join(", ")}
                   </Text>
                 )}
               </View>
@@ -211,13 +224,15 @@ export const Modern = ({
             <Text style={styles.sectionTitle}>Awards</Text>
             {awards.map((award, i) => (
               <View key={i} style={styles.entry}>
-                <Text style={styles.entryTitle}>{award.title.trim()}</Text>
+                <Text style={styles.entryTitle}>{award.title?.trim() || ""}</Text>
                 <Text style={styles.entrySubtitle}>
-                  {award.organizer.trim()} — {award.location.trim()}
+                  {(award.organizer?.trim() || "") +
+                    " — " +
+                    (award.location?.trim() || "")}
                 </Text>
-                <Text style={styles.entryDate}>{award.date.from.trim()}</Text>
+                <Text style={styles.entryDate}>{award.date?.from?.trim() || ""}</Text>
                 <Text style={styles.entryDescription}>
-                  {award.description.trim()}
+                  {award.description?.trim() || ""}
                 </Text>
               </View>
             ))}
@@ -230,9 +245,9 @@ export const Modern = ({
             <Text style={styles.sectionTitle}>Skills</Text>
             {skills.map((skill, i) => (
               <View key={i} style={styles.entry}>
-                <Text style={styles.entryTitle}>{skill.category.trim()}</Text>
+                <Text style={styles.entryTitle}>{skill.category?.trim() || ""}</Text>
                 <Text style={styles.entryDescription}>
-                  {skill.items.map((i) => i.trim()).join(", ")}
+                  {skill.items.map((i) => i?.trim()).filter(Boolean).join(", ")}
                 </Text>
               </View>
             ))}
