@@ -27,7 +27,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis", "appimage", "dmg"],
+    "targets": ["nsis", "deb", "rpm", "dmg"],
     "license": "GPL-3.0",
     "licenseFile": "license.txt",
     "publisher": "Nikola Ranđelović",
