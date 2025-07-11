@@ -231,7 +231,7 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
         </Button>
       </div>
 
-      <Separator />
+      {/* <Separator /> */}
 
       {/* Debug */}
       {/* <div className='flex items-center justify-between'>
