@@ -1,4 +1,11 @@
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import {
+  Document,
+  Page,
+  Text,
+  View,
+  StyleSheet,
+  Link,
+} from "@react-pdf/renderer";
 import { ResumeData } from "@/lib/resumesStore";
 import "@/lib/pdfFonts";
 
@@ -34,6 +41,7 @@ export const Professional = ({
       fontSize: 10,
       color: "#3f434c",
       marginBottom: 4,
+      textDecoration: "none",
     },
     sectionHeader: {
       fontSize: 12,
@@ -70,9 +78,9 @@ export const Professional = ({
     <Document
       title={data.title?.trim() || "Resume"}
       author={data.content?.personal?.fullName?.trim() || "Unknown"}
-      subject="Resume"
-      creator="Resuma"
-      producer="Resuma PDF Renderer"
+      subject='Resume'
+      creator='Resuma'
+      producer='Resuma PDF Renderer'
     >
       <Page size={format ?? "A4"} style={styles.page}>
         {/* Personal */}
@@ -81,21 +89,73 @@ export const Professional = ({
             <Text style={styles.name}>
               {data.content.personal.fullName?.trim() || ""}
             </Text>
+
             <Text style={styles.contact}>
-              {[data.content.personal.email, data.content.personal.location, data.content.personal.phone]
-                .map((item) => item?.trim())
-                .filter((item) => item)
-                .join(" | ")}
+              {[
+                data.content.personal.email,
+                data.content.personal.location,
+                data.content.personal.phone,
+              ].map((item, index, array) => {
+                const trimmed = item?.trim();
+                if (!trimmed) return null;
+
+                let href = null;
+                const isEmail =
+                  trimmed.includes("@") && !trimmed.startsWith("http");
+                const isPhone = /^\+?[0-9()\s\-]+$/.test(trimmed);
+
+                if (isEmail) {
+                  href = `mailto:${trimmed}`;
+                } else if (isPhone) {
+                  href = `tel:${trimmed.replace(/\s+/g, "")}`;
+                }
+
+                return (
+                  <Text key={index}>
+                    {href ? (
+                      <Link src={href} style={styles.contact}>
+                        {trimmed}
+                      </Link>
+                    ) : (
+                      <Text>{trimmed}</Text>
+                    )}
+                    {index < array.length - 1 &&
+                      array.slice(index + 1).some((i) => i?.trim()) && (
+                        <Text> | </Text>
+                      )}
+                  </Text>
+                );
+              })}
             </Text>
 
             {(data.content.personal.linkedin ||
               data.content.personal.github ||
               data.content.personal.website) && (
               <Text style={styles.contact}>
-                {[data.content.personal.linkedin, data.content.personal.github, data.content.personal.website]
-                  .map((item) => item?.trim())
-                  .filter((item) => item)
-                  .join(" | ")}
+                {[
+                  data.content.personal.linkedin,
+                  data.content.personal.github,
+                  data.content.personal.website,
+                ].map((item, index, array) => {
+                  const trimmed = item?.trim();
+                  if (!trimmed) return null;
+
+                  const href = trimmed.startsWith("http")
+                    ? trimmed
+                    : `https://${trimmed}`;
+
+                  return (
+                    <Text key={index}>
+                      <Link src={href} style={styles.contact}>
+                        {trimmed}
+                      </Link>
+                      {index < array.length - 1 &&
+                        array.slice(index + 1).some((i) => i?.trim()) && (
+                          <Text> | </Text>
+                        )}
+                    </Text>
+                  );
+                })}
               </Text>
             )}
           </View>
@@ -124,7 +184,10 @@ export const Professional = ({
                 {edu.courses && edu.courses.length > 0 && (
                   <Text style={styles.small}>
                     Courses:{" "}
-                    {edu.courses.map((c) => c?.trim()).filter(Boolean).join(", ")}
+                    {edu.courses
+                      .map((c) => c?.trim())
+                      .filter(Boolean)
+                      .join(", ")}
                   </Text>
                 )}
               </View>
@@ -154,7 +217,11 @@ export const Professional = ({
                 )}
                 {exp.notes && exp.notes.length > 0 && (
                   <Text style={styles.text}>
-                    • {exp.notes.map((n) => n?.trim()).filter(Boolean).join("\n• ")}
+                    •{" "}
+                    {exp.notes
+                      .map((n) => n?.trim())
+                      .filter(Boolean)
+                      .join("\n• ")}
                   </Text>
                 )}
               </View>
@@ -177,11 +244,16 @@ export const Professional = ({
                     {proj.link?.trim() || ""}
                   </Text>
                 )}
-                <Text style={styles.text}>{proj.description?.trim() || ""}</Text>
+                <Text style={styles.text}>
+                  {proj.description?.trim() || ""}
+                </Text>
                 {proj.technologies?.length > 0 && (
                   <Text style={styles.small}>
                     Tech:{" "}
-                    {proj.technologies.map((t) => t?.trim()).filter(Boolean).join(", ")}
+                    {proj.technologies
+                      .map((t) => t?.trim())
+                      .filter(Boolean)
+                      .join(", ")}
                   </Text>
                 )}
               </View>
@@ -222,7 +294,10 @@ export const Professional = ({
               <View key={idx} style={styles.subItem}>
                 <Text style={styles.bold}>{group.category?.trim() || ""}</Text>
                 <Text style={styles.small}>
-                  {group.items.map((i) => i?.trim()).filter(Boolean).join(", ")}
+                  {group.items
+                    .map((i) => i?.trim())
+                    .filter(Boolean)
+                    .join(", ")}
                 </Text>
               </View>
             ))}

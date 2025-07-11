@@ -75,26 +75,70 @@ export const Compact = ({
     <Document
       title={data.title?.trim() || "Resume"}
       author={personal.fullName?.trim() || "Unknown"}
-      subject="Resume"
-      creator="Resuma"
-      producer="Resuma PDF Renderer"
+      subject='Resume'
+      creator='Resuma'
+      producer='Resuma PDF Renderer'
     >
       <Page size={format ?? "A4"} style={styles.page}>
         {/* Header */}
         <Text style={styles.name}>{personal.fullName?.trim() || ""}</Text>
 
         <Text style={styles.contactLine}>
-          {[personal.location, personal.phone]
-            .map((item) => item?.trim())
-            .filter(Boolean)
-            .join("  •  ")}
+          {[personal.location, personal.phone].map((item, index, array) => {
+            const trimmed = item?.trim();
+            if (!trimmed) return null;
+
+            const isPhone = index === 1 && /^\+?[0-9()\s\-]+$/.test(trimmed);
+            const href = isPhone ? `tel:${trimmed.replace(/\s+/g, "")}` : null;
+
+            return (
+              <Text key={index}>
+                {href ? (
+                  <Link src={href} style={styles.contactLink}>
+                    {trimmed}
+                  </Link>
+                ) : (
+                  <Text>{trimmed}</Text>
+                )}
+                {index < array.length - 1 &&
+                  array.slice(index + 1).some((i) => i?.trim()) && (
+                    <Text> • </Text>
+                  )}
+              </Text>
+            );
+          })}
         </Text>
 
         <Text style={styles.contactLine}>
-          {[personal.email, personal.website, personal.linkedin, personal.github]
-            .map((item) => item?.trim())
-            .filter(Boolean)
-            .join("  •  ")}
+          {[
+            personal.email,
+            personal.website,
+            personal.linkedin,
+            personal.github,
+          ].map((item, index, array) => {
+            const trimmed = item?.trim();
+            if (!trimmed) return null;
+
+            const isEmail =
+              trimmed.includes("@") && !trimmed.startsWith("http");
+            const href = isEmail
+              ? `mailto:${trimmed}`
+              : trimmed.startsWith("http")
+              ? trimmed
+              : `https://${trimmed}`;
+
+            return (
+              <Text key={index}>
+                <Link src={href} style={styles.contactLink}>
+                  {trimmed}
+                </Link>
+                {index < array.length - 1 &&
+                  array.slice(index + 1).some((i) => i?.trim()) && (
+                    <Text> • </Text>
+                  )}
+              </Text>
+            );
+          })}
         </Text>
 
         <View style={styles.hr} />
@@ -106,7 +150,9 @@ export const Compact = ({
             {education.map((edu, i) => (
               <View key={i} style={styles.sectionItem}>
                 <Text style={styles.bold}>
-                  {(edu.degree?.trim() || "") + " — " + (edu.school?.trim() || "")}
+                  {(edu.degree?.trim() || "") +
+                    " — " +
+                    (edu.school?.trim() || "")}
                 </Text>
                 <Text style={styles.subText}>
                   {(edu.location?.trim() || "") +
@@ -121,7 +167,10 @@ export const Compact = ({
                 {edu.courses && edu.courses.length > 0 && (
                   <Text style={styles.subText}>
                     Relevant Coursework:{" "}
-                    {edu.courses.map((c) => c?.trim()).filter(Boolean).join(", ")}
+                    {edu.courses
+                      .map((c) => c?.trim())
+                      .filter(Boolean)
+                      .join(", ")}
                   </Text>
                 )}
               </View>
@@ -177,10 +226,7 @@ export const Compact = ({
                   {proj.link && (
                     <Text>
                       {" — "}
-                      <Link
-                        src={proj.link.trim()}
-                        style={styles.contactLink}
-                      >
+                      <Link src={proj.link.trim()} style={styles.contactLink}>
                         {proj.link.trim()}
                       </Link>
                     </Text>
@@ -239,7 +285,10 @@ export const Compact = ({
                 <Text style={styles.bold}>
                   {skill.category?.trim() || ""}:{" "}
                 </Text>
-                {skill.items.map((item) => item?.trim()).filter(Boolean).join(", ")}
+                {skill.items
+                  .map((item) => item?.trim())
+                  .filter(Boolean)
+                  .join(", ")}
               </Text>
             ))}
           </View>

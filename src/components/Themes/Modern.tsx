@@ -4,6 +4,7 @@ import {
   Text,
   View,
   StyleSheet,
+  Link,
 } from "@react-pdf/renderer";
 import { ResumeData } from "@/lib/resumesStore";
 import "@/lib/pdfFonts";
@@ -61,6 +62,7 @@ export const Modern = ({
       color: "#999999",
       textAlign: "center",
       marginBottom: 6,
+      textDecoration: "none",
     },
     sectionTitle: {
       fontSize: 14,
@@ -107,9 +109,9 @@ export const Modern = ({
     <Document
       title={data.title?.trim() || "Resume"}
       author={personal.fullName?.trim() || "Unknown"}
-      subject="Resume"
-      creator="Resuma"
-      producer="Resuma PDF Renderer"
+      subject='Resume'
+      creator='Resuma'
+      producer='Resuma PDF Renderer'
     >
       <Page size={format ?? "A4"} style={styles.page}>
         {/* Personal */}
@@ -121,10 +123,48 @@ export const Modern = ({
           <Text style={styles.location}>{personal.location?.trim() || ""}</Text>
         )}
         <Text style={styles.contact}>
-          {[personal.email, personal.phone, personal.website, personal.linkedin, personal.github]
-            .map((item) => item?.trim())
-            .filter(Boolean)
-            .join("  |  ")}
+          {[
+            personal.email,
+            personal.phone,
+            personal.website,
+            personal.linkedin,
+            personal.github,
+          ].map((item, index, array) => {
+            const trimmed = item?.trim();
+            if (!trimmed) return null;
+
+            let href = null;
+            const isEmail =
+              trimmed.includes("@") && !trimmed.startsWith("http");
+            const isPhone = /^\+?[0-9()\s\-]+$/.test(trimmed);
+            const isLikelyUrl = !isEmail && !isPhone;
+
+            if (isEmail) {
+              href = `mailto:${trimmed}`;
+            } else if (isPhone) {
+              href = `tel:${trimmed.replace(/\s+/g, "")}`;
+            } else if (trimmed.startsWith("http")) {
+              href = trimmed;
+            } else if (isLikelyUrl) {
+              href = `https://${trimmed}`;
+            }
+
+            return (
+              <Text key={index}>
+                {href ? (
+                  <Link src={href} style={styles.contact}>
+                    {trimmed}
+                  </Link>
+                ) : (
+                  <Text>{trimmed}</Text>
+                )}
+                {index < array.length - 1 &&
+                  array.slice(index + 1).some((i) => i?.trim()) && (
+                    <Text> | </Text>
+                  )}
+              </Text>
+            );
+          })}
         </Text>
 
         {/* Education */}
@@ -133,7 +173,9 @@ export const Modern = ({
             <Text style={styles.sectionTitle}>Education</Text>
             {education.map((edu, i) => (
               <View key={i} style={styles.entry}>
-                <Text style={styles.entryTitle}>{edu.school?.trim() || ""}</Text>
+                <Text style={styles.entryTitle}>
+                  {edu.school?.trim() || ""}
+                </Text>
                 <Text style={styles.entrySubtitle}>
                   {(edu.degree?.trim() || "") +
                     " — " +
@@ -152,7 +194,10 @@ export const Modern = ({
                 {edu.courses && edu.courses.length > 0 && (
                   <Text style={styles.entryDescription}>
                     Courses:{" "}
-                    {edu.courses.map((c) => c?.trim()).filter(Boolean).join(", ")}
+                    {edu.courses
+                      .map((c) => c?.trim())
+                      .filter(Boolean)
+                      .join(", ")}
                   </Text>
                 )}
               </View>
@@ -166,7 +211,9 @@ export const Modern = ({
             <Text style={styles.sectionTitle}>Experience</Text>
             {experience.map((exp, i) => (
               <View key={i} style={styles.entry}>
-                <Text style={styles.entryTitle}>{exp.jobTitle?.trim() || ""}</Text>
+                <Text style={styles.entryTitle}>
+                  {exp.jobTitle?.trim() || ""}
+                </Text>
                 <Text style={styles.entrySubtitle}>
                   {(exp.company?.trim() || "") +
                     " — " +
@@ -182,7 +229,11 @@ export const Modern = ({
                 </Text>
                 {exp.notes && exp.notes.length > 0 && (
                   <Text style={styles.entryDescription}>
-                    • {exp.notes.map((n) => n?.trim()).filter(Boolean).join("\n• ")}
+                    •{" "}
+                    {exp.notes
+                      .map((n) => n?.trim())
+                      .filter(Boolean)
+                      .join("\n• ")}
                   </Text>
                 )}
               </View>
@@ -224,13 +275,17 @@ export const Modern = ({
             <Text style={styles.sectionTitle}>Awards</Text>
             {awards.map((award, i) => (
               <View key={i} style={styles.entry}>
-                <Text style={styles.entryTitle}>{award.title?.trim() || ""}</Text>
+                <Text style={styles.entryTitle}>
+                  {award.title?.trim() || ""}
+                </Text>
                 <Text style={styles.entrySubtitle}>
                   {(award.organizer?.trim() || "") +
                     " — " +
                     (award.location?.trim() || "")}
                 </Text>
-                <Text style={styles.entryDate}>{award.date?.from?.trim() || ""}</Text>
+                <Text style={styles.entryDate}>
+                  {award.date?.from?.trim() || ""}
+                </Text>
                 <Text style={styles.entryDescription}>
                   {award.description?.trim() || ""}
                 </Text>
@@ -245,9 +300,14 @@ export const Modern = ({
             <Text style={styles.sectionTitle}>Skills</Text>
             {skills.map((skill, i) => (
               <View key={i} style={styles.entry}>
-                <Text style={styles.entryTitle}>{skill.category?.trim() || ""}</Text>
+                <Text style={styles.entryTitle}>
+                  {skill.category?.trim() || ""}
+                </Text>
                 <Text style={styles.entryDescription}>
-                  {skill.items.map((i) => i?.trim()).filter(Boolean).join(", ")}
+                  {skill.items
+                    .map((i) => i?.trim())
+                    .filter(Boolean)
+                    .join(", ")}
                 </Text>
               </View>
             ))}
