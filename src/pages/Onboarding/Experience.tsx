@@ -13,9 +13,11 @@ import { useNavigate } from "react-router-dom";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import DateRangeDropdown from "@/components/ui/daterange";
 import { Textarea } from "@/components/ui/textarea";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const Experience = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const { state, update, apply } = useOnboarding();
 
   const entries = state.experience;
@@ -91,20 +93,20 @@ const Experience = () => {
     <Card className='w-full max-w-lg mx-auto my-16'>
       <CardHeader>
         <CardTitle className='text-2xl font-semibold'>
-          Experience{" "}
-          <span className='text-muted-foreground text-xl'>(optional)</span>
+          {t("onboarding.experience.title")}{" "}
+          <span className='text-muted-foreground text-xl'>{t("common.optional")}</span>
         </CardTitle>
         <CardDescription className='text-sm text-muted-foreground'>
-          Add your work history with key roles and accomplishments.
+          {t("onboarding.experience.description")}
         </CardDescription>
       </CardHeader>
       <CardContent className='flex flex-col gap-4'>
         {entries.map((entry, index) => (
           <div key={index} className='flex flex-col gap-4 border-b pb-4'>
             <div className='flex flex-col gap-2'>
-              <Label>Job Title</Label>
+              <Label>{t("field.jobTitle")}</Label>
               <Input
-                placeholder='Frontend Developer'
+                placeholder={t("placeholder.jobTitle")}
                 value={entry.jobTitle}
                 onChange={(e) =>
                   handleEntryChange(index, "jobTitle", e.target.value)
@@ -112,9 +114,9 @@ const Experience = () => {
               />
             </div>
             <div className='flex flex-col gap-2'>
-              <Label>Company</Label>
+              <Label>{t("field.company")}</Label>
               <Input
-                placeholder='Google'
+                placeholder={t("placeholder.company")}
                 value={entry.company}
                 onChange={(e) =>
                   handleEntryChange(index, "company", e.target.value)
@@ -122,9 +124,9 @@ const Experience = () => {
               />
             </div>
             <div className='flex flex-col gap-2'>
-              <Label>Location</Label>
+              <Label>{t("field.location")}</Label>
               <Input
-                placeholder='Mountain View, CA'
+                placeholder={t("placeholder.location")}
                 value={entry.location}
                 onChange={(e) =>
                   handleEntryChange(index, "location", e.target.value)
@@ -132,9 +134,9 @@ const Experience = () => {
               />
             </div>
             <div className='flex flex-col gap-2'>
-              <Label>Description</Label>
+              <Label>{t("field.description")}</Label>
               <Textarea
-                placeholder='Worked on major UI redesign for the Ads dashboard...'
+                placeholder={t("placeholder.workDescription")}
                 value={entry.description}
                 onChange={(e) =>
                   handleEntryChange(index, "description", e.target.value)
@@ -148,9 +150,12 @@ const Experience = () => {
               />
             </div>
             <div className='flex flex-col gap-2'>
-              <Label>
-                Notes<span className='text-muted-foreground'>(optional)</span>
-              </Label>
+                <Label>
+                  {t("field.notes")}
+                  <span className='text-muted-foreground'>
+                    {t("common.optional")}
+                  </span>
+                </Label>
               {entry.notes?.map((note, noteIndex) => (
                 <div key={noteIndex} className='flex gap-2'>
                   <Input
@@ -158,7 +163,7 @@ const Experience = () => {
                     onChange={(e) =>
                       handleNoteChange(index, noteIndex, e.target.value)
                     }
-                    placeholder={`Note ${noteIndex + 1}`}
+                    placeholder={`${t("placeholder.notePrefix")} ${noteIndex + 1}`}
                   />
                   <Button
                     variant='ghost'
@@ -175,7 +180,7 @@ const Experience = () => {
                 onClick={() => addNote(index)}
               >
                 <PlusCircle className='h-4 w-4 mr-1' />
-                Add Note
+                 {t("action.addNote")}
               </Button>
             </div>
             <Button
@@ -184,14 +189,14 @@ const Experience = () => {
               onClick={() => removeEntry(index)}
             >
               <MinusCircle className='h-4 w-4' />
-              Remove Experience
+               {t("action.removeExperience")}
             </Button>
           </div>
         ))}
 
         <div className='flex items-center gap-2'>
           <Button variant='ghost' onClick={addEntry} className='text-primary'>
-            <PlusCircle className='h-4 w-4 mr-1' /> Add Experience
+            <PlusCircle className='h-4 w-4 mr-1' /> {t("action.addExperience")}
           </Button>
         </div>
 
@@ -201,7 +206,7 @@ const Experience = () => {
               apply("experience").then(() => navigate("/onboarding/step6"));
             }}
           >
-            Continue <ArrowRight className='h-4 ml-1' />
+            {t("common.continue")} <ArrowRight className='h-4 ml-1' />
           </Button>
         </div>
       </CardContent>

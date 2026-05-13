@@ -11,9 +11,11 @@ import { Label } from "@/components/ui/label";
 import { ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useOnboarding } from "@/contexts/OnboardingContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const Personal = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const { state, update, apply } = useOnboarding();
 
   const isValid =
@@ -24,87 +26,88 @@ const Personal = () => {
   return (
     <Card className='w-full max-w-lg mx-auto'>
       <CardHeader>
-        <CardTitle className='text-2xl font-semibold'>Personal Info</CardTitle>
+        <CardTitle className='text-2xl font-semibold'>
+          {t("onboarding.personal.title")}
+        </CardTitle>
         <CardDescription className='text-sm text-muted-foreground'>
-          Add your personal details. These will always be displayed on your
-          resume.
+          {t("onboarding.personal.description")}
         </CardDescription>
       </CardHeader>
       <CardContent className='flex flex-col gap-4'>
         {/* Full Name */}
         <div className='flex flex-col gap-2'>
           <Label>
-            Full Name<span className='text-destructive'>*</span>
+            {t("field.fullName")}<span className='text-destructive'>*</span>
           </Label>
           <Input
             value={state.personal.fullName}
             onChange={(e) => update("personal", { fullName: e.target.value })}
-            placeholder='John Doe'
+            placeholder={t("placeholder.fullName")}
           />
         </div>
 
         {/* Email */}
         <div className='flex flex-col gap-2'>
           <Label>
-            Email<span className='text-destructive'>*</span>
+            {t("field.email")}<span className='text-destructive'>*</span>
           </Label>
           <Input
             type='email'
             value={state.personal.email}
             onChange={(e) => update("personal", { email: e.target.value })}
-            placeholder='yourname@mail.com'
+            placeholder={t("placeholder.email")}
           />
         </div>
 
         {/* Location */}
         <div className='flex flex-col gap-2'>
           <Label>
-            Location<span className='text-destructive'>*</span>
+            {t("field.location")}<span className='text-destructive'>*</span>
           </Label>
           <Input
             value={state.personal.location}
             onChange={(e) => update("personal", { location: e.target.value })}
-            placeholder='San Francisco, CA'
+            placeholder={t("placeholder.location")}
           />
         </div>
 
         {/* Phone */}
         <div className='flex flex-col gap-2'>
-          <Label>Phone</Label>
+          <Label>{t("field.phone")}</Label>
           <Input
             value={state.personal.phone || ""}
             onChange={(e) => update("personal", { phone: e.target.value })}
-            placeholder='+1 (123) 456-7890'
+            placeholder={t("placeholder.phone")}
           />
         </div>
 
         {/* LinkedIn */}
         <div className='flex flex-col gap-2'>
-          <Label>LinkedIn</Label>
+          <Label>{t("field.linkedin")}</Label>
           <Input
             value={state.personal.linkedin || ""}
             onChange={(e) => update("personal", { linkedin: e.target.value })}
-            placeholder='https://linkedin.com/in/username'
+            placeholder={t("placeholder.linkedin")}
           />
         </div>
 
         {/* GitHub */}
         <div className='flex flex-col gap-2'>
-          <Label>GitHub</Label>
+          <Label>{t("field.github")}</Label>
           <Input
             value={state.personal.github || ""}
             onChange={(e) => update("personal", { github: e.target.value })}
-            placeholder='https://github.com/username'
+            placeholder={t("placeholder.github")}
           />
         </div>
 
         {/* Website */}
         <div className='flex flex-col gap-2'>
-          <Label>Website</Label>
+          <Label>{t("field.website")}</Label>
           <Input
             value={state.personal.website || ""}
             onChange={(e) => update("personal", { website: e.target.value })}
-            placeholder='https://yourwebsite.com'
+            placeholder={t("placeholder.website")}
           />
         </div>
 
@@ -116,7 +119,7 @@ const Personal = () => {
               apply("personal").then(() => navigate("/onboarding/step4"))
             }
           >
-            Continue <ArrowRight className='h-4 ml-1' />
+            {t("common.continue")} <ArrowRight className='h-4 ml-1' />
           </Button>
         </div>
       </CardContent>

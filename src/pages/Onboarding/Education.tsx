@@ -12,11 +12,13 @@ import { SettingsType, useOnboarding } from "@/contexts/OnboardingContext";
 import { MinusCircle, PlusCircle, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import DateRangeDropdown from "@/components/ui/daterange";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type EducationEntry = SettingsType["education"][number];
 
 const Education = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const { state, update, apply } = useOnboarding();
 
   const entries = state.education;
@@ -90,21 +92,20 @@ const Education = () => {
     <Card className='w-full max-w-lg mx-auto my-16'>
       <CardHeader>
         <CardTitle className='text-2xl font-semibold'>
-          Education{" "}
-          <span className='text-muted-foreground text-xl'>(optional)</span>
+          {t("onboarding.education.title")}{" "}
+          <span className='text-muted-foreground text-xl'>{t("common.optional")}</span>
         </CardTitle>
         <CardDescription className='text-sm text-muted-foreground'>
-          List your educational background, including school, degree, and
-          relevant coursework.
+          {t("onboarding.education.description")}
         </CardDescription>
       </CardHeader>
       <CardContent className='flex flex-col gap-4'>
         {entries.map((entry, index) => (
           <div key={index} className='flex flex-col gap-4 border-b pb-4'>
             <div className='flex flex-col gap-2'>
-              <Label>School Name</Label>
+              <Label>{t("field.schoolName")}</Label>
               <Input
-                placeholder='San Francisco State University'
+                placeholder={t("placeholder.school")}
                 value={entry.school}
                 onChange={(e) =>
                   handleEntryChange(index, "school", e.target.value)
@@ -112,9 +113,9 @@ const Education = () => {
               />
             </div>
             <div className='flex flex-col gap-2'>
-              <Label>Degree</Label>
+              <Label>{t("field.degree")}</Label>
               <Input
-                placeholder='Bachelor of Computer Science'
+                placeholder={t("placeholder.degree")}
                 value={entry.degree}
                 onChange={(e) =>
                   handleEntryChange(index, "degree", e.target.value)
@@ -122,9 +123,9 @@ const Education = () => {
               />
             </div>
             <div className='flex flex-col gap-2'>
-              <Label>Location</Label>
+              <Label>{t("field.location")}</Label>
               <Input
-                placeholder='San Francisco, CA'
+                placeholder={t("placeholder.location")}
                 value={entry.location}
                 onChange={(e) =>
                   handleEntryChange(index, "location", e.target.value)
@@ -133,10 +134,11 @@ const Education = () => {
             </div>
             <div className='flex flex-col gap-2'>
               <Label>
-                GPA<span className='text-muted-foreground'>(optional)</span>
+                {t("field.gpa")}
+                <span className='text-muted-foreground'>{t("common.optional")}</span>
               </Label>
               <Input
-                placeholder='3.8 / 4.0'
+                placeholder={t("placeholder.gpa")}
                 value={entry.gpa}
                 onChange={(e) =>
                   handleEntryChange(index, "gpa", e.target.value)
@@ -157,8 +159,8 @@ const Education = () => {
 
             <div className='flex flex-col gap-2'>
               <Label>
-                Relevant Coursework
-                <span className='text-muted-foreground'>(optional)</span>
+                {t("field.relevantCoursework")}
+                <span className='text-muted-foreground'>{t("common.optional")}</span>
               </Label>
               {(entry.courses || []).map((course, i) => (
                 <div key={i} className='flex gap-2'>
@@ -167,7 +169,7 @@ const Education = () => {
                     onChange={(e) =>
                       handleCourseChange(index, i, e.target.value)
                     }
-                    placeholder='Data Structures'
+                    placeholder={t("placeholder.course")}
                   />
                   <Button
                     variant='ghost'
@@ -185,7 +187,7 @@ const Education = () => {
                 className='text-primary self-start px-0'
               >
                 <PlusCircle className='w-4 h-4 mr-1' />
-                Add Course
+                 {t("action.addCourse")}
               </Button>
             </div>
 
@@ -194,14 +196,14 @@ const Education = () => {
               className='text-destructive'
               onClick={() => removeEntry(index)}
             >
-              <MinusCircle className='h-4 w-4' /> Remove School
+              <MinusCircle className='h-4 w-4' /> {t("action.removeSchool")}
             </Button>
           </div>
         ))}
 
         <div className='flex items-center gap-2'>
           <Button variant='ghost' onClick={addEntry} className='text-primary'>
-            <PlusCircle className='h-4 w-4 mr-1' /> Add School
+            <PlusCircle className='h-4 w-4 mr-1' /> {t("action.addSchool")}
           </Button>
         </div>
 
@@ -211,7 +213,7 @@ const Education = () => {
               apply("education").then(() => navigate("/onboarding/step5"))
             }
           >
-            Continue <ArrowRight className='h-4 ml-1' />
+            {t("common.continue")} <ArrowRight className='h-4 ml-1' />
           </Button>
         </div>
       </CardContent>

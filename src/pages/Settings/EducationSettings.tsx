@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { MinusCircle, PlusCircle } from "lucide-react";
 import DateRangeDropdown from "@/components/ui/daterange";
 import { SettingsType } from "@/contexts/OnboardingContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type Props = {
   settings: SettingsType["education"];
@@ -14,6 +15,7 @@ type Props = {
 };
 
 export const EducationSettings = ({ settings, updateSettings }: Props) => {
+  const { t } = useLanguage();
   const education = settings ?? [];
 
   const sync = (next: SettingsType["education"]) => {
@@ -92,47 +94,47 @@ export const EducationSettings = ({ settings, updateSettings }: Props) => {
         <div key={idx} className='flex flex-col gap-4 border-b pb-4'>
           {/* School */}
           <div className='flex items-center justify-between'>
-            <Label className='w-1/3'>School Name</Label>
+            <Label className='w-1/3'>{t("field.schoolName")}</Label>
             <Input
               className='w-2/3 text-right'
               value={entry.school}
               onChange={(e) => handleEntryChange(idx, "school", e.target.value)}
-              placeholder='San Francisco State University'
+              placeholder={t("placeholder.school")}
             />
           </div>
 
           {/* Degree */}
           <div className='flex items-center justify-between'>
-            <Label className='w-1/3'>Degree</Label>
+            <Label className='w-1/3'>{t("field.degree")}</Label>
             <Input
               className='w-2/3 text-right'
               value={entry.degree}
               onChange={(e) => handleEntryChange(idx, "degree", e.target.value)}
-              placeholder='Bachelor of Bachelor of Computer Science'
+              placeholder={t("placeholder.degree")}
             />
           </div>
 
           {/* Location */}
           <div className='flex items-center justify-between'>
-            <Label className='w-1/3'>Location</Label>
+            <Label className='w-1/3'>{t("field.location")}</Label>
             <Input
               className='w-2/3 text-right'
               value={entry.location}
               onChange={(e) =>
                 handleEntryChange(idx, "location", e.target.value)
               }
-              placeholder='San Francisco, CA'
+              placeholder={t("placeholder.location")}
             />
           </div>
 
           {/* GPA */}
           <div className='flex items-center justify-between'>
-            <Label className='w-1/3'>GPA</Label>
+            <Label className='w-1/3'>{t("field.gpa")}</Label>
             <Input
               className='w-2/3 text-right'
               value={entry.gpa}
               onChange={(e) => handleEntryChange(idx, "gpa", e.target.value)}
-              placeholder='3.8 / 4.0'
+              placeholder={t("placeholder.gpa")}
             />
           </div>
 
@@ -144,14 +146,14 @@ export const EducationSettings = ({ settings, updateSettings }: Props) => {
 
           {/* Courses */}
           <div className='flex flex-col gap-2'>
-            <Label>Relevant Coursework</Label>
+            <Label>{t("field.relevantCoursework")}</Label>
             {(entry.courses || []).map((c, ci) => (
               <div key={ci} className='flex items-center gap-2'>
                 <Input
                   className='w-full'
                   value={c}
                   onChange={(e) => handleCourseChange(idx, ci, e.target.value)}
-                  placeholder='Data Structures'
+                  placeholder={t("placeholder.course")}
                 />
                 <Button
                   variant='ghost'
@@ -168,7 +170,7 @@ export const EducationSettings = ({ settings, updateSettings }: Props) => {
               onClick={() => addCourse(idx)}
             >
               <PlusCircle className='h-4 w-4 mr-1' />
-              Add Course
+              {t("action.addCourse")}
             </Button>
           </div>
 
@@ -178,7 +180,7 @@ export const EducationSettings = ({ settings, updateSettings }: Props) => {
             className='text-destructive self-start'
             onClick={() => removeEntry(idx)}
           >
-            <MinusCircle className='h-4 w-4 mr-1' /> Remove School
+              <MinusCircle className='h-4 w-4 mr-1' /> {t("action.removeSchool")}
           </Button>
         </div>
       ))}
@@ -188,7 +190,7 @@ export const EducationSettings = ({ settings, updateSettings }: Props) => {
         className='text-primary self-start'
         onClick={addEntry}
       >
-        <PlusCircle className='h-4 w-4 mr-1' /> Add Education
+        <PlusCircle className='h-4 w-4 mr-1' /> {t("action.addEducation")}
       </Button>
     </div>
   );

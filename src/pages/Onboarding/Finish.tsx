@@ -4,6 +4,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { useNavigate, useOutletContext } from "react-router-dom";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type FinishContext = {
   fadeOut: boolean;
@@ -12,6 +13,7 @@ type FinishContext = {
 
 export default function Finish() {
   const { resolvedTheme } = useTheme();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   const { setFadeOut } = useOutletContext<FinishContext>();
@@ -63,10 +65,10 @@ export default function Finish() {
         "flex flex-col items-center justify-center w-full h-full gap-2 text-center"
       }
     >
-      <h1 className='text-2xl font-bold'>You're All Set!</h1>
-      <p className='text-muted-foreground'>Your resume journey begins now.</p>
+      <h1 className='text-2xl font-bold'>{t("onboarding.finish.title")}</h1>
+      <p className='text-muted-foreground'>{t("onboarding.finish.description")}</p>
       <Button className='mt-3' onClick={handleContinue}>
-        Continue <ArrowRight className='h-4 ml-1' />
+        {t("common.continue")} <ArrowRight className='h-4 ml-1' />
       </Button>
     </div>
   );

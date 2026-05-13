@@ -5,6 +5,7 @@ import { MinusCircle, PlusCircle, ArrowUp, ArrowDown } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import DateRangeDropdown from "@/components/ui/daterange";
 import { SettingsType } from "@/contexts/OnboardingContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type Props = {
   settings: SettingsType["awards"];
@@ -15,6 +16,7 @@ type Props = {
 };
 
 export const AwardsSettings = ({ settings, updateSettings }: Props) => {
+  const { t } = useLanguage();
   const entries = settings ?? [];
 
   const sync = (next: SettingsType["awards"]) => {
@@ -76,10 +78,10 @@ export const AwardsSettings = ({ settings, updateSettings }: Props) => {
         <div key={idx} className='flex flex-col gap-4 border-b pb-4'>
           {/* Title */}
           <div className='flex items-center justify-between'>
-            <Label className='w-1/3'>Title</Label>
+            <Label className='w-1/3'>{t("field.title")}</Label>
             <Input
               className='w-2/3 text-right'
-              placeholder='Best Open Source Contribution'
+              placeholder={t("placeholder.awardTitle")}
               value={entry.title}
               onChange={(e) => handleFieldChange(idx, "title", e.target.value)}
             />
@@ -87,10 +89,10 @@ export const AwardsSettings = ({ settings, updateSettings }: Props) => {
 
           {/* Organizer */}
           <div className='flex items-center justify-between'>
-            <Label className='w-1/3'>Organizer</Label>
+            <Label className='w-1/3'>{t("field.organizer")}</Label>
             <Input
               className='w-2/3 text-right'
-              placeholder='GitHub Universe'
+              placeholder={t("placeholder.awardOrganizer")}
               value={entry.organizer}
               onChange={(e) =>
                 handleFieldChange(idx, "organizer", e.target.value)
@@ -100,10 +102,10 @@ export const AwardsSettings = ({ settings, updateSettings }: Props) => {
 
           {/* Location */}
           <div className='flex items-center justify-between'>
-            <Label className='w-1/3'>Location</Label>
+            <Label className='w-1/3'>{t("field.location")}</Label>
             <Input
               className='w-2/3 text-right'
-              placeholder='San Francisco, CA'
+              placeholder={t("placeholder.location")}
               value={entry.location}
               onChange={(e) =>
                 handleFieldChange(idx, "location", e.target.value)
@@ -120,9 +122,9 @@ export const AwardsSettings = ({ settings, updateSettings }: Props) => {
 
           {/* Description */}
           <div className='flex flex-col gap-2'>
-            <Label>Description</Label>
+            <Label>{t("field.description")}</Label>
             <Textarea
-              placeholder='Awarded for outstanding contribution to...'
+              placeholder={t("placeholder.awardDescription")}
               value={entry.description}
               onChange={(e) =>
                 handleFieldChange(idx, "description", e.target.value)
@@ -138,7 +140,7 @@ export const AwardsSettings = ({ settings, updateSettings }: Props) => {
               onClick={() => removeEntry(idx)}
             >
               <MinusCircle className='h-4 w-4 mr-1' />
-              Remove Award
+              {t("action.removeAward")}
             </Button>
             <div className='flex gap-2'>
               <Button
@@ -147,7 +149,7 @@ export const AwardsSettings = ({ settings, updateSettings }: Props) => {
                 onClick={() => moveUp(idx)}
               >
                 <ArrowUp className='h-4 w-4 mr-1' />
-                Move Up
+                {t("common.moveUp")}
               </Button>
               <Button
                 variant='ghost'
@@ -155,7 +157,7 @@ export const AwardsSettings = ({ settings, updateSettings }: Props) => {
                 onClick={() => moveDown(idx)}
               >
                 <ArrowDown className='h-4 w-4 mr-1' />
-                Move Down
+                {t("common.moveDown")}
               </Button>
             </div>
           </div>
@@ -169,7 +171,7 @@ export const AwardsSettings = ({ settings, updateSettings }: Props) => {
         onClick={addEntry}
       >
         <PlusCircle className='h-4 w-4 mr-1' />
-        Add Award
+        {t("action.addAward")}
       </Button>
     </div>
   );
