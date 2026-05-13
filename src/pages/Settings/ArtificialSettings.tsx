@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/select";
 import { showError, showSuccess } from "@/lib/toastUtils";
 import { RuntimeEntry } from "@/lib/selectRecommendedRuntime";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type Props = {
   llm: SettingsType["llm"];
@@ -53,6 +54,7 @@ export const ArtificialSettings = ({
   updateSettings,
   stockSettings,
 }: Props) => {
+  const { t } = useLanguage();
   const settings = llm.settings;
   const system = useSystem();
 
@@ -80,7 +82,7 @@ export const ArtificialSettings = ({
           .map((e) => e.name as string);
       } catch (error) {
         showError(
-          "Error reading downloaded models",
+          t("ai.errorReadingModels"),
           (error as Error).message || "An unexpected error occurred"
         );
       }
@@ -94,7 +96,7 @@ export const ArtificialSettings = ({
           .map((e) => e.name as string);
       } catch (error) {
         showError(
-          "Error reading downloaded runtimes",
+          t("ai.errorReadingRuntimes"),
           (error as Error).message || "An unexpected error occurred"
         );
       }
@@ -150,10 +152,10 @@ export const ArtificialSettings = ({
         return updated;
       });
 
-      showSuccess("Model deleted", `"${modelName}" was removed successfully`);
+      showSuccess(t("ai.modelDeleted"), `"${modelName}" was removed successfully`);
     } catch (error) {
       showError(
-        "Failed to delete model",
+        t("ai.modelDeleteFailed"),
         (error as Error).message || "An unexpected error occurred"
       );
     } finally {
@@ -176,13 +178,10 @@ export const ArtificialSettings = ({
         return updated;
       });
 
-      showSuccess(
-        "Runtime deleted",
-        `"${runtimeName}" was removed successfully`
-      );
+      showSuccess(t("ai.runtimeDeleted"), `"${runtimeName}" was removed successfully`);
     } catch (error) {
       showError(
-        "Failed to delete runtime",
+        t("ai.runtimeDeleteFailed"),
         (error as Error).message || "An unexpected error occurred"
       );
     } finally {
@@ -214,7 +213,7 @@ export const ArtificialSettings = ({
       },
       onError: (error) => {
         showError(
-          `Download error for ${safeName}`,
+          `${t("ai.downloadErrorPrefix")} ${safeName}`,
           error || "An unexpected error occurred"
         );
         setDownloadStatusMap((prev) => ({
@@ -255,7 +254,7 @@ export const ArtificialSettings = ({
       },
       onError: (error) => {
         showError(
-          `Download error for ${name}`,
+          `${t("ai.downloadErrorPrefix")} ${name}`,
           error || "An unexpected error occurred"
         );
         setDownloadStatusMap((prev) => ({
@@ -277,7 +276,7 @@ export const ArtificialSettings = ({
       },
       onExtractError: (error) => {
         showError(
-          `Extraction error for ${name}`,
+          `${t("ai.extractErrorPrefix")} ${name}`,
           error || "An unexpected error occurred"
         );
         setDownloadStatusMap((prev) => ({
@@ -315,7 +314,7 @@ export const ArtificialSettings = ({
       });
     } catch (err) {
       showError(
-        `Error downloading ${assetName}`,
+        `${t("ai.downloadErrorPrefix")} ${assetName}`,
         (err as Error).message || "An unexpected error occurred"
       );
 
@@ -348,13 +347,13 @@ export const ArtificialSettings = ({
     <div className='flex flex-col gap-4'>
       {/* Runtime */}
       <div className='flex items-center justify-between h-9'>
-        <Label className='w-1/3'>Runtime</Label>
+        <Label className='w-1/3'>{t("ai.runtime")}</Label>
         <Select
           value={llm.runtime}
           onValueChange={(value) => updateSettings("llm", { runtime: value })}
         >
           <SelectTrigger className='w-2/3 text-right'>
-            <SelectValue placeholder='Select runtime' />
+            <SelectValue placeholder={t("ai.runtime.select")} />
           </SelectTrigger>
           <SelectContent>
             {availableRuntimes.map((runtime) => (
@@ -369,7 +368,7 @@ export const ArtificialSettings = ({
 
       {/* Model */}
       <div className='flex items-center justify-between h-9'>
-        <Label className='w-1/3'>Model</Label>
+        <Label className='w-1/3'>{t("ai.model")}</Label>
         <Select
           value={llm.model}
           onValueChange={(value) => {
@@ -388,7 +387,7 @@ export const ArtificialSettings = ({
           }}
         >
           <SelectTrigger className='w-2/3 text-right'>
-            <SelectValue placeholder='Select model' />
+            <SelectValue placeholder={t("ai.model.select")} />
           </SelectTrigger>
           <SelectContent>
             {availableModels.map((model) => {
@@ -411,11 +410,11 @@ export const ArtificialSettings = ({
       {/* Context Size */}
       <div className='flex items-center justify-between h-9'>
         <Label className='w-1/3'>
-          Context Size{" "}
-          {renderParamTooltip(
-            "ctx_size",
-            "Max tokens the model can keep in memory."
-          )}
+           {t("ai.contextSize")}{" "}
+           {renderParamTooltip(
+             "ctx_size",
+             t("ai.contextSize.tooltip")
+           )}
         </Label>
         <Input
           type='number'
@@ -434,11 +433,11 @@ export const ArtificialSettings = ({
       {/* GPU Layers */}
       <div className='flex items-center justify-between h-9'>
         <Label className='w-1/3'>
-          GPU Layers{" "}
-          {renderParamTooltip(
-            "gpu_layers",
-            "Number of model layers offloaded to GPU."
-          )}
+           {t("ai.gpuLayers")}{" "}
+           {renderParamTooltip(
+             "gpu_layers",
+             t("ai.gpuLayers.tooltip")
+           )}
         </Label>
 
         <Input
@@ -473,11 +472,11 @@ export const ArtificialSettings = ({
       {/* Flash Attention */}
       <div className='flex items-center justify-between h-9'>
         <Label className='w-1/3'>
-          Flash Attention{" "}
-          {renderParamTooltip(
-            "flash_attn",
-            "Enables Flash Attention for faster generation."
-          )}
+           {t("ai.flashAttention")}{" "}
+           {renderParamTooltip(
+             "flash_attn",
+             t("ai.flashAttention.tooltip")
+           )}
         </Label>
         <Switch
           checked={settings.flashAttn}
@@ -492,11 +491,11 @@ export const ArtificialSettings = ({
       {/* Memory Lock */}
       <div className='flex items-center justify-between h-9'>
         <Label className='w-1/3'>
-          Memory Lock{" "}
-          {renderParamTooltip(
-            "mlock",
-            "Locks model in memory to avoid swapping."
-          )}
+           {t("ai.memoryLock")}{" "}
+           {renderParamTooltip(
+             "mlock",
+             t("ai.memoryLock.tooltip")
+           )}
         </Label>
         <Switch
           checked={settings.mlock}
@@ -511,11 +510,11 @@ export const ArtificialSettings = ({
       {/* Disable MMAP */}
       <div className='flex items-center justify-between h-9'>
         <Label className='w-1/3'>
-          Disable MMAP{" "}
-          {renderParamTooltip(
-            "no_mmap",
-            "Avoids memory-mapping the model file."
-          )}
+           {t("ai.disableMmap")}{" "}
+           {renderParamTooltip(
+             "no_mmap",
+             t("ai.disableMmap.tooltip")
+           )}
         </Label>
         <Switch
           checked={settings.noMmap}
@@ -535,14 +534,14 @@ export const ArtificialSettings = ({
           updateSettings("llm", stockSettings);
         }}
       >
-        <RotateCcw className='mr-1' /> Reset to Defaults
+        <RotateCcw className='mr-1' /> {t("ai.resetDefaults")}
       </Button>
 
       {/* Description */}
       <div className='flex flex-col gap-1.5 my-2'>
-        <CardTitle className='text-2xl font-semibold'>AI Models</CardTitle>
+        <CardTitle className='text-2xl font-semibold'>{t("ai.models")}</CardTitle>
         <CardDescription className='text-sm text-muted-foreground'>
-          Download an AI model from the available options below.
+          {t("ai.models.description")}
         </CardDescription>
       </div>
 
@@ -564,17 +563,17 @@ export const ArtificialSettings = ({
                 {entry.status === "gpu" ? (
                   <>
                     <Microchip className='h-3.5 w-3.5' />
-                    GPU Compatible
+                    {t("ai.gpuCompatible")}
                   </>
                 ) : entry.status === "cpu" ? (
                   <>
                     <Cpu className='h-3.5 w-3.5' />
-                    CPU Compatible
+                    {t("ai.cpuCompatible")}
                   </>
                 ) : (
                   <>
                     <X className='h-3.5 w-3.5' />
-                    Unsupported
+                    {t("common.unsupported")}
                   </>
                 )}
               </Badge>
@@ -612,7 +611,7 @@ export const ArtificialSettings = ({
                 ).state === "ready" ? (
                   <>
                     <Check className='w-4 h-4 mr-1' />
-                    Ready
+                    {t("common.ready")}
                   </>
                 ) : (entry.model.name.replace(/\./g, "_")
                     ? downloadStatusMap[
@@ -625,7 +624,7 @@ export const ArtificialSettings = ({
                   ).state === "downloading" ? (
                   <>
                     <Download className='w-4 h-4 mr-1' />
-                    Downloading... (
+                    {t("common.downloading")} (
                     {Math.round(
                       (entry.model.name.replace(/\./g, "_")
                         ? downloadStatusMap[
@@ -642,7 +641,7 @@ export const ArtificialSettings = ({
                 ) : (
                   <>
                     <Download className='w-4 h-4 mr-1' />
-                    Download
+                    {t("common.download")}
                   </>
                 )}
               </Button>
@@ -664,9 +663,9 @@ export const ArtificialSettings = ({
 
       {/* Description */}
       <div className='flex flex-col gap-1.5 my-2'>
-        <CardTitle className='text-2xl font-semibold'>Runtimes</CardTitle>
+        <CardTitle className='text-2xl font-semibold'>{t("ai.runtimes")}</CardTitle>
         <CardDescription className='text-sm text-muted-foreground'>
-          Download a compatible runtime from the available options below.
+          {t("ai.runtimes.description")}
         </CardDescription>
       </div>
 
@@ -686,15 +685,15 @@ export const ArtificialSettings = ({
               <Badge variant='outline' className='w-fit'>
                 {entry.status === "confirmed" ? (
                   <>
-                    <Check className='h-5 w-5' /> Supported
+                    <Check className='h-5 w-5' /> {t("common.supported")}
                   </>
                 ) : entry.status === "unknown" ? (
                   <>
-                    <X className='h-5 w-5' /> Unknown
+                    <X className='h-5 w-5' /> {t("common.unknown")}
                   </>
                 ) : (
                   <>
-                    <X className='h-5 w-5' /> Unsupported
+                    <X className='h-5 w-5' /> {t("common.unsupported")}
                   </>
                 )}
               </Badge>
@@ -742,7 +741,7 @@ export const ArtificialSettings = ({
                       return (
                         <>
                           <Check className='w-4 h-4 mr-1' />
-                          Ready
+                          {t("common.ready")}
                         </>
                       );
                     }
@@ -751,7 +750,7 @@ export const ArtificialSettings = ({
                       return (
                         <>
                           <Download className='w-4 h-4 mr-1' />
-                          Downloading... ({Math.round(progress)}%)
+                          {t("common.downloading")} ({Math.round(progress)}%)
                         </>
                       );
                     }
@@ -760,7 +759,7 @@ export const ArtificialSettings = ({
                       return (
                         <>
                           <Download className='w-4 h-4 mr-1' />
-                          Extracting...
+                          {t("common.extracting")}
                         </>
                       );
                     }
@@ -768,7 +767,7 @@ export const ArtificialSettings = ({
                     return (
                       <>
                         <Download className='w-4 h-4 mr-1' />
-                        Download
+                          {t("common.download")}
                       </>
                     );
                   })()}

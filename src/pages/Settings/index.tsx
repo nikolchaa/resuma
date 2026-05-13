@@ -31,8 +31,10 @@ import {
   getVersion,
 } from "@tauri-apps/api/app";
 import { showError, showSuccess, showUpdateAvailable } from "@/lib/toastUtils";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function Settings() {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState("basic");
   const [settings, setSettings] = useState<SettingsType>({
     app: {
@@ -76,26 +78,26 @@ export default function Settings() {
       .then((v) => {
         setVersion(v);
       })
-      .catch((error) =>
-        showError("Failed to fetch app version", (error as Error).message)
-      );
+        .catch((error) =>
+          showError(t("settings.error.fetchVersion"), (error as Error).message)
+        );
 
     getIdentifier()
       .then((id) => {
         setIdentifier(id);
       })
-      .catch((error) =>
-        showError("Failed to fetch identifier", (error as Error).message)
-      );
+        .catch((error) =>
+          showError(t("settings.error.fetchIdentifier"), (error as Error).message)
+        );
 
     getTauriVersion()
       .then((v) => {
         setTauriVersion(v);
       })
-      .catch((error) =>
-        showError("Failed to fetch Tauri version", (error as Error).message)
-      );
-  }, []);
+        .catch((error) =>
+          showError(t("settings.error.fetchTauriVersion"), (error as Error).message)
+        );
+  }, [t]);
 
   const updateSettings = <K extends keyof SettingsType>(
     section: K,
@@ -331,15 +333,15 @@ export default function Settings() {
               transition={{ duration: 0.3, ease: "easeInOut" }}
               className='fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-popover border rounded-lg shadow-md p-2 flex gap-2 items-center'
             >
-              <span className='pl-2 text-sm text-muted-foreground'>
-                You have unsaved changes.
-              </span>
-              <Button variant='ghost' onClick={resetSettings}>
-                Reset
-              </Button>
-              <Button variant='default' onClick={applySettings}>
-                Apply
-              </Button>
+                <span className='pl-2 text-sm text-muted-foreground'>
+                  {t("settings.unsavedChanges")}
+                </span>
+                <Button variant='ghost' onClick={resetSettings}>
+                  {t("common.reset")}
+                </Button>
+                <Button variant='default' onClick={applySettings}>
+                  {t("common.apply")}
+                </Button>
             </m.div>
           )}
         </AnimatePresence>
@@ -356,63 +358,64 @@ export default function Settings() {
                 value='basic'
                 className='px-4 py-2 w-48 justify-baseline'
               >
-                App Settings
+                 {t("settings.tab.app")}
               </TabsTrigger>
               <TabsTrigger
                 value='artificial'
                 className='px-4 py-2 w-48 justify-baseline'
               >
-                AI Settings
+                 {t("settings.tab.ai")}
               </TabsTrigger>
               <TabsTrigger
                 value='personal'
                 className='px-4 py-2 w-48 justify-baseline'
               >
-                Personal Info
+                 {t("settings.tab.personal")}
               </TabsTrigger>
               <TabsTrigger
                 value='education'
                 className='px-4 py-2 w-48 justify-baseline'
               >
-                Education
+                 {t("template.section.education")}
               </TabsTrigger>
               <TabsTrigger
                 value='experience'
                 className='px-4 py-2 w-48 justify-baseline'
               >
-                Experience
+                 {t("template.section.experience")}
               </TabsTrigger>
               <TabsTrigger
                 value='projects'
                 className='px-4 py-2 w-48 justify-baseline'
               >
-                Projects
+                 {t("template.section.projects")}
               </TabsTrigger>
               <TabsTrigger
                 value='skills'
                 className='px-4 py-2 w-48 justify-baseline'
               >
-                Skills
+                 {t("template.section.skills")}
               </TabsTrigger>
               <TabsTrigger
                 value='awards'
                 className='px-4 py-2 w-48 justify-baseline'
               >
-                Awards
+                 {t("template.section.awards")}
               </TabsTrigger>
             </TabsList>
           </Tabs>
           {/* Version */}
           <div className='flex flex-col gap-4 w-[13.125rem] p-4 mt-2'>
             <Label>
-              Version: <span className='text-muted-foreground'>{version}</span>
+              {t("settings.version")}:{" "}
+              <span className='text-muted-foreground'>{version}</span>
             </Label>
             <Label>
-              Identifier:{" "}
+              {t("settings.identifier")}:{" "}
               <span className='text-muted-foreground'>{identifier}</span>
             </Label>
             <Label>
-              Tauri version:{" "}
+              {t("settings.tauriVersion")}:{" "}
               <span className='text-muted-foreground'>{tauriVersion}</span>
             </Label>
           </div>
@@ -432,11 +435,10 @@ export default function Settings() {
                 <Card>
                   <CardHeader>
                     <CardTitle className='text-2xl font-semibold'>
-                      App Settings
+                      {t("settings.app.heading")}
                     </CardTitle>
                     <CardDescription className='text-sm text-muted-foreground'>
-                      Configure your general app preferences. Import and export
-                      your application settings.
+                      {t("settings.app.description")}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -450,7 +452,7 @@ export default function Settings() {
                 </Card>
                 <Card className='mt-8'>
                   <CardContent className='flex flex-col gap-4'>
-                    <Label className='text-lg'>App Updates</Label>
+                    <Label className='text-lg'>{t("settings.updates.heading")}</Label>
                     <Button
                       variant='outline'
                       className='self-start'
@@ -486,18 +488,18 @@ export default function Settings() {
                             );
                             showUpdateAvailable(latestTag);
                           } else {
-                            showSuccess("You're on the latest version.");
+                            showSuccess(t("settings.updates.latest"));
                           }
                         } catch (err) {
                           console.error("Failed to check for updates:", err);
-                          showError(
-                            "Update check failed",
-                            err instanceof Error ? err.message : undefined
-                          );
+                            showError(
+                              t("settings.updates.checkFailed"),
+                              err instanceof Error ? err.message : undefined
+                            );
                         }
                       }}
                     >
-                      Check for Updates
+                      {t("settings.updates.check")}
                     </Button>
                   </CardContent>
                 </Card>
@@ -515,12 +517,10 @@ export default function Settings() {
                 <Card>
                   <CardHeader>
                     <CardTitle className='text-2xl font-semibold'>
-                      AI Setup
+                      {t("settings.ai.heading")}
                     </CardTitle>
                     <CardDescription className='text-sm text-muted-foreground'>
-                      Adjust preferences for AI-powered resume generation,
-                      including model selection, runtime options, and LLM
-                      parameters.
+                      {t("settings.ai.description")}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -545,11 +545,10 @@ export default function Settings() {
                 <Card>
                   <CardHeader>
                     <CardTitle className='text-2xl font-semibold'>
-                      Personal Details
+                      {t("settings.personal.heading")}
                     </CardTitle>
                     <CardDescription className='text-sm text-muted-foreground'>
-                      Change your info used across all resumes. These will
-                      always be displayed on your resume.
+                      {t("settings.personal.description")}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -573,11 +572,10 @@ export default function Settings() {
                 <Card>
                   <CardHeader>
                     <CardTitle className='text-2xl font-semibold'>
-                      Education
+                      {t("settings.education.heading")}
                     </CardTitle>
                     <CardDescription className='text-sm text-muted-foreground'>
-                      List your educational background, including school,
-                      degree, and relevant coursework.
+                      {t("settings.education.description")}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -601,10 +599,10 @@ export default function Settings() {
                 <Card>
                   <CardHeader>
                     <CardTitle className='text-2xl font-semibold'>
-                      Experience
+                      {t("settings.experience.heading")}
                     </CardTitle>
                     <CardDescription className='text-sm text-muted-foreground'>
-                      Add your work history with key roles and accomplishments.
+                      {t("settings.experience.description")}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -628,11 +626,10 @@ export default function Settings() {
                 <Card>
                   <CardHeader>
                     <CardTitle className='text-2xl font-semibold'>
-                      Projects
+                      {t("settings.projects.heading")}
                     </CardTitle>
                     <CardDescription className='text-sm text-muted-foreground'>
-                      Show off your best work. Include side projects, open
-                      source, or professional apps.
+                      {t("settings.projects.description")}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -656,11 +653,10 @@ export default function Settings() {
                 <Card>
                   <CardHeader>
                     <CardTitle className='text-2xl font-semibold'>
-                      Skills
+                      {t("settings.skills.heading")}
                     </CardTitle>
                     <CardDescription className='text-sm text-muted-foreground'>
-                      Add your professional and technical skills grouped by
-                      category.
+                      {t("settings.skills.description")}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -684,10 +680,10 @@ export default function Settings() {
                 <Card>
                   <CardHeader>
                     <CardTitle className='text-2xl font-semibold'>
-                      Awards
+                      {t("settings.awards.heading")}
                     </CardTitle>
                     <CardDescription className='text-sm text-muted-foreground'>
-                      Add any notable awards or recognitions you've received.
+                      {t("settings.awards.description")}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>

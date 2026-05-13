@@ -13,11 +13,13 @@ import { MinusCircle, PlusCircle, ArrowRight } from "lucide-react";
 import { SettingsType, useOnboarding } from "@/contexts/OnboardingContext";
 import DateRangeDropdown from "@/components/ui/daterange";
 import { Textarea } from "@/components/ui/textarea";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type ProjectEntry = SettingsType["projects"][number];
 
 const Projects = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const { state, update, apply } = useOnboarding();
   const entries = state.projects;
 
@@ -89,37 +91,36 @@ const Projects = () => {
     <Card className='w-full max-w-lg mx-auto my-16'>
       <CardHeader>
         <CardTitle className='text-2xl font-semibold'>
-          Projects{" "}
-          <span className='text-muted-foreground text-xl'>(optional)</span>
+          {t("onboarding.projects.title")}{" "}
+          <span className='text-muted-foreground text-xl'>{t("common.optional")}</span>
         </CardTitle>
         <CardDescription className='text-sm text-muted-foreground'>
-          Show off your best work. Include side projects, open source, or
-          professional apps.
+          {t("onboarding.projects.description")}
         </CardDescription>
       </CardHeader>
       <CardContent className='flex flex-col gap-4'>
         {entries.map((entry, index) => (
           <div key={index} className='flex flex-col gap-4 border-b pb-4'>
             <div className='flex flex-col gap-2'>
-              <Label>Project Name</Label>
+              <Label>{t("field.projectName")}</Label>
               <Input
-                placeholder='Resuma'
+                placeholder={t("placeholder.projectName")}
                 value={entry.name}
                 onChange={(e) => handleChange(index, "name", e.target.value)}
               />
             </div>
             <div className='flex flex-col gap-2'>
-              <Label>Project Link</Label>
+              <Label>{t("field.projectLink")}</Label>
               <Input
-                placeholder='https://github.com/username/project'
+                placeholder={t("placeholder.projectLink")}
                 value={entry.link}
                 onChange={(e) => handleChange(index, "link", e.target.value)}
               />
             </div>
             <div className='flex flex-col gap-2'>
-              <Label>Description</Label>
+              <Label>{t("field.description")}</Label>
               <Textarea
-                placeholder='A resume builder powered by local AI...'
+                placeholder={t("placeholder.projectDescription")}
                 value={entry.description}
                 onChange={(e) =>
                   handleChange(index, "description", e.target.value)
@@ -134,7 +135,7 @@ const Projects = () => {
               />
             </div>
             <div className='flex flex-col gap-2'>
-              <Label>Technologies</Label>
+              <Label>{t("field.technologies")}</Label>
               {entry.technologies?.map((tech, techIndex) => (
                 <div key={techIndex} className='flex gap-2'>
                   <Input
@@ -142,7 +143,7 @@ const Projects = () => {
                     onChange={(e) =>
                       handleTechChange(index, techIndex, e.target.value)
                     }
-                    placeholder={`Technology ${techIndex + 1}`}
+                    placeholder={`${t("placeholder.technologyPrefix")} ${techIndex + 1}`}
                   />
                   <Button
                     variant='ghost'
@@ -159,7 +160,7 @@ const Projects = () => {
                 onClick={() => addTech(index)}
               >
                 <PlusCircle className='h-4 w-4 mr-1' />
-                Add Technology
+                {t("action.addTechnology")}
               </Button>
             </div>
             <Button
@@ -168,13 +169,13 @@ const Projects = () => {
               onClick={() => removeEntry(index)}
             >
               <MinusCircle className='h-4 w-4' />
-              Remove Project
+               {t("action.removeProject")}
             </Button>
           </div>
         ))}
         <div className='flex items-center gap-2'>
           <Button variant='ghost' onClick={addEntry} className='text-primary'>
-            <PlusCircle className='h-4 w-4 mr-1' /> Add Project
+            <PlusCircle className='h-4 w-4 mr-1' /> {t("action.addProject")}
           </Button>
         </div>
         <div className='flex justify-end mt-4'>
@@ -183,7 +184,7 @@ const Projects = () => {
               apply("projects").then(() => navigate("/onboarding/step7"))
             }
           >
-            Continue <ArrowRight className='h-4 ml-1' />
+            {t("common.continue")} <ArrowRight className='h-4 ml-1' />
           </Button>
         </div>
       </CardContent>

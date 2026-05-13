@@ -8,13 +8,16 @@ import {
 } from "@react-pdf/renderer";
 import { ResumeData } from "@/lib/resumesStore";
 import "@/lib/pdfFonts";
+import { AppLanguage, t } from "@/lib/i18n";
 
 export const Professional = ({
   data,
   format,
+  language = "en",
 }: {
   data: ResumeData;
   format?: "A4" | "LETTER";
+  language?: AppLanguage;
 }) => {
   const fontFamily =
     data.font === "inter"
@@ -76,9 +79,12 @@ export const Professional = ({
 
   return (
     <Document
-      title={data.title?.trim() || "Resume"}
-      author={data.content?.personal?.fullName?.trim() || "Unknown"}
-      subject='Resume'
+      title={data.title?.trim() || t(language, "template.document.title")}
+      author={
+        data.content?.personal?.fullName?.trim() ||
+        t(language, "template.document.author")
+      }
+      subject={t(language, "template.document.subject")}
       creator='Resuma'
       producer='Resuma PDF Renderer'
     >
@@ -164,7 +170,9 @@ export const Professional = ({
         {/* Education */}
         {data.content?.education?.length > 0 && (
           <View>
-            <Text style={styles.sectionHeader}>Education</Text>
+            <Text style={styles.sectionHeader}>
+              {t(language, "template.section.education")}
+            </Text>
             {data.content.education.map((edu, idx) => (
               <View key={idx} style={styles.subItem}>
                 <View style={styles.row}>
@@ -176,14 +184,16 @@ export const Professional = ({
                     " | " +
                     (edu.date?.from?.trim() || "") +
                     " – " +
-                    (edu.date?.to?.trim() || "Present")}
+                    (edu.date?.to?.trim() || t(language, "common.present"))}
                 </Text>
                 {edu.gpa && (
-                  <Text style={styles.small}>GPA: {edu.gpa?.trim()}</Text>
+                  <Text style={styles.small}>
+                    {t(language, "template.label.gpa")}: {edu.gpa?.trim()}
+                  </Text>
                 )}
                 {edu.courses && edu.courses.length > 0 && (
                   <Text style={styles.small}>
-                    Courses:{" "}
+                    {t(language, "template.label.courses")}:{" "}
                     {edu.courses
                       .map((c) => c?.trim())
                       .filter(Boolean)
@@ -198,7 +208,9 @@ export const Professional = ({
         {/* Experience */}
         {data.content?.experience?.length > 0 && (
           <View>
-            <Text style={styles.sectionHeader}>Experience</Text>
+            <Text style={styles.sectionHeader}>
+              {t(language, "template.section.experience")}
+            </Text>
             {data.content.experience.map((exp, idx) => (
               <View key={idx} style={styles.subItem}>
                 <View style={styles.row}>
@@ -210,7 +222,7 @@ export const Professional = ({
                     " | " +
                     (exp.date?.from?.trim() || "") +
                     " – " +
-                    (exp.date?.to?.trim() || "Present")}
+                    (exp.date?.to?.trim() || t(language, "common.present"))}
                 </Text>
                 {exp.description && (
                   <Text style={styles.text}>{exp.description?.trim()}</Text>
@@ -232,7 +244,9 @@ export const Professional = ({
         {/* Projects */}
         {data.content?.projects?.length > 0 && (
           <View>
-            <Text style={styles.sectionHeader}>Projects</Text>
+            <Text style={styles.sectionHeader}>
+              {t(language, "template.section.projects")}
+            </Text>
             {data.content.projects.map((proj, idx) => (
               <View key={idx} style={styles.subItem}>
                 <Text style={styles.bold}>{proj.name?.trim() || ""}</Text>
@@ -249,7 +263,7 @@ export const Professional = ({
                 </Text>
                 {proj.technologies?.length > 0 && (
                   <Text style={styles.small}>
-                    Tech:{" "}
+                    {t(language, "template.label.tech")}:{" "}
                     {proj.technologies
                       .map((t) => t?.trim())
                       .filter(Boolean)
@@ -264,7 +278,9 @@ export const Professional = ({
         {/* Awards */}
         {data.content?.awards?.length > 0 && (
           <View>
-            <Text style={styles.sectionHeader}>Awards</Text>
+            <Text style={styles.sectionHeader}>
+              {t(language, "template.section.awards")}
+            </Text>
             {data.content.awards.map((award, idx) => (
               <View key={idx} style={styles.subItem}>
                 <View style={styles.row}>
@@ -289,7 +305,9 @@ export const Professional = ({
         {/* Skills */}
         {data.content?.skills?.length > 0 && (
           <View>
-            <Text style={styles.sectionHeader}>Skills</Text>
+            <Text style={styles.sectionHeader}>
+              {t(language, "template.section.skills")}
+            </Text>
             {data.content.skills.map((group, idx) => (
               <View key={idx} style={styles.subItem}>
                 <Text style={styles.bold}>{group.category?.trim() || ""}</Text>
