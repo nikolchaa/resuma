@@ -1,6 +1,7 @@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { ResumeData } from "@/lib/resumesStore";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type Props = {
   settings: ResumeData["content"]["personal"] | undefined;
@@ -11,8 +12,11 @@ type Props = {
 };
 
 export const PersonalEditor: React.FC<Props> = ({ settings, updateDraft }) => {
+  const { t } = useLanguage();
   if (!settings)
-    return <div className='text-muted-foreground'>No personal data.</div>;
+    return (
+      <div className='text-muted-foreground'>{t("editor.personal.noData")}</div>
+    );
 
   const updateField = <K extends keyof ResumeData["content"]["personal"]>(
     key: K,
@@ -25,79 +29,79 @@ export const PersonalEditor: React.FC<Props> = ({ settings, updateDraft }) => {
     <div className='flex flex-col gap-4'>
       {/* Full Name */}
       <div className='flex items-center justify-between'>
-        <Label className='w-1/3'>Full Name</Label>
+        <Label className='w-1/3'>{t("field.fullName")}</Label>
         <Input
           className='w-2/3 text-right'
           value={settings.fullName}
           onChange={(e) => updateField("fullName", e.target.value)}
-          placeholder='John Doe'
+          placeholder={t("placeholder.fullName")}
         />
       </div>
 
       {/* Email */}
       <div className='flex items-center justify-between'>
-        <Label className='w-1/3'>Email</Label>
+        <Label className='w-1/3'>{t("field.email")}</Label>
         <Input
           className='w-2/3 text-right'
           type='email'
           value={settings.email ?? ""}
           onChange={(e) => updateField("email", e.target.value)}
-          placeholder='email@example.com'
+          placeholder={t("placeholder.email")}
         />
       </div>
 
       {/* Location */}
       <div className='flex items-center justify-between'>
-        <Label className='w-1/3'>Location</Label>
+        <Label className='w-1/3'>{t("field.location")}</Label>
         <Input
           className='w-2/3 text-right'
           value={settings.location ?? ""}
           onChange={(e) => updateField("location", e.target.value)}
-          placeholder='City, Country'
+          placeholder={t("placeholder.location")}
         />
       </div>
 
       {/* Phone */}
       <div className='flex items-center justify-between'>
-        <Label className='w-1/3'>Phone</Label>
+        <Label className='w-1/3'>{t("field.phone")}</Label>
         <Input
           className='w-2/3 text-right'
           value={settings.phone ?? ""}
           onChange={(e) => updateField("phone", e.target.value)}
-          placeholder='+1 (123) 456-7890'
+          placeholder={t("placeholder.phone")}
         />
       </div>
 
       {/* LinkedIn */}
       <div className='flex items-center justify-between'>
-        <Label className='w-1/3'>LinkedIn</Label>
+        <Label className='w-1/3'>{t("field.linkedin")}</Label>
         <Input
           className='w-2/3 text-right'
           value={settings.linkedin ?? ""}
           onChange={(e) => updateField("linkedin", e.target.value)}
-          placeholder='https://linkedin.com/in/you'
+          placeholder={t("placeholder.linkedin")}
         />
       </div>
 
       {/* GitHub */}
       <div className='flex items-center justify-between'>
-        <Label className='w-1/3'>GitHub</Label>
+        <Label className='w-1/3'>{t("field.github")}</Label>
         <Input
           className='w-2/3 text-right'
           value={settings.github ?? ""}
           onChange={(e) => updateField("github", e.target.value)}
-          placeholder='https://github.com/you'
+          placeholder={t("placeholder.github")}
         />
       </div>
 
       {/* Website */}
       <div className='flex items-center justify-between'>
-        <Label className='w-1/3'>Website</Label>
+        <Label className='w-1/3'>{t("field.website")}</Label>
         <Input
           className='w-2/3 text-right'
           value={settings.website ?? ""}
           onChange={(e) => updateField("website", e.target.value)}
-          placeholder='https://yourwebsite.com'
+          placeholder={t("placeholder.website")}
         />
       </div>
     </div>

@@ -15,6 +15,8 @@ import { getSection } from "@/lib/store";
 import { SettingsType } from "@/contexts/OnboardingContext";
 import { showError, showSuccess, showWarning } from "@/lib/toastUtils";
 import { invoke } from "@tauri-apps/api/core";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { AppLanguage, normalizeLanguage } from "@/lib/i18n";
 
 import { pdf as pdfRenderer } from "@react-pdf/renderer";
 import { Document, Page, pdfjs } from "react-pdf";
@@ -25,6 +27,7 @@ import worker from "react-pdf/node_modules/pdfjs-dist/build/pdf.worker.min.mjs?u
 pdfjs.GlobalWorkerOptions.workerSrc = worker;
 
 export const Editor = () => {
+  const { t } = useLanguage();
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -34,10 +37,11 @@ export const Editor = () => {
   const isNew = location.pathname === "/new";
 
   const [pdfFormat, setPdfFormat] = useState<"A4" | "LETTER">("A4"); // Default
+  const [language, setLanguage] = useState<AppLanguage>("en");
 
   async function generateThumbnail(data: ResumeData): Promise<string> {
     const pdfBlob = await pdfRenderer(
-      <ResumePreview data={data} format='A4' />
+      <ResumePreview data={data} format='A4' language={language} />
     ).toBlob();
     const pdf = await pdfjs.getDocument({
       data: await pdfBlob.arrayBuffer(),
@@ -86,6 +90,7 @@ export const Editor = () => {
       const settings = await getSection<SettingsType["app"]>("app");
       const format = settings?.paperSize === "US" ? "LETTER" : "A4";
       setPdfFormat(format);
+      setLanguage(normalizeLanguage(settings?.language));
     };
 
     fetchPaperSize();
@@ -106,14 +111,14 @@ export const Editor = () => {
 
   useEffect(() => {
     if (draft) {
-      pdf(<ResumePreview data={draft} format={pdfFormat} />)
+      pdf(<ResumePreview data={draft} format={pdfFormat} language={language} />)
         .toBlob()
         .then((blob) => setPdfUrl(URL.createObjectURL(blob)))
         .catch((err) =>
-          showError("Failed to generate PDF", (err as Error).message)
+          showError(t("editor.toast.pdfGenerateFailed"), (err as Error).message)
         );
     }
-  }, [draft, pdfFormat]);
+  }, [draft, pdfFormat, language]);
 
   const handleSave = async () => {
     if (draft) {
@@ -129,7 +134,7 @@ export const Editor = () => {
       setResume(structuredClone(updatedDraft)); // Sync resume to draft
       setDraft(updatedDraft); // Also update the draft state itself
 
-      showSuccess("Resume saved", "Your changes have been saved successfully.");
+      showSuccess(t("editor.toast.savedTitle"), t("editor.toast.savedDesc"));
     }
   };
 
@@ -155,13 +160,13 @@ export const Editor = () => {
       }
 
       const blob = await pdf(
-        <ResumePreview data={draft} format={pdfFormat} />
+        <ResumePreview data={draft} format={pdfFormat} language={language} />
       ).toBlob();
       const arrayBuffer = await blob.arrayBuffer();
       const uint8Array = new Uint8Array(arrayBuffer);
       await writeFile(filePath, uint8Array);
 
-      showSuccess("PDF exported successfully", filePath);
+      showSuccess(t("editor.toast.pdfExportSuccess"), filePath);
     } catch (error) {
       showError(
         "Export failed",
@@ -192,7 +197,7 @@ export const Editor = () => {
                 key={pdfUrl}
                 file={pdfUrl}
                 onLoadError={(err) =>
-                  showError("Failed to load document", (err as Error).message)
+                  showError(t("editor.toast.docLoadFailed"), (err as Error).message)
                 }
                 onLoadSuccess={({ numPages: n }) => setNumPages(n)}
               >
@@ -206,7 +211,7 @@ export const Editor = () => {
                       renderAnnotationLayer={false}
                     />
                     <div className='text-xs text-center text-gray-500 mb-[4rem]'>
-                      Page {index + 1} of {numPages}
+                      {t("editor.page")} {index + 1} {t("editor.of")} {numPages}
                     </div>
                   </div>
                 ))}
@@ -243,7 +248,7 @@ export const Editor = () => {
               <Plus className='h-4 w-4' />
             </Button>
             <Button size='sm' onClick={handleExportPDF}>
-              <Download className='h-4 w-4' /> Export PDF
+              <Download className='h-4 w-4' /> {t("editor.exportPdf")}
             </Button>
           </div>
         </div>

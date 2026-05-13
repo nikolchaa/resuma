@@ -16,6 +16,8 @@ import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import modelList from "@/data/models.json";
 import { updateSection } from "@/lib/store";
 import { showError, showSuccess, showWarning } from "@/lib/toastUtils";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { AppLanguage } from "@/lib/i18n";
 
 type Props = {
   settings: SettingsType["app"];
@@ -32,6 +34,7 @@ export const BasicSettings = ({
 }: Props) => {
   const { theme, paperSize, language, contentSize } = settings;
   const { setTheme } = useTheme();
+  const { t, setLanguage } = useLanguage();
 
   const [runOnce, setRunOnce] = useState(false);
 
@@ -47,7 +50,7 @@ export const BasicSettings = ({
 
   const handleChange = async (
     key: keyof SettingsType["app"],
-    value: string
+    value: string,
   ) => {
     // 1) Update local React state
     setDraftSettings((prev) => ({
@@ -62,6 +65,7 @@ export const BasicSettings = ({
     // 2) Apply to the running UI immediately
     if (key === "theme") setTheme(value as "light" | "dark" | "system");
     if (key === "contentSize") applyContentSizeClass(value as "md" | "lg");
+    if (key === "language") setLanguage(value as AppLanguage);
 
     // 3) Persist to settings.dat
     try {
@@ -69,7 +73,7 @@ export const BasicSettings = ({
     } catch (err) {
       showError(
         "Failed to save settings",
-        (err as Error).message || "An unexpected error occurred"
+        (err as Error).message || "An unexpected error occurred",
       );
     }
   };
@@ -82,7 +86,7 @@ export const BasicSettings = ({
       });
 
       if (!filePath) {
-        showWarning("Export canceled");
+        showWarning(t("toast.exportCanceled"));
         return;
       }
 
@@ -98,11 +102,11 @@ export const BasicSettings = ({
       const content = JSON.stringify(exportData, null, 2);
       await writeTextFile(filePath, content);
 
-      showSuccess("Settings exported successfully", `Saved at: ${filePath}`);
+      showSuccess(t("settings.app.exportSuccess"), `Saved at: ${filePath}`);
     } catch (error) {
       showError(
         "Export failed",
-        (error as Error).message || "An unexpected error occurred."
+        (error as Error).message || "An unexpected error occurred.",
       );
     }
   };
@@ -115,7 +119,7 @@ export const BasicSettings = ({
       });
 
       if (!selected) {
-        showWarning("Import canceled");
+        showWarning(t("settings.app.importCanceled"));
         return;
       }
 
@@ -138,7 +142,7 @@ export const BasicSettings = ({
                 ...parsed.llm.settings,
                 gpuLayers: Math.min(
                   parsed.llm.settings.gpuLayers,
-                  maxGpuLayers
+                  maxGpuLayers,
                 ),
               },
             },
@@ -148,14 +152,14 @@ export const BasicSettings = ({
         });
 
         showSuccess(
-          "Settings imported successfully",
-          `Imported from: ${selected}`
+          t("settings.app.importSuccess"),
+          `Imported from: ${selected}`,
         );
       }
     } catch (error) {
       showError(
         "Import failed",
-        (error as Error).message || "An unexpected error occurred."
+        (error as Error).message || "An unexpected error occurred.",
       );
     }
   };
@@ -164,84 +168,90 @@ export const BasicSettings = ({
     <div className='flex flex-col gap-4'>
       {/* Theme */}
       <div className='flex items-center justify-between'>
-        <Label className='w-1/3'>Theme</Label>
+        <Label className='w-1/3'>{t("settings.theme")}</Label>
         <Select value={theme} onValueChange={(v) => handleChange("theme", v)}>
           <SelectTrigger className='w-2/3'>
-            <SelectValue placeholder='Select theme' />
+            <SelectValue placeholder={t("settings.theme.select")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value='light'>Light</SelectItem>
-            <SelectItem value='dark'>Dark</SelectItem>
-            <SelectItem value='system'>System</SelectItem>
+            <SelectItem value='light'>{t("settings.theme.light")}</SelectItem>
+            <SelectItem value='dark'>{t("settings.theme.dark")}</SelectItem>
+            <SelectItem value='system'>{t("settings.theme.system")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       {/* Paper Size */}
       <div className='flex items-center justify-between'>
-        <Label className='w-1/3'>Paper Format</Label>
+        <Label className='w-1/3'>{t("settings.paper")}</Label>
         <Select
           value={paperSize}
           onValueChange={(v) => handleChange("paperSize", v)}
         >
           <SelectTrigger className='w-2/3'>
-            <SelectValue placeholder='Select paper size' />
+            <SelectValue placeholder={t("settings.paper.select")} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value='A4'>A4</SelectItem>
-            <SelectItem value='US'>US Letter</SelectItem>
+            <SelectItem value='US'>{t("settings.paper.us")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       {/* Language */}
       <div className='flex items-center justify-between'>
-        <Label className='w-1/3'>Language</Label>
-        <Select value={language} disabled>
+        <Label className='w-1/3'>{t("settings.language")}</Label>
+        <Select
+          value={language}
+          onValueChange={(v) => handleChange("language", v)}
+        >
           <SelectTrigger className='w-2/3'>
-            <SelectValue placeholder='Select language' />
+            <SelectValue placeholder={t("settings.language.select")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value='en'>English (EN)</SelectItem>
+            <SelectItem value='en'>{t("common.language.english")}</SelectItem>
+            <SelectItem value='rs'>{t("common.language.serbian")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       {/* Content Size */}
       <div className='flex items-center justify-between'>
-        <Label className='w-1/3'>Content Size</Label>
+        <Label className='w-1/3'>{t("settings.contentSize")}</Label>
         <Select
           value={contentSize}
           onValueChange={(v) => handleChange("contentSize", v)}
         >
           <SelectTrigger className='w-2/3'>
-            <SelectValue placeholder='Select content size' />
+            <SelectValue placeholder={t("settings.contentSize.select")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value='md'>Normal (100%)</SelectItem>
-            <SelectItem value='lg'>Large (125%)</SelectItem>
+            <SelectItem value='md'>
+              {t("settings.contentSize.normal")}
+            </SelectItem>
+            <SelectItem value='lg'>
+              {t("settings.contentSize.large")}
+            </SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       <span className='text-sm text-muted-foreground'>
-        Import and export settings along with your data. This will not overwrite
-        your current settings and data. It's a good idea to back up your
-        settings and data before importing.
+        {t("settings.app.importExportDescription")}
       </span>
 
       {/* Import/Export Buttons */}
       <div className='flex gap-4'>
         <Button variant='outline' onClick={handleImport}>
-          Import Settings
+          {t("settings.app.import")}
         </Button>
         <Button variant='default' onClick={handleExport}>
-          Export Settings
+          {t("settings.app.export")}
         </Button>
       </div>
 
       <span className='text-sm text-muted-foreground'>
-        Resuma is open-source software. Check out the source code on{" "}
+        {t("settings.app.opensource")}{" "}
         <a
           href='https://github.com/nikolchaa/resuma'
           target='_blank'

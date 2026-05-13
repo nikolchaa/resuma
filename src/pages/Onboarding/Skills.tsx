@@ -17,9 +17,11 @@ import {
   ArrowDown,
 } from "lucide-react";
 import { useOnboarding } from "@/contexts/OnboardingContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const Skills = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const { state, update, apply } = useOnboarding();
   const entries = state.skills;
 
@@ -88,27 +90,27 @@ const Skills = () => {
     <Card className='w-full max-w-lg mx-auto my-16'>
       <CardHeader>
         <CardTitle className='text-2xl font-semibold'>
-          Skills{" "}
-          <span className='text-muted-foreground text-xl'>(optional)</span>
+          {t("onboarding.skills.title")}{" "}
+          <span className='text-muted-foreground text-xl'>{t("common.optional")}</span>
         </CardTitle>
         <CardDescription className='text-sm text-muted-foreground'>
-          Add your professional and technical skills grouped by category.
+          {t("onboarding.skills.description")}
         </CardDescription>
       </CardHeader>
       <CardContent className='flex flex-col gap-6'>
         {entries.map((group, catIndex) => (
           <div key={catIndex} className='flex flex-col gap-4 border-b pb-4'>
             <div className='flex flex-col gap-2 w-full'>
-              <Label>Category</Label>
+              <Label>{t("field.category")}</Label>
               <Input
-                placeholder='Programming'
+                placeholder={t("placeholder.category")}
                 value={group.category}
                 onChange={(e) => handleCategoryChange(catIndex, e.target.value)}
               />
             </div>
 
             <div className='flex flex-col gap-2'>
-              <Label>Skills</Label>
+              <Label>{t("field.skills")}</Label>
               {group.items.map((item, itemIndex) => (
                 <div key={itemIndex} className='flex gap-2 items-center'>
                   <Input
@@ -116,7 +118,7 @@ const Skills = () => {
                     onChange={(e) =>
                       handleItemChange(catIndex, itemIndex, e.target.value)
                     }
-                    placeholder={`Skill ${itemIndex + 1}`}
+                    placeholder={`${t("placeholder.skillPrefix")} ${itemIndex + 1}`}
                   />
                   <Button
                     variant='ghost'
@@ -144,7 +146,7 @@ const Skills = () => {
                 className='text-primary w-fit'
                 onClick={() => addItem(catIndex)}
               >
-                <PlusCircle className='w-4 h-4 mr-1' /> Add Skill
+                <PlusCircle className='w-4 h-4 mr-1' /> {t("action.addSkill")}
               </Button>
             </div>
             <div className='flex justify-between'>
@@ -153,7 +155,7 @@ const Skills = () => {
                 className='text-destructive w-fit'
                 onClick={() => removeCategory(catIndex)}
               >
-                <MinusCircle className='w-4 h-4 mr-1' /> Remove Category
+                <MinusCircle className='w-4 h-4 mr-1' /> {t("action.removeCategory")}
               </Button>
               <div className='flex gap-2'>
                 <Button
@@ -161,14 +163,14 @@ const Skills = () => {
                   disabled={catIndex === 0}
                   onClick={() => moveCategory(catIndex, "up")}
                 >
-                  <ArrowUp className='w-4 h-4 mr-1' /> Move Up
+                  <ArrowUp className='w-4 h-4 mr-1' /> {t("common.moveUp")}
                 </Button>
                 <Button
                   variant='ghost'
                   disabled={catIndex === entries.length - 1}
                   onClick={() => moveCategory(catIndex, "down")}
                 >
-                  <ArrowDown className='w-4 h-4 mr-1' /> Move Down
+                  <ArrowDown className='w-4 h-4 mr-1' /> {t("common.moveDown")}
                 </Button>
               </div>
             </div>
@@ -181,7 +183,7 @@ const Skills = () => {
             onClick={addCategory}
             className='text-primary'
           >
-            <PlusCircle className='h-4 w-4 mr-1' /> Add Category
+            <PlusCircle className='h-4 w-4 mr-1' /> {t("action.addCategory")}
           </Button>
         </div>
 
@@ -191,7 +193,7 @@ const Skills = () => {
               apply("skills").then(() => navigate("/onboarding/step8"));
             }}
           >
-            Continue <ArrowRight className='h-4 ml-1' />
+            {t("common.continue")} <ArrowRight className='h-4 ml-1' />
           </Button>
         </div>
       </CardContent>
