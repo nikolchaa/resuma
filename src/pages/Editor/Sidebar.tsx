@@ -13,6 +13,7 @@ import { AnimatePresence, motion as m } from "motion/react";
 import { ResumeEditor } from "./ResumeEditor";
 import { Card, CardContent } from "@/components/ui/card";
 import Loader from "@/assets/loader.svg?react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type SidebarProps = {
   draft: ResumeData | null;
@@ -21,22 +22,13 @@ type SidebarProps = {
   handleSave: () => void;
 };
 
-const TABS = [
-  { id: "resume", label: "Resume" },
-  { id: "personal", label: "Personal" },
-  { id: "experience", label: "Experience" },
-  { id: "education", label: "Education" },
-  { id: "projects", label: "Projects" },
-  { id: "skills", label: "Skills" },
-  { id: "awards", label: "Awards" },
-];
-
 export const Sidebar: React.FC<SidebarProps> = ({
   draft,
   setDraft,
   handleDiscard,
   handleSave,
 }) => {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<string>("resume");
   const [openLoader, setOpenLoader] = useState(false);
   const [currentSection, setCurrentSection] = useState<string | undefined>(
@@ -68,13 +60,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
     );
   };
 
+  const tabs = [
+    { id: "resume", label: t("editor.sidebar.resume") },
+    { id: "personal", label: t("editor.sidebar.personal") },
+    { id: "experience", label: t("editor.sidebar.experience") },
+    { id: "education", label: t("editor.sidebar.education") },
+    { id: "projects", label: t("editor.sidebar.projects") },
+    { id: "skills", label: t("editor.sidebar.skills") },
+    { id: "awards", label: t("editor.sidebar.awards") },
+  ];
+
   return (
     <div className='bg-background min-w-[28rem] w-[28rem] max-w-[28rem] border-r shadow-sm flex flex-col'>
       <Logo className='w-full p-8' />
 
       {/* Custom Tabs */}
       <div className='flex flex-wrap gap-2 p-4 border-b sticky top-0 z-10 bg-background w-full'>
-        {TABS.map((tab) => (
+        {tabs.map((tab) => (
           <Button
             key={tab.id}
             variant={"ghost"}
@@ -205,7 +207,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <ArrowLeft className='h-4 w-4' />
         </Button>
         <Button onClick={handleSave} className='flex-1'>
-          Save
+          {t("editor.save")}
         </Button>
       </div>
 

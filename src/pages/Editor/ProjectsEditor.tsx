@@ -7,6 +7,7 @@ import DateRangeDropdown from "@/components/ui/daterange";
 import { ResumeData } from "@/lib/resumesStore";
 import { showWarning } from "@/lib/toastUtils";
 import { runTextEnhancement } from "@/lib/llmUtils";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type Props = {
   settings?: ResumeData["content"]["projects"];
@@ -26,6 +27,7 @@ export const ProjectsEditor = ({
   setOpenLoader,
   setCurrentSection,
 }: Props) => {
+  const { t } = useLanguage();
   const entries = settings ?? [];
 
   const sync = (next: ResumeData["content"]["projects"]) => {
@@ -37,13 +39,13 @@ export const ProjectsEditor = ({
 
     if (!text.trim() && !jobDesc?.trim()) {
       showWarning(
-        "No content to enhance. Add a description or job description first."
+        t("editor.ai.noContentDescription")
       );
       return;
     }
 
     setOpenLoader(true);
-    setCurrentSection(`Enhancing project field...`);
+    setCurrentSection(t("editor.ai.enhancingProject"));
 
     try {
       const result = await runTextEnhancement(
@@ -130,9 +132,9 @@ export const ProjectsEditor = ({
         <div key={idx} className='flex flex-col gap-4 border-b pb-4'>
           {/* Project Name */}
           <div className='flex flex-col gap-2'>
-            <Label>Project Name</Label>
+            <Label>{t("field.projectName")}</Label>
             <Input
-              placeholder='Resuma'
+              placeholder={t("placeholder.projectName")}
               value={entry.name}
               onChange={(e) => handleChange(idx, "name", e.target.value)}
             />
@@ -140,9 +142,9 @@ export const ProjectsEditor = ({
 
           {/* Project Link */}
           <div className='flex flex-col gap-2'>
-            <Label>Project Link</Label>
+            <Label>{t("field.projectLink")}</Label>
             <Input
-              placeholder='https://github.com/username/project'
+              placeholder={t("placeholder.projectLink")}
               value={entry.link}
               onChange={(e) => handleChange(idx, "link", e.target.value)}
             />
@@ -151,7 +153,7 @@ export const ProjectsEditor = ({
           {/* Description */}
           <div className='flex flex-col gap-2'>
             <div className='flex items-center justify-between'>
-              <Label>Description</Label>
+              <Label>{t("field.description")}</Label>
               <Button
                 size='icon'
                 variant='outline'
@@ -161,7 +163,7 @@ export const ProjectsEditor = ({
               </Button>
             </div>
             <Textarea
-              placeholder='A resume builder powered by local AI...'
+              placeholder={t("placeholder.projectDescription")}
               value={entry.description}
               onChange={(e) => handleChange(idx, "description", e.target.value)}
             />
@@ -176,12 +178,12 @@ export const ProjectsEditor = ({
 
           {/* Technologies */}
           <div className='flex flex-col gap-2'>
-            <Label>Technologies</Label>
+            <Label>{t("field.technologies")}</Label>
             {(entry.technologies ?? []).map((tech, tIdx) => (
               <div key={tIdx} className='flex gap-2'>
                 <Input
                   value={tech}
-                  placeholder={`Technology ${tIdx + 1}`}
+                   placeholder={`${t("placeholder.technologyPrefix")} ${tIdx + 1}`}
                   onChange={(e) => handleTechChange(idx, tIdx, e.target.value)}
                 />
                 <Button
@@ -199,7 +201,7 @@ export const ProjectsEditor = ({
               onClick={() => addTech(idx)}
             >
               <PlusCircle className='h-4 w-4 mr-1' />
-              Add Technology
+               {t("action.addTechnology")}
             </Button>
           </div>
 
@@ -210,7 +212,7 @@ export const ProjectsEditor = ({
             onClick={() => removeEntry(idx)}
           >
             <MinusCircle className='h-4 w-4 mr-1' />
-            Remove Project
+             {t("action.removeProject")}
           </Button>
         </div>
       ))}
@@ -222,7 +224,7 @@ export const ProjectsEditor = ({
         onClick={addEntry}
       >
         <PlusCircle className='h-4 w-4 mr-1' />
-        Add Project
+         {t("action.addProject")}
       </Button>
     </div>
   );

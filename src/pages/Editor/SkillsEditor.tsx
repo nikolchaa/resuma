@@ -3,6 +3,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { MinusCircle, PlusCircle, ArrowUp, ArrowDown } from "lucide-react";
 import { ResumeData } from "@/lib/resumesStore";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type Props = {
   settings?: ResumeData["content"]["skills"];
@@ -13,6 +14,7 @@ type Props = {
 };
 
 export const SkillsEditor = ({ settings, updateDraft }: Props) => {
+  const { t } = useLanguage();
   const entries = settings ?? [];
 
   const sync = (next: ResumeData["content"]["skills"]) => {
@@ -90,9 +92,9 @@ export const SkillsEditor = ({ settings, updateDraft }: Props) => {
         <div key={catIndex} className='flex flex-col gap-4 border-b pb-4'>
           {/* Category */}
           <div className='flex flex-col gap-2'>
-            <Label>Category</Label>
+            <Label>{t("field.category")}</Label>
             <Input
-              placeholder='Programming'
+              placeholder={t("placeholder.category")}
               value={group.category}
               onChange={(e) => handleCategoryChange(catIndex, e.target.value)}
             />
@@ -100,11 +102,11 @@ export const SkillsEditor = ({ settings, updateDraft }: Props) => {
 
           {/* Skill Items */}
           <div className='flex flex-col gap-2'>
-            <Label>Skills</Label>
+            <Label>{t("field.skills")}</Label>
             {(group.items ?? []).map((item, itemIndex) => (
               <div key={itemIndex} className='flex gap-2 items-center'>
                 <Input
-                  placeholder={`Skill ${itemIndex + 1}`}
+                   placeholder={`${t("placeholder.skillPrefix")} ${itemIndex + 1}`}
                   value={item}
                   onChange={(e) =>
                     handleItemChange(catIndex, itemIndex, e.target.value)
@@ -140,7 +142,7 @@ export const SkillsEditor = ({ settings, updateDraft }: Props) => {
               onClick={() => addItem(catIndex)}
             >
               <PlusCircle className='w-4 h-4 mr-1' />
-              Add Skill
+               {t("action.addSkill")}
             </Button>
           </div>
 
@@ -152,7 +154,7 @@ export const SkillsEditor = ({ settings, updateDraft }: Props) => {
               onClick={() => removeCategory(catIndex)}
             >
               <MinusCircle className='w-4 h-4 mr-1' />
-              Remove Category
+               {t("action.removeCategory")}
             </Button>
             <div className='flex gap-2'>
               <Button
@@ -181,7 +183,7 @@ export const SkillsEditor = ({ settings, updateDraft }: Props) => {
         onClick={addCategory}
       >
         <PlusCircle className='w-4 h-4 mr-1' />
-        Add Category
+         {t("action.addCategory")}
       </Button>
     </div>
   );

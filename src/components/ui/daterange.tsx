@@ -9,6 +9,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const months = [
   "Jan",
@@ -38,6 +39,7 @@ export default function DateRangeDropdown({
   single = false,
   mandatory = false,
 }: Props) {
+  const { t } = useLanguage();
   const [fromMonth, setFromMonth] = useState("");
   const [fromYear, setFromYear] = useState("");
   const [toMonth, setToMonth] = useState("");
@@ -80,13 +82,13 @@ export default function DateRangeDropdown({
       <div className='flex gap-4'>
         <div className='flex flex-1 flex-col gap-2'>
           <Label>
-            {single ? "Date" : "From"}
+            {single ? t("daterange.date") : t("daterange.from")}
             {mandatory ?? <span className='text-destructive'>*</span>}
           </Label>
           <div className='flex gap-4'>
             <Select value={fromMonth} onValueChange={setFromMonth}>
               <SelectTrigger className='w-1/2'>
-                <SelectValue placeholder='Month' />
+                <SelectValue placeholder={t("daterange.month")} />
               </SelectTrigger>
               <SelectContent>
                 {months.map((m) => (
@@ -108,7 +110,7 @@ export default function DateRangeDropdown({
 
         {!single && (
           <div className='flex flex-1 flex-col gap-2'>
-            <Label>To</Label>
+            <Label>{t("daterange.to")}</Label>
             <div className='flex gap-4'>
               <Select
                 value={toMonth}
@@ -116,7 +118,7 @@ export default function DateRangeDropdown({
                 disabled={ongoing}
               >
                 <SelectTrigger className='w-1/2'>
-                  <SelectValue placeholder='Month' />
+                  <SelectValue placeholder={t("daterange.month")} />
                 </SelectTrigger>
                 <SelectContent>
                   {months.map((m) => (
@@ -128,7 +130,7 @@ export default function DateRangeDropdown({
               </Select>
               <Input
                 type='number'
-                placeholder='Year'
+                placeholder={t("daterange.year")}
                 value={toYear}
                 onChange={(e) => setToYear(e.target.value)}
                 className='w-1/2'
@@ -141,7 +143,7 @@ export default function DateRangeDropdown({
 
       {!single && (
         <div className='flex items-center justify-between'>
-          <Label>Ongoing</Label>
+          <Label>{t("daterange.ongoing")}</Label>
           <Switch checked={ongoing} onCheckedChange={setOngoing} />
         </div>
       )}

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { MinusCircle, PlusCircle } from "lucide-react";
 import DateRangeDropdown from "@/components/ui/daterange";
 import { SettingsType } from "@/contexts/OnboardingContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type Props = {
   settings: SettingsType["projects"];
@@ -15,6 +16,7 @@ type Props = {
 };
 
 export const ProjectsSettings = ({ settings, updateSettings }: Props) => {
+  const { t } = useLanguage();
   const entries = settings ?? [];
 
   const sync = (next: SettingsType["projects"]) => {
@@ -86,9 +88,9 @@ export const ProjectsSettings = ({ settings, updateSettings }: Props) => {
         <div key={idx} className='flex flex-col gap-4 border-b pb-4'>
           {/* Project Name */}
           <div className='flex flex-col gap-2'>
-            <Label>Project Name</Label>
+            <Label>{t("field.projectName")}</Label>
             <Input
-              placeholder='Resuma'
+              placeholder={t("placeholder.projectName")}
               value={entry.name}
               onChange={(e) => handleChange(idx, "name", e.target.value)}
             />
@@ -96,9 +98,9 @@ export const ProjectsSettings = ({ settings, updateSettings }: Props) => {
 
           {/* Project Link */}
           <div className='flex flex-col gap-2'>
-            <Label>Project Link</Label>
+            <Label>{t("field.projectLink")}</Label>
             <Input
-              placeholder='https://github.com/username/project'
+              placeholder={t("placeholder.projectLink")}
               value={entry.link}
               onChange={(e) => handleChange(idx, "link", e.target.value)}
             />
@@ -106,9 +108,9 @@ export const ProjectsSettings = ({ settings, updateSettings }: Props) => {
 
           {/* Description */}
           <div className='flex flex-col gap-2'>
-            <Label>Description</Label>
+            <Label>{t("field.description")}</Label>
             <Textarea
-              placeholder='A resume builder powered by local AI...'
+              placeholder={t("placeholder.projectDescription")}
               value={entry.description}
               onChange={(e) => handleChange(idx, "description", e.target.value)}
             />
@@ -123,12 +125,12 @@ export const ProjectsSettings = ({ settings, updateSettings }: Props) => {
 
           {/* Technologies */}
           <div className='flex flex-col gap-2'>
-            <Label>Technologies</Label>
+            <Label>{t("field.technologies")}</Label>
             {(entry.technologies || []).map((tech, tIdx) => (
               <div key={tIdx} className='flex gap-2'>
                 <Input
                   value={tech}
-                  placeholder={`Technology ${tIdx + 1}`}
+                  placeholder={`${t("placeholder.technologyPrefix")} ${tIdx + 1}`}
                   onChange={(e) => handleTechChange(idx, tIdx, e.target.value)}
                 />
                 <Button
@@ -146,7 +148,7 @@ export const ProjectsSettings = ({ settings, updateSettings }: Props) => {
               onClick={() => addTech(idx)}
             >
               <PlusCircle className='h-4 w-4 mr-1' />
-              Add Technology
+              {t("action.addTechnology")}
             </Button>
           </div>
 
@@ -157,7 +159,7 @@ export const ProjectsSettings = ({ settings, updateSettings }: Props) => {
             onClick={() => removeEntry(idx)}
           >
             <MinusCircle className='h-4 w-4 mr-1' />
-            Remove Project
+            {t("action.removeProject")}
           </Button>
         </div>
       ))}
@@ -169,7 +171,7 @@ export const ProjectsSettings = ({ settings, updateSettings }: Props) => {
         onClick={addEntry}
       >
         <PlusCircle className='h-4 w-4 mr-1' />
-        Add Project
+        {t("action.addProject")}
       </Button>
     </div>
   );

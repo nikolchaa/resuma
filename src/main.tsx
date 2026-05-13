@@ -23,6 +23,7 @@ import { SystemProvider } from "./contexts/SystemContext";
 import { OnboardingProvider } from "./contexts/OnboardingContext";
 import Awards from "./pages/Onboarding/Awards";
 import { Toaster } from "./components/ui/sonner";
+import { LanguageProvider } from "./contexts/LanguageContext";
 
 const router = createBrowserRouter([
   {
@@ -61,9 +62,11 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <ThemeProvider>
       <SystemProvider>
-        <Titlebar />
-        <Toaster />
-        <RouterProvider router={router} />
+        <LanguageProvider>
+          <Titlebar />
+          <Toaster />
+          <RouterProvider router={router} />
+        </LanguageProvider>
       </SystemProvider>
     </ThemeProvider>
   </React.StrictMode>

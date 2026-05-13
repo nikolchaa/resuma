@@ -21,6 +21,7 @@ import { save } from "@tauri-apps/plugin-dialog";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { AnimatePresence, motion as m } from "motion/react";
+import { useLanguage } from "@/contexts/LanguageContext";
 // import { runResumeCleanup, runResumeEnhancement } from "@/lib/llmUtils";
 import {
   Card,
@@ -38,6 +39,7 @@ type Props = {
 };
 
 export const ResumeEditor = ({ draft, setDraft }: Props) => {
+  const { t } = useLanguage();
   const [atsModalOpen, setAtsModalOpen] = useState(false);
   const [atsResults, setAtsResults] = useState<{
     present: string[];
@@ -70,7 +72,7 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
       });
 
       if (!filePath) {
-        showWarning("Export canceled", "No file was saved");
+        showWarning(t("toast.exportCanceled"), t("toast.noFileSaved"));
         return;
       }
 
@@ -80,11 +82,11 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
       const uint8Array = encoder.encode(textOutput);
       await writeFile(filePath, uint8Array);
 
-      showSuccess("TXT exported successfully", filePath);
+      showSuccess(t("toast.txtExported"), filePath);
     } catch (error) {
       showError(
-        "Export failed",
-        (error as Error).message || "Something went wrong"
+        t("toast.exportFailed"),
+        (error as Error).message || t("toast.somethingWrong")
       );
     }
   };
@@ -93,9 +95,9 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
     <div className='flex flex-col gap-6'>
       {/* Resume Title */}
       <div className='flex items-center justify-between'>
-        <Label className='w-1/3'>Resume Title</Label>
+        <Label className='w-1/3'>{t("field.resumeTitle")}</Label>
         <Input
-          placeholder='Enter resume title...'
+          placeholder={t("placeholder.resumeTitle")}
           value={draft?.title || ""}
           onChange={(e) => setDraft({ ...draft, title: e.target.value })}
           className='w-2/3'
@@ -104,7 +106,7 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
 
       {/* Template Switcher */}
       <div className='flex items-center justify-between'>
-        <Label className='w-1/3'>Template</Label>
+        <Label className='w-1/3'>{t("field.template")}</Label>
         <Select
           value={draft?.theme ?? "professional"}
           onValueChange={(value) =>
@@ -115,19 +117,21 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
           }
         >
           <SelectTrigger className='w-2/3 text-right'>
-            <SelectValue placeholder='Select a template' />
+            <SelectValue placeholder={t("editor.template.select")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value='professional'>Professional</SelectItem>
-            <SelectItem value='modern'>Modern</SelectItem>
-            <SelectItem value='compact'>Compact</SelectItem>
+            <SelectItem value='professional'>
+              {t("editor.template.professional")}
+            </SelectItem>
+            <SelectItem value='modern'>{t("editor.template.modern")}</SelectItem>
+            <SelectItem value='compact'>{t("editor.template.compact")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       {/* Font Switcher */}
       <div className='flex items-center justify-between'>
-        <Label className='w-1/3'>Font</Label>
+        <Label className='w-1/3'>{t("field.font")}</Label>
         <Select
           value={draft?.font ?? "figtree"}
           onValueChange={(value) =>
@@ -138,7 +142,7 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
           }
         >
           <SelectTrigger className='w-2/3 text-right'>
-            <SelectValue placeholder='Select a font' />
+            <SelectValue placeholder={t("editor.font.select")} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value='figtree'>Figtree</SelectItem>
@@ -150,26 +154,26 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
 
       {/* TXT Export */}
       <div className='flex items-center justify-between'>
-        <Label className='w-1/3'>Export as TXT</Label>
+        <Label className='w-1/3'>{t("field.exportTxt")}</Label>
         <Button variant='outline' className='w-2/3' onClick={handleExportTxt}>
-          Download .txt
+          {t("editor.downloadTxt")}
         </Button>
       </div>
 
       <Separator />
 
       <div className='flex flex-col gap-2'>
-        <Label className='text-lg font-semibold'>Optimization Tools</Label>
+        <Label className='text-lg font-semibold'>{t("editor.optimizationTools")}</Label>
         <Label className='text-sm text-muted-foreground'>
-          Use these tools to enhance your resume content
+          {t("editor.optimizationTools.desc")}
         </Label>
       </div>
 
       {/* ATS Keyword Matcher */}
       <div className='flex flex-col gap-2'>
-        <Label>ATS Keyword Matcher</Label>
+        <Label>{t("editor.atsMatcher")}</Label>
         <Textarea
-          placeholder='Paste job description from Indeed, LinkedIn, etc.'
+          placeholder={t("wizard.job.placeholder")}
           value={draft?.jobDesc}
           onChange={(e) => setDraft({ ...draft, jobDesc: e.target.value })}
         />
@@ -184,13 +188,13 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
             setAtsModalOpen(true);
           }}
         >
-          Match Keywords
+          {t("editor.ats.match")}
         </Button>
       </div>
 
       {/* Clean Special Characters */}
       <div className='flex items-center justify-between'>
-        <Label>Clean Special Characters</Label>
+        <Label>{t("editor.cleanSpecialCharacters")}</Label>
         <Button
           variant='outline'
           className='w-1/2'
@@ -200,16 +204,16 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
             const cleanedContent = cleanResumeContent(draft.content);
             setDraft({ ...draft, content: cleanedContent });
 
-            showSuccess("Special characters cleaned successfully!");
+            showSuccess(t("toast.specialCharsCleaned"));
           }}
         >
-          Clean
+          {t("editor.clean")}
         </Button>
       </div>
 
       {/* Detect Buzzwords */}
       <div className='flex items-center justify-between'>
-        <Label>Detect Buzzwords</Label>
+        <Label>{t("editor.detectBuzzwords")}</Label>
         <Button
           variant='outline'
           className='w-1/2'
@@ -218,16 +222,16 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
 
             const results = detectBuzzwords(draft.content);
             if (results.length === 0) {
-              showSuccess("No buzzwords detected!");
+              showSuccess(t("toast.noBuzzwords"));
             } else {
               const msg = results
                 .map((r) => `${r.word} (${r.count})`)
                 .join(", ");
-              showWarning(`Buzzwords detected!`, msg);
+              showWarning(t("toast.buzzwordsDetected"), msg);
             }
           }}
         >
-          Run Detection
+          {t("editor.runDetection")}
         </Button>
       </div>
 
@@ -298,17 +302,16 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
             <Card className='w-full max-w-md'>
               <CardHeader>
                 <CardTitle className='text-xl font-semibold'>
-                  ATS Keyword Results
+                  {t("editor.ats.title")}
                 </CardTitle>
                 <CardDescription>
-                  Review the keywords found in your resume compared to the job
-                  description.
+                  {t("editor.ats.description")}
                 </CardDescription>
               </CardHeader>
 
               <CardContent className='flex flex-col gap-4 max-h-72 overflow-y-auto'>
                 <div>
-                  <h3 className='font-semibold mb-1'>Present Keywords:</h3>
+                  <h3 className='font-semibold mb-1'>{t("editor.ats.present")}</h3>
                   {atsResults.present.length > 0 ? (
                     <ul className='list-disc list-inside text-primary'>
                       {atsResults.present.map((word) => (
@@ -317,13 +320,13 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
                     </ul>
                   ) : (
                     <p className='text-sm text-muted-foreground'>
-                      No keywords found in resume.
+                      {t("editor.ats.nonePresent")}
                     </p>
                   )}
                 </div>
 
                 <div>
-                  <h3 className='font-semibold mb-1'>Missing Keywords:</h3>
+                  <h3 className='font-semibold mb-1'>{t("editor.ats.missing")}</h3>
                   {atsResults.missing.length > 0 ? (
                     <ul className='list-disc list-inside text-destructive'>
                       {atsResults.missing.map((word) => (
@@ -332,7 +335,7 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
                     </ul>
                   ) : (
                     <p className='text-sm text-muted-foreground'>
-                      No missing keywords!
+                      {t("editor.ats.noneMissing")}
                     </p>
                   )}
                 </div>
@@ -343,7 +346,7 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
                   variant='outline'
                   onClick={() => setAtsModalOpen(false)}
                 >
-                  Close
+                  {t("common.close")}
                 </Button>
               </CardFooter>
             </Card>

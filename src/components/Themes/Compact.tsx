@@ -8,13 +8,16 @@ import {
 } from "@react-pdf/renderer";
 import { ResumeData } from "@/lib/resumesStore";
 import "@/lib/pdfFonts";
+import { AppLanguage, t } from "@/lib/i18n";
 
 export const Compact = ({
   data,
   format,
+  language = "en",
 }: {
   data: ResumeData;
   format?: "A4" | "LETTER";
+  language?: AppLanguage;
 }) => {
   const fontFamily =
     data.font === "inter"
@@ -73,9 +76,9 @@ export const Compact = ({
 
   return (
     <Document
-      title={data.title?.trim() || "Resume"}
-      author={personal.fullName?.trim() || "Unknown"}
-      subject='Resume'
+      title={data.title?.trim() || t(language, "template.document.title")}
+      author={personal.fullName?.trim() || t(language, "template.document.author")}
+      subject={t(language, "template.document.subject")}
       creator='Resuma'
       producer='Resuma PDF Renderer'
     >
@@ -146,7 +149,9 @@ export const Compact = ({
         {/* Education */}
         {education.length > 0 && (
           <View>
-            <Text style={styles.sectionTitle}>Education</Text>
+            <Text style={styles.sectionTitle}>
+              {t(language, "template.section.education")}
+            </Text>
             {education.map((edu, i) => (
               <View key={i} style={styles.sectionItem}>
                 <Text style={styles.bold}>
@@ -159,14 +164,16 @@ export const Compact = ({
                     " · " +
                     (edu.date?.from?.trim() || "") +
                     " - " +
-                    (edu.date?.to?.trim() || "Present")}
+                    (edu.date?.to?.trim() || t(language, "common.present"))}
                 </Text>
                 {edu.gpa && (
-                  <Text style={styles.subText}>GPA: {edu.gpa?.trim()}</Text>
+                  <Text style={styles.subText}>
+                    {t(language, "template.label.gpa")}: {edu.gpa?.trim()}
+                  </Text>
                 )}
                 {edu.courses && edu.courses.length > 0 && (
                   <Text style={styles.subText}>
-                    Relevant Coursework:{" "}
+                    {t(language, "template.label.relevantCoursework")}:{" "}
                     {edu.courses
                       .map((c) => c?.trim())
                       .filter(Boolean)
@@ -181,7 +188,9 @@ export const Compact = ({
         {/* Experience */}
         {experience.length > 0 && (
           <View>
-            <Text style={styles.sectionTitle}>Experience</Text>
+            <Text style={styles.sectionTitle}>
+              {t(language, "template.section.experience")}
+            </Text>
             {experience.map((exp, i) => (
               <View key={i} style={styles.sectionItem}>
                 <Text style={styles.bold}>
@@ -194,7 +203,7 @@ export const Compact = ({
                     " · " +
                     (exp.date?.from?.trim() || "") +
                     " - " +
-                    (exp.date?.to?.trim() || "Present")}
+                    (exp.date?.to?.trim() || t(language, "common.present"))}
                 </Text>
                 {exp.description && (
                   <Text style={styles.subText}>
@@ -218,7 +227,9 @@ export const Compact = ({
         {/* Projects */}
         {projects.length > 0 && (
           <View>
-            <Text style={styles.sectionTitle}>Projects</Text>
+            <Text style={styles.sectionTitle}>
+              {t(language, "template.section.projects")}
+            </Text>
             {projects.map((proj, i) => (
               <View key={i} style={styles.sectionItem}>
                 <Text style={styles.bold}>
@@ -240,7 +251,7 @@ export const Compact = ({
                 </Text>
                 {proj.technologies && proj.technologies.length > 0 && (
                   <Text style={styles.subText}>
-                    Tech:{" "}
+                    {t(language, "template.label.tech")}:{" "}
                     {proj.technologies
                       .map((t) => t?.trim())
                       .filter(Boolean)
@@ -255,7 +266,9 @@ export const Compact = ({
         {/* Awards */}
         {awards.length > 0 && (
           <View>
-            <Text style={styles.sectionTitle}>Awards</Text>
+            <Text style={styles.sectionTitle}>
+              {t(language, "template.section.awards")}
+            </Text>
             {awards.map((award, i) => (
               <View key={i} style={styles.sectionItem}>
                 <Text style={styles.bold}>
@@ -279,7 +292,9 @@ export const Compact = ({
         {/* Skills */}
         {skills.length > 0 && (
           <View>
-            <Text style={styles.sectionTitle}>Skills</Text>
+            <Text style={styles.sectionTitle}>
+              {t(language, "template.section.skills")}
+            </Text>
             {skills.map((skill, i) => (
               <Text key={i} style={styles.subText}>
                 <Text style={styles.bold}>

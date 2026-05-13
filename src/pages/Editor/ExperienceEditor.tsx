@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ResumeData } from "@/lib/resumesStore";
 import { runTextEnhancement } from "@/lib/llmUtils";
 import { showWarning } from "@/lib/toastUtils";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type Props = {
   settings?: ResumeData["content"]["experience"];
@@ -26,6 +27,7 @@ export const ExperienceEditor = ({
   setOpenLoader,
   setCurrentSection,
 }: Props) => {
+  const { t } = useLanguage();
   const entries = settings ?? [];
 
   const sync = (next: ResumeData["content"]["experience"]) => {
@@ -44,13 +46,13 @@ export const ExperienceEditor = ({
 
     if (!text.trim() && !jobDesc?.trim()) {
       showWarning(
-        "No content to enhance. Add text or a job description first."
+        t("editor.ai.noContent")
       );
       return;
     }
 
     setOpenLoader(true);
-    setCurrentSection(`Enhancing experience field...`);
+    setCurrentSection(t("editor.ai.enhancingExperience"));
 
     try {
       const result = await runTextEnhancement(
@@ -145,10 +147,10 @@ export const ExperienceEditor = ({
         <div key={idx} className='flex flex-col gap-4 border-b pb-4'>
           {/* Job Title */}
           <div className='flex items-center justify-between'>
-            <Label className='w-1/3'>Job Title</Label>
+            <Label className='w-1/3'>{t("field.jobTitle")}</Label>
             <Input
               className='w-2/3 text-right'
-              placeholder='Frontend Developer'
+              placeholder={t("placeholder.jobTitle")}
               value={entry.jobTitle}
               onChange={(e) =>
                 handleEntryChange(idx, "jobTitle", e.target.value)
@@ -158,10 +160,10 @@ export const ExperienceEditor = ({
 
           {/* Company */}
           <div className='flex items-center justify-between'>
-            <Label className='w-1/3'>Company</Label>
+            <Label className='w-1/3'>{t("field.company")}</Label>
             <Input
               className='w-2/3 text-right'
-              placeholder='Google'
+              placeholder={t("placeholder.company")}
               value={entry.company}
               onChange={(e) =>
                 handleEntryChange(idx, "company", e.target.value)
@@ -171,10 +173,10 @@ export const ExperienceEditor = ({
 
           {/* Location */}
           <div className='flex items-center justify-between'>
-            <Label className='w-1/3'>Location</Label>
+            <Label className='w-1/3'>{t("field.location")}</Label>
             <Input
               className='w-2/3 text-right'
-              placeholder='Mountain View, CA'
+              placeholder={t("placeholder.location")}
               value={entry.location}
               onChange={(e) =>
                 handleEntryChange(idx, "location", e.target.value)
@@ -185,7 +187,7 @@ export const ExperienceEditor = ({
           {/* Description */}
           <div className='flex flex-col gap-2'>
             <div className='flex items-center justify-between'>
-              <Label>Description</Label>
+              <Label>{t("field.description")}</Label>
               <Button
                 size='icon'
                 variant='outline'
@@ -195,7 +197,7 @@ export const ExperienceEditor = ({
               </Button>
             </div>
             <Textarea
-              placeholder='Worked on major UI redesign...'
+              placeholder={t("placeholder.workDescription")}
               value={entry.description}
               onChange={(e) =>
                 handleEntryChange(idx, "description", e.target.value)
@@ -211,14 +213,17 @@ export const ExperienceEditor = ({
 
           {/* Notes */}
           <div className='flex flex-col gap-2'>
-            <Label>
-              Notes<span className='text-muted-foreground'>(optional)</span>
-            </Label>
+              <Label>
+                {t("field.notes")}
+                <span className='text-muted-foreground'>
+                  {t("common.optional")}
+                </span>
+              </Label>
             {(entry.notes || []).map((note, nidx) => (
               <div key={nidx} className='flex gap-2 items-center'>
                 <Input
                   className='flex-1'
-                  placeholder={`Note ${nidx + 1}`}
+                   placeholder={`${t("placeholder.notePrefix")} ${nidx + 1}`}
                   value={note}
                   onChange={(e) => handleNoteChange(idx, nidx, e.target.value)}
                 />
@@ -244,7 +249,7 @@ export const ExperienceEditor = ({
               onClick={() => addNote(idx)}
             >
               <PlusCircle className='h-4 w-4 mr-1' />
-              Add Note
+               {t("action.addNote")}
             </Button>
           </div>
 
@@ -255,7 +260,7 @@ export const ExperienceEditor = ({
             onClick={() => removeEntry(idx)}
           >
             <MinusCircle className='h-4 w-4 mr-1' />
-            Remove Experience
+            {t("action.removeExperience")}
           </Button>
         </div>
       ))}
@@ -265,7 +270,7 @@ export const ExperienceEditor = ({
         className='text-primary self-start'
         onClick={addEntry}
       >
-        <PlusCircle className='h-4 w-4 mr-1' /> Add Experience
+         <PlusCircle className='h-4 w-4 mr-1' /> {t("action.addExperience")}
       </Button>
     </div>
   );

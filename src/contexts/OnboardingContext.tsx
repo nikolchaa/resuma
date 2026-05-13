@@ -5,7 +5,7 @@ export type SettingsType = {
   app: {
     theme: "light" | "dark" | "system";
     paperSize: "A4" | "US";
-    language: "en";
+    language: "en" | "rs";
     contentSize: "md" | "lg";
   };
   llm: {
@@ -147,7 +147,7 @@ const OnboardingContext = createContext<{
   state: SettingsType;
   update: <K extends keyof SettingsType>(
     section: K,
-    data: Partial<SettingsType[K]> | SettingsType[K]
+    data: Partial<SettingsType[K]> | SettingsType[K],
   ) => void;
   apply: <K extends keyof SettingsType>(section: K) => Promise<void>;
   exists: (section: keyof SettingsType) => Promise<boolean>;
@@ -257,7 +257,7 @@ export const OnboardingProvider = ({
 
   const update = <K extends keyof SettingsType>(
     section: K,
-    data: Partial<SettingsType[K]> | SettingsType[K]
+    data: Partial<SettingsType[K]> | SettingsType[K],
   ) => {
     setState((prev) => ({
       ...prev,

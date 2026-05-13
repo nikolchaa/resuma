@@ -16,6 +16,7 @@ import { runResumeCleanup, runResumeEnhancement } from "@/lib/llmUtils";
 import { cleanSpecialCharacters } from "@/lib/resumeUtils";
 import { showWarning } from "@/lib/toastUtils";
 import { ArrowLeft } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type ResumeWizardProps = {
   generateThumbnail: (data: ResumeData) => Promise<string>;
@@ -23,6 +24,7 @@ type ResumeWizardProps = {
 
 export const ResumeWizard = ({ generateThumbnail }: ResumeWizardProps) => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [step, setStep] = useState(1);
   const [title, setTitle] = useState("Untitled");
   const [jobDesc, setJobDesc] = useState("");
@@ -30,6 +32,21 @@ export const ResumeWizard = ({ generateThumbnail }: ResumeWizardProps) => {
   const [suggestedId, setSuggestedId] = useState("untitled");
   const [trim, setTrim] = useState(false);
   const [currentSection, setCurrentSection] = useState<string | null>(null);
+
+  const sectionLabel = (section: string) => {
+    switch (section) {
+      case "education":
+        return t("template.section.education");
+      case "experience":
+        return t("template.section.experience");
+      case "projects":
+        return t("template.section.projects");
+      case "skills":
+        return t("template.section.skills");
+      default:
+        return section;
+    }
+  };
 
   const slugify = (text: string) =>
     text
@@ -125,7 +142,9 @@ export const ResumeWizard = ({ generateThumbnail }: ResumeWizardProps) => {
 
           for (const [index, entry] of entries.entries()) {
             setCurrentSection(
-              `Trimming ${section} (${index + 1}/${entries.length})...`
+              `${t("wizard.status.trimming")} ${sectionLabel(section)} (${
+                index + 1
+              }/${entries.length})...`
             );
 
             try {
@@ -166,7 +185,9 @@ export const ResumeWizard = ({ generateThumbnail }: ResumeWizardProps) => {
 
           for (const [index, entry] of entries.entries()) {
             setCurrentSection(
-              `Enhancing ${section} (${index + 1}/${entries.length})...`
+              `${t("wizard.status.enhancingSection")} ${sectionLabel(section)} (${
+                index + 1
+              }/${entries.length})...`
             );
 
             try {
@@ -207,7 +228,7 @@ export const ResumeWizard = ({ generateThumbnail }: ResumeWizardProps) => {
       );
     }
 
-    setCurrentSection("Finalizing...");
+    setCurrentSection(t("wizard.status.finalizing"));
     await new Promise((res) => setTimeout(res, 1500));
 
     const newResume: ResumeData = {
@@ -228,13 +249,13 @@ export const ResumeWizard = ({ generateThumbnail }: ResumeWizardProps) => {
   const getTitleText = () => {
     switch (step) {
       case 1:
-        return "Name Your Resume";
+        return t("wizard.nameTitle");
       case 2:
-        return "Paste Job Description (Optional)";
+        return t("wizard.jobTitle");
       case 3:
-        return "Trim Unrelated Content?";
+        return t("wizard.trimTitle");
       case 4:
-        return "Enhance Resume for ATS?";
+        return t("wizard.enhanceTitle");
       default:
         return "";
     }
@@ -243,13 +264,13 @@ export const ResumeWizard = ({ generateThumbnail }: ResumeWizardProps) => {
   const getDescText = () => {
     switch (step) {
       case 1:
-        return "This will be the name of your resume. You can change it later.";
+        return t("wizard.nameDesc");
       case 2:
-        return "Not doing this might result in a generic resume that isn't optimized!";
+        return t("wizard.jobDesc");
       case 3:
-        return "AI can remove unrelated content based on the job description.";
+        return t("wizard.trimDesc");
       case 4:
-        return "AI can enhance your resume with keywords for better ATS compatibility.";
+        return t("wizard.enhanceDesc");
       default:
         return "";
     }
@@ -300,34 +321,34 @@ export const ResumeWizard = ({ generateThumbnail }: ResumeWizardProps) => {
                   onChange={(e) => setTitle(e.target.value)}
                 />
                 <p className='text-sm text-muted-foreground'>
-                  Filename: <code>{suggestedId}.resume</code>
+                  {t("wizard.filename")} <code>{suggestedId}.resume</code>
                 </p>
-                <Button onClick={() => setStep(2)}>Next</Button>
+                <Button onClick={() => setStep(2)}>{t("wizard.next")}</Button>
               </div>
             )}
 
             {step === 2 && (
               <div className='flex flex-col gap-4'>
                 <Textarea
-                  placeholder='Paste job description from Indeed, LinkedIn, etc.'
+                  placeholder={t("wizard.job.placeholder")}
                   value={jobDesc}
                   onChange={(e) => setJobDesc(e.target.value)}
                   rows={6}
                 />
                 <div className='flex gap-2 justify-end'>
                   <Button variant='outline' onClick={() => handleFinish(false)}>
-                    Skip
+                    {t("wizard.skip")}
                   </Button>
                   <Button
                     onClick={() => setStep(3)}
                     disabled={jobDesc.trim().length === 0}
                     title={
                       jobDesc.trim().length === 0
-                        ? "Job description required"
+                        ? t("wizard.job.required")
                         : ""
                     }
                   >
-                    Continue
+                    {t("wizard.continue")}
                   </Button>
                 </div>
               </div>
@@ -336,12 +357,11 @@ export const ResumeWizard = ({ generateThumbnail }: ResumeWizardProps) => {
             {step === 3 && (
               <div className='flex flex-col gap-4'>
                 <p>
-                  Would you like AI to trim your resume based on the job
-                  description?
+                  {t("wizard.trim.question")}
                 </p>
                 <div className='flex gap-2 justify-end'>
                   <Button variant='outline' onClick={() => setStep(4)}>
-                    No, skip
+                    {t("wizard.trim.no")}
                   </Button>
                   <Button
                     onClick={() => {
@@ -349,7 +369,7 @@ export const ResumeWizard = ({ generateThumbnail }: ResumeWizardProps) => {
                       setTrim(true);
                     }}
                   >
-                    Yes, trim it
+                    {t("wizard.trim.yes")}
                   </Button>
                 </div>
               </div>
@@ -358,12 +378,11 @@ export const ResumeWizard = ({ generateThumbnail }: ResumeWizardProps) => {
             {step === 4 && (
               <div className='flex flex-col gap-4'>
                 <p>
-                  Would you like AI to enhance your resume for ATS
-                  compatibility?
+                  {t("wizard.enhance.question")}
                 </p>
                 <div className='flex gap-2 justify-end'>
                   <Button variant='outline' onClick={() => handleFinish(false)}>
-                    No, keep it simple
+                    {t("wizard.enhance.no")}
                   </Button>
                   <Button
                     disabled={loading}
@@ -371,7 +390,7 @@ export const ResumeWizard = ({ generateThumbnail }: ResumeWizardProps) => {
                       handleFinish(true);
                     }}
                   >
-                    {loading ? "Enhancing..." : "Yes, enhance it"}
+                    {loading ? t("wizard.enhancing") : t("wizard.enhance.yes")}
                   </Button>
                 </div>
               </div>

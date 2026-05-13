@@ -1,9 +1,11 @@
 import LogoSplit from "@/components/LogoSplit";
 import { useNavigate } from "react-router-dom";
 import { motion as m } from "motion/react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const Welcome = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   return (
     <>
@@ -22,7 +24,7 @@ const Welcome = () => {
         animate={{ opacity: 1, translateY: "0" }}
         transition={{ duration: 0.4, delay: 1.4 }}
       >
-        Get Started!
+        {t("onboarding.welcome.getStarted")}
       </m.div>
     </>
   );

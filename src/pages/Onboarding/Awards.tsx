@@ -19,11 +19,13 @@ import {
 import { SettingsType, useOnboarding } from "@/contexts/OnboardingContext";
 import { Textarea } from "@/components/ui/textarea";
 import DateRangeDropdown from "@/components/ui/daterange";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type AwardEntry = SettingsType["awards"][number];
 
 const Awards = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const { state, update, apply } = useOnboarding();
   const entries = state.awards;
 
@@ -88,28 +90,28 @@ const Awards = () => {
     <Card className='w-full max-w-lg mx-auto my-16'>
       <CardHeader>
         <CardTitle className='text-2xl font-semibold'>
-          Awards{" "}
-          <span className='text-muted-foreground text-xl'>(optional)</span>
+          {t("onboarding.awards.title")}{" "}
+          <span className='text-muted-foreground text-xl'>{t("common.optional")}</span>
         </CardTitle>
         <CardDescription className='text-sm text-muted-foreground'>
-          Add any notable awards or recognitions you've received.
+          {t("onboarding.awards.description")}
         </CardDescription>
       </CardHeader>
       <CardContent className='flex flex-col gap-4'>
         {entries.map((entry, index) => (
           <div key={index} className='flex flex-col gap-4 border-b pb-4'>
             <div className='flex flex-col gap-2'>
-              <Label>Title</Label>
+              <Label>{t("field.title")}</Label>
               <Input
-                placeholder='Best Open Source Contribution'
+                placeholder={t("placeholder.awardTitle")}
                 value={entry.title}
                 onChange={(e) => handleChange(index, "title", e.target.value)}
               />
             </div>
             <div className='flex flex-col gap-2'>
-              <Label>Organizer</Label>
+              <Label>{t("field.organizer")}</Label>
               <Input
-                placeholder='GitHub Universe'
+                placeholder={t("placeholder.awardOrganizer")}
                 value={entry.organizer}
                 onChange={(e) =>
                   handleChange(index, "organizer", e.target.value)
@@ -117,9 +119,9 @@ const Awards = () => {
               />
             </div>
             <div className='flex flex-col gap-2'>
-              <Label>Location</Label>
+              <Label>{t("field.location")}</Label>
               <Input
-                placeholder='San Francisco, CA'
+                placeholder={t("placeholder.location")}
                 value={entry.location}
                 onChange={(e) =>
                   handleChange(index, "location", e.target.value)
@@ -134,9 +136,9 @@ const Awards = () => {
               />
             </div>
             <div className='flex flex-col gap-2'>
-              <Label>Description</Label>
+              <Label>{t("field.description")}</Label>
               <Textarea
-                placeholder='Awarded for outstanding contribution to...'
+                placeholder={t("placeholder.awardDescription")}
                 value={entry.description}
                 onChange={(e) =>
                   handleChange(index, "description", e.target.value)
@@ -149,7 +151,7 @@ const Awards = () => {
                 className='text-destructive'
                 onClick={() => removeEntry(index)}
               >
-                <MinusCircle className='h-4 w-4 mr-1' /> Remove Award
+                <MinusCircle className='h-4 w-4 mr-1' /> {t("action.removeAward")}
               </Button>
               <div className='flex gap-2'>
                 <Button
@@ -157,14 +159,14 @@ const Awards = () => {
                   disabled={index === 0}
                   onClick={() => moveUp(index)}
                 >
-                  <ArrowUp className='h-4 w-4 mr-1' /> Move Up
+                  <ArrowUp className='h-4 w-4 mr-1' /> {t("common.moveUp")}
                 </Button>
                 <Button
                   variant='ghost'
                   disabled={index === entries.length - 1}
                   onClick={() => moveDown(index)}
                 >
-                  <ArrowDown className='h-4 w-4 mr-1' /> Move Down
+                  <ArrowDown className='h-4 w-4 mr-1' /> {t("common.moveDown")}
                 </Button>
               </div>
             </div>
@@ -173,7 +175,7 @@ const Awards = () => {
 
         <div className='flex items-center gap-2'>
           <Button variant='ghost' onClick={addEntry} className='text-primary'>
-            <PlusCircle className='h-4 w-4 mr-1' /> Add Award
+            <PlusCircle className='h-4 w-4 mr-1' /> {t("action.addAward")}
           </Button>
         </div>
 
@@ -183,7 +185,7 @@ const Awards = () => {
               apply("awards").then(() => navigate("/onboarding/step9"))
             }
           >
-            Continue <ArrowRight className='h-4 ml-1' />
+            {t("common.continue")} <ArrowRight className='h-4 ml-1' />
           </Button>
         </div>
       </CardContent>

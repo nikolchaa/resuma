@@ -49,8 +49,10 @@ import {
 } from "@/lib/selectRecommendedModel";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { showError } from "@/lib/toastUtils";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const Artificial = () => {
+  const { t } = useLanguage();
   const { state, update, apply, exists } = useOnboarding();
 
   const navigate = useNavigate();
@@ -189,7 +191,7 @@ const Artificial = () => {
     },
     onError: (error) => {
       if (!runtime?.name) return;
-      showError(`Download error for ${runtime.name}`, error);
+      showError(`${t("ai.downloadErrorPrefix")} ${runtime.name}`, error);
       setDownloadStatusMap((prev) => ({
         ...prev,
         [runtime.name]: {
@@ -210,7 +212,7 @@ const Artificial = () => {
     },
     onExtractError: (error) => {
       if (!runtime?.name) return;
-      showError(`Extraction error for ${runtime.name}`, error);
+      showError(`${t("ai.extractErrorPrefix")} ${runtime.name}`, error);
       setDownloadStatusMap((prev) => ({
         ...prev,
         [runtime.name]: {
@@ -248,7 +250,7 @@ const Artificial = () => {
     onError: (error) => {
       const safeName = model?.model.name.replace(/\./g, "_");
       if (!safeName) return;
-      showError(`Download error for ${safeName}`, error);
+      showError(`${t("ai.downloadErrorPrefix")} ${safeName}`, error);
       setDownloadStatusMap((prev) => ({
         ...prev,
         [safeName]: {
@@ -261,7 +263,7 @@ const Artificial = () => {
     onExtractError: (error) => {
       const safeName = model?.model.name.replace(/\./g, "_");
       if (!safeName) return;
-      showError(`Extraction error for ${safeName}`, error);
+      showError(`${t("ai.extractErrorPrefix")} ${safeName}`, error);
       setDownloadStatusMap((prev) => ({
         ...prev,
         [safeName]: {
@@ -295,7 +297,7 @@ const Artificial = () => {
         assetType,
       });
     } catch (error) {
-      showError(`Error downloading ${assetName}`, (error as Error).message);
+      showError(`${t("ai.downloadErrorPrefix")} ${assetName}`, (error as Error).message);
       setDownloadStatusMap((prev) => ({
         ...prev,
         [assetName]: {
@@ -324,11 +326,11 @@ const Artificial = () => {
   return (
     <Card className='w-full max-w-lg mx-auto my-16'>
       <CardHeader>
-        <CardTitle className='text-2xl font-semibold'>AI Setup</CardTitle>
+        <CardTitle className='text-2xl font-semibold'>
+          {t("ai.setup.title")}
+        </CardTitle>
         <CardDescription className='text-sm text-muted-foreground'>
-          We'll configure a default runtime based on your system specs. We start
-          with a lightweight model for speed and ease of use - you can switch to
-          heavier ones in settings anytime.
+          {t("ai.setup.description")}
         </CardDescription>
       </CardHeader>
 
@@ -336,11 +338,11 @@ const Artificial = () => {
         {/* System Info */}
         <div className='flex flex-col gap-2'>
           <Label className='text-muted-foreground text-sm'>
-            Detected Specs
+            {t("field.detectedSpecs")}
           </Label>
           <div className='text-sm flex flex-col gap-1'>
             <span>
-              CPU: <span className='font-medium'>{cpu ?? "Detecting..."}</span>
+               CPU: <span className='font-medium'>{cpu ?? t("common.detecting")}</span>
             </span>
             <span>
               GPU:{" "}
@@ -349,13 +351,13 @@ const Artificial = () => {
                   ? `${gpu}${
                       gpuVram > 0 ? ` (${Math.round(gpuVram / 1024)} GB)` : ""
                     }`
-                  : "Detecting..."}
+                  : t("common.detecting")}
               </span>
             </span>
             <span>
               RAM:{" "}
               <span className='font-medium'>
-                {ram ? `${ram} GB` : "Detecting..."}
+                 {ram ? `${ram} GB` : t("common.detecting")}
               </span>
             </span>
           </div>
@@ -364,7 +366,7 @@ const Artificial = () => {
         {/* Model Download */}
         <div className='flex flex-col gap-2'>
           <Label className='text-muted-foreground text-sm'>
-            Recommended Model
+            {t("field.recommendedModel")}
           </Label>
           <div className='flex items-center justify-between'>
             <span className='font-medium'>
@@ -376,9 +378,9 @@ const Artificial = () => {
                   </span>
                 </>
               ) : model === null ? (
-                "No compatible model found."
+                t("ai.recommendedModel.none")
               ) : (
-                "Detecting..."
+                t("common.detecting")
               )}
             </span>
             <Button
@@ -402,17 +404,17 @@ const Artificial = () => {
               {modelStatus.state === "ready" ? (
                 <>
                   <Check className='w-4 h-4 mr-1' />
-                  Ready
+                  {t("common.ready")}
                 </>
               ) : modelStatus.state === "downloading" ? (
                 <>
                   <Download className='w-4 h-4 mr-1' />
-                  Downloading... ({Math.round(modelStatus.progress)}%)
+                  {t("common.downloading")} ({Math.round(modelStatus.progress)}%)
                 </>
               ) : (
                 <>
                   <Download className='w-4 h-4 mr-1' />
-                  Download
+                  {t("common.download")}
                 </>
               )}
             </Button>
@@ -422,17 +424,17 @@ const Artificial = () => {
               {model?.status === "gpu" ? (
                 <>
                   <Microchip className='h-3.5 w-3.5' />
-                  GPU Compatible
+                  {t("ai.gpuCompatible")}
                 </>
               ) : model?.status === "cpu" ? (
                 <>
                   <Cpu className='h-3.5 w-3.5' />
-                  CPU Compatible
+                  {t("ai.cpuCompatible")}
                 </>
               ) : (
                 <>
                   <X className='h-3.5 w-3.5' />
-                  Unsupported
+                  {t("common.unsupported")}
                 </>
               )}
             </Badge>
@@ -452,7 +454,7 @@ const Artificial = () => {
         {/* Runtime Download */}
         <div className='flex flex-col gap-2'>
           <Label className='text-muted-foreground text-sm'>
-            Recommended Runtime
+            {t("field.recommendedRuntime")}
           </Label>
           <div className='flex items-center justify-between'>
             <span className='font-medium'>
@@ -464,9 +466,9 @@ const Artificial = () => {
                   </span>
                 </>
               ) : runtime === null ? (
-                "No compatible runtime found."
+                t("ai.recommendedRuntime.none")
               ) : (
-                "Detecting..."
+                t("common.detecting")
               )}
             </span>
             <Button
@@ -491,22 +493,22 @@ const Artificial = () => {
               {runtimeStatus.state === "ready" ? (
                 <>
                   <Check className='w-4 h-4 mr-1' />
-                  Ready
+                  {t("common.ready")}
                 </>
               ) : runtimeStatus.state === "downloading" ? (
                 <>
                   <Download className='w-4 h-4 mr-1' />
-                  Downloading... ({Math.round(runtimeStatus.progress)}%)
+                  {t("common.downloading")} ({Math.round(runtimeStatus.progress)}%)
                 </>
               ) : runtimeStatus.state === "extracting" ? (
                 <>
                   <Download className='w-4 h-4 mr-1' />
-                  Extracting...
+                  {t("common.extracting")}
                 </>
               ) : (
                 <>
                   <Download className='w-4 h-4 mr-1' />
-                  Download
+                  {t("common.download")}
                 </>
               )}
             </Button>
@@ -526,7 +528,7 @@ const Artificial = () => {
         {/* Advanced Options Toggle */}
         <div className='flex justify-between items-center'>
           <Label className='text-muted-foreground text-sm'>
-            Advanced Options
+            {t("ai.advancedOptions")}
           </Label>
           <Button
             variant='ghost'
@@ -535,11 +537,11 @@ const Artificial = () => {
           >
             {showAdvanced ? (
               <>
-                Hide <ChevronUp className='ml-1 h-4 w-4' />
+                 {t("common.hide")} <ChevronUp className='ml-1 h-4 w-4' />
               </>
             ) : (
               <>
-                Show <ChevronDown className='ml-1 h-4 w-4' />
+                 {t("common.show")} <ChevronDown className='ml-1 h-4 w-4' />
               </>
             )}
           </Button>
@@ -550,11 +552,11 @@ const Artificial = () => {
             {/* Context Size */}
             <div className='flex items-center justify-between h-9'>
               <Label>
-                Context Size{" "}
-                {renderParamTooltip(
-                  "ctx_size",
-                  "Max tokens the model can keep in memory."
-                )}
+                 {t("ai.contextSize")}{" "}
+                 {renderParamTooltip(
+                   "ctx_size",
+                   t("ai.contextSize.tooltip")
+                 )}
               </Label>
               <Input
                 type='number'
@@ -583,11 +585,11 @@ const Artificial = () => {
             {/* GPU Layers */}
             <div className='flex items-center justify-between h-9'>
               <Label>
-                GPU Layers{" "}
-                {renderParamTooltip(
-                  "gpu_layers",
-                  "Number of model layers offloaded to GPU."
-                )}
+                 {t("ai.gpuLayers")}{" "}
+                 {renderParamTooltip(
+                   "gpu_layers",
+                   t("ai.gpuLayers.tooltip")
+                 )}
               </Label>
               <Input
                 type='number'
@@ -616,11 +618,11 @@ const Artificial = () => {
             {/* Flash Attention */}
             <div className='flex items-center justify-between h-9'>
               <Label>
-                Flash Attention{" "}
-                {renderParamTooltip(
-                  "flash_attn",
-                  "Enables Flash Attention for faster generation if supported."
-                )}
+                 {t("ai.flashAttention")}{" "}
+                 {renderParamTooltip(
+                   "flash_attn",
+                   t("ai.flashAttention.tooltip")
+                 )}
               </Label>
               <Switch
                 checked={state.llm?.settings.flashAttn}
@@ -638,11 +640,11 @@ const Artificial = () => {
             {/* Memory Lock */}
             <div className='flex items-center justify-between h-9'>
               <Label>
-                Memory Lock{" "}
-                {renderParamTooltip(
-                  "mlock",
-                  "Locks model in memory to avoid swapping (more stable)."
-                )}
+                 {t("ai.memoryLock")}{" "}
+                 {renderParamTooltip(
+                   "mlock",
+                   t("ai.memoryLock.tooltip")
+                 )}
               </Label>
               <Switch
                 checked={state.llm?.settings.mlock}
@@ -660,11 +662,11 @@ const Artificial = () => {
             {/* Disable MMAP */}
             <div className='flex items-center justify-between h-9'>
               <Label>
-                Disable MMAP{" "}
-                {renderParamTooltip(
-                  "no_mmap",
-                  "Avoids memory-mapping the model file. May fix load errors on some systems."
-                )}
+                 {t("ai.disableMmap")}{" "}
+                 {renderParamTooltip(
+                   "no_mmap",
+                   t("ai.disableMmap.tooltip")
+                 )}
               </Label>
               <Switch
                 checked={state.llm?.settings.noMmap}
@@ -687,7 +689,7 @@ const Artificial = () => {
                 update("llm", { settings: defaultSettings });
               }}
             >
-              <RotateCcw /> Reset to Default
+               <RotateCcw /> {t("ai.resetDefault")}
             </Button>
           </div>
         )}
@@ -703,7 +705,7 @@ const Artificial = () => {
               apply("llm").then(() => navigate("/onboarding/step3"));
             }}
           >
-            Continue <ArrowRight className='h-4' />
+            {t("common.continue")} <ArrowRight className='h-4' />
           </Button>
         </div>
       </CardContent>

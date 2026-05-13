@@ -29,9 +29,11 @@ import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { showError, showSuccess, showWarning } from "@/lib/toastUtils";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export const Home = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("recent");
   const [resumes, setResumes] = useState<ResumeData[]>([]);
@@ -57,9 +59,9 @@ export const Home = () => {
       setShowDelete(false);
       setTargetId(null);
 
-      showSuccess("Resume deleted", "The resume has been permanently removed.");
+      showSuccess(t("home.toast.deletedTitle"), t("home.toast.deletedDesc"));
     } catch (error) {
-      showError("Failed to delete resume", (error as Error).message);
+      showError(t("home.toast.deleteFailed"), (error as Error).message);
     }
   };
 
@@ -67,7 +69,7 @@ export const Home = () => {
     try {
       const resume = await loadResume(id);
       if (!resume) {
-        showError("Resume not found");
+        showError(t("home.toast.notFound"));
         return;
       }
 
@@ -84,7 +86,7 @@ export const Home = () => {
       const content = JSON.stringify(resume, null, 2);
       await writeTextFile(filePath, content);
 
-      showSuccess("Resume exported successfully", `Saved at: ${filePath}`);
+      showSuccess(t("home.toast.exportSuccess"), `Saved at: ${filePath}`);
     } catch (error) {
       showError(
         "Export failed",
@@ -121,7 +123,7 @@ export const Home = () => {
       });
 
       if (!selected) {
-        showWarning("Import canceled");
+        showWarning(t("home.toast.importCanceled"));
         return;
       }
 
@@ -144,12 +146,12 @@ export const Home = () => {
 
       await saveResume(resumeToSave);
       showSuccess(
-        "Resume imported successfully",
+        t("home.toast.importSuccess"),
         `Title: ${resumeToSave.title}`
       );
       navigate(`/editor/${resumeToSave.id}`);
     } catch (err) {
-      showError("Failed to import resume", (err as Error).message);
+      showError(t("home.toast.importFailed"), (err as Error).message);
     }
   };
 
@@ -183,27 +185,27 @@ export const Home = () => {
       {/* Search, Sort, Add */}
       <div className='flex flex-wrap items-center justify-between gap-4 max-w-[50rem] mx-auto mb-4'>
         <Input
-          placeholder='Search resumes...'
+          placeholder={t("home.search.placeholder")}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className='flex-2'
         />
         <Select value={sort} onValueChange={setSort}>
           <SelectTrigger className='w-36'>
-            <SelectValue placeholder='Sort by' />
+            <SelectValue placeholder={t("home.sort.placeholder")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value='recent'>Most Recent</SelectItem>
-            <SelectItem value='oldest'>Oldest</SelectItem>
-            <SelectItem value='a-z'>Name A–Z</SelectItem>
-            <SelectItem value='z-a'>Name Z–A</SelectItem>
+            <SelectItem value='recent'>{t("home.sort.recent")}</SelectItem>
+            <SelectItem value='oldest'>{t("home.sort.oldest")}</SelectItem>
+            <SelectItem value='a-z'>{t("home.sort.az")}</SelectItem>
+            <SelectItem value='z-a'>{t("home.sort.za")}</SelectItem>
           </SelectContent>
         </Select>
         <Button variant={"outline"} onClick={() => handleImport()}>
           <Upload className='h-4 w-4' />
         </Button>
         <Button onClick={() => navigate("/new")}>
-          <Plus className='h-4 w-4' /> New Resume
+          <Plus className='h-4 w-4' /> {t("home.newResume")}
         </Button>
       </div>
 
@@ -223,7 +225,7 @@ export const Home = () => {
                 <CardHeader className='mt-auto'>
                   <CardTitle className='truncate'>{res.title}</CardTitle>
                   <CardDescription className='truncate'>
-                    Last updated:{" "}
+                    {t("home.lastUpdated")}{" "}
                     {new Date(res.updated).toLocaleDateString(undefined, {
                       month: "short",
                       day: "numeric",
@@ -237,7 +239,7 @@ export const Home = () => {
                     onClick={() => navigate(`/editor/${res.id}`)}
                   >
                     <SquarePen className='h-4 w-4' />
-                    Edit
+                    {t("home.edit")}
                   </Button>
 
                   <Button
@@ -263,17 +265,17 @@ export const Home = () => {
         ) : (
           <div className='col-span-4 text-center'>
             <p className='text-muted-foreground'>
-              No resumes found. Create a new one!
+              {t("home.empty")}
             </p>
           </div>
         )}
         <ConfirmationModal
           open={showDelete}
-          title='Delete Resume?'
-          description='This action will permanently delete the resume and cannot be undone.'
+          title={t("home.delete.title")}
+          description={t("home.delete.description")}
           confirmVariant='destructive'
-          confirmLabel='Confirm'
-          cancelLabel='Cancel'
+          confirmLabel={t("common.confirm")}
+          cancelLabel={t("common.cancel")}
           onCancel={() => setShowDelete(false)}
           onConfirm={confirmDelete}
         />
