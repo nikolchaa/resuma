@@ -1,5 +1,11 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { getSection, updateSection } from "@/lib/store";
+import {
+  defaultRemoteSettings,
+  getProvider,
+  LOCAL_PROVIDER_ID,
+  RemoteSettings,
+} from "@/lib/resolveProvider";
 
 export type SettingsType = {
   app: {
@@ -9,6 +15,8 @@ export type SettingsType = {
     contentSize: "md" | "lg";
   };
   llm: {
+    /** Provider id from data/providers.json; "local" runs bundled llama.cpp. */
+    provider: string;
     model: string;
     runtime: string;
     settings: {
@@ -18,6 +26,8 @@ export type SettingsType = {
       mlock: boolean;
       noMmap: boolean;
     };
+    /** Used by every provider except "local". API keys live in the OS keyring. */
+    remote: RemoteSettings;
   };
   personal: {
     fullName: string;
@@ -78,6 +88,7 @@ export const defaultState: SettingsType = {
     contentSize: "md",
   },
   llm: {
+    provider: LOCAL_PROVIDER_ID,
     model: "",
     runtime: "",
     settings: {
@@ -87,6 +98,7 @@ export const defaultState: SettingsType = {
       mlock: false,
       noMmap: false,
     },
+    remote: defaultRemoteSettings(getProvider(LOCAL_PROVIDER_ID)),
   },
   personal: {
     fullName: "",
@@ -242,7 +254,13 @@ export const OnboardingProvider = ({
       setState((prev) => ({
         ...prev,
         app: { ...prev.app, ...app },
-        llm: { ...prev.llm, ...llm },
+        // Settings saved before providers existed have neither key.
+        llm: {
+          ...prev.llm,
+          ...llm,
+          settings: { ...prev.llm.settings, ...(llm?.settings ?? {}) },
+          remote: { ...prev.llm.remote, ...(llm?.remote ?? {}) },
+        },
         personal: { ...prev.personal, ...personal },
         education,
         experience,

@@ -43,17 +43,7 @@ export default function Settings() {
       language: "en",
       contentSize: "md",
     },
-    llm: {
-      model: "",
-      runtime: "",
-      settings: {
-        ctxSize: 0,
-        gpuLayers: 0,
-        flashAttn: false,
-        mlock: false,
-        noMmap: false,
-      },
-    },
+    llm: defaultState.llm,
     personal: {
       fullName: "",
       email: "",
@@ -214,6 +204,10 @@ export default function Settings() {
           settings: {
             ...defaultState.llm.settings,
             ...(llm?.settings ?? {}),
+          },
+          remote: {
+            ...defaultState.llm.remote,
+            ...(llm?.remote ?? {}),
           },
         },
         personal: { ...defaultState.personal, ...(personal ?? {}) },

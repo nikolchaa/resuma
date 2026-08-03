@@ -135,15 +135,24 @@ export const BasicSettings = ({
           const parsedSettings = {
             ...parsed,
             llm: {
+              ...prev.llm,
               ...parsed.llm,
+              // Downloaded assets belong to this machine, not the export.
               model: currentModelId,
               runtime: prev.llm.runtime,
               settings: {
-                ...parsed.llm.settings,
+                ...prev.llm.settings,
+                ...(parsed.llm?.settings ?? {}),
                 gpuLayers: Math.min(
-                  parsed.llm.settings.gpuLayers,
+                  parsed.llm?.settings?.gpuLayers ?? maxGpuLayers,
                   maxGpuLayers,
                 ),
+              },
+              // Provider choice and model id travel; the API key does not -
+              // it stays in the OS credential store of the original machine.
+              remote: {
+                ...prev.llm.remote,
+                ...(parsed.llm?.remote ?? {}),
               },
             },
           };

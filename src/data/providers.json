@@ -1,0 +1,101 @@
+[
+  {
+    "id": "local",
+    "label": "Local (llama.cpp)",
+    "kind": "bundled",
+    "api": "llamacpp",
+    "baseUrl": "",
+    "requiresKey": false,
+    "editableBaseUrl": false,
+    "editableApi": false,
+    "keyUrl": ""
+  },
+  {
+    "id": "ollama",
+    "label": "Ollama",
+    "kind": "server",
+    "api": "ollama",
+    "baseUrl": "http://localhost:11434",
+    "requiresKey": false,
+    "editableBaseUrl": true,
+    "editableApi": false,
+    "keyUrl": ""
+  },
+  {
+    "id": "lmstudio",
+    "label": "LM Studio",
+    "kind": "server",
+    "api": "openai",
+    "baseUrl": "http://localhost:1234/v1",
+    "requiresKey": false,
+    "editableBaseUrl": true,
+    "editableApi": false,
+    "keyUrl": ""
+  },
+  {
+    "id": "anthropic",
+    "label": "Anthropic",
+    "kind": "cloud",
+    "api": "anthropic",
+    "baseUrl": "https://api.anthropic.com/v1",
+    "requiresKey": true,
+    "editableBaseUrl": false,
+    "editableApi": false,
+    "keyUrl": "https://console.anthropic.com/settings/keys"
+  },
+  {
+    "id": "openai",
+    "label": "OpenAI",
+    "kind": "cloud",
+    "api": "openai",
+    "baseUrl": "https://api.openai.com/v1",
+    "requiresKey": true,
+    "editableBaseUrl": false,
+    "editableApi": false,
+    "keyUrl": "https://platform.openai.com/api-keys"
+  },
+  {
+    "id": "gemini",
+    "label": "Google Gemini",
+    "kind": "cloud",
+    "api": "gemini",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "requiresKey": true,
+    "editableBaseUrl": false,
+    "editableApi": false,
+    "keyUrl": "https://aistudio.google.com/apikey"
+  },
+  {
+    "id": "deepseek",
+    "label": "DeepSeek",
+    "kind": "cloud",
+    "api": "openai",
+    "baseUrl": "https://api.deepseek.com/v1",
+    "requiresKey": true,
+    "editableBaseUrl": false,
+    "editableApi": false,
+    "keyUrl": "https://platform.deepseek.com/api_keys"
+  },
+  {
+    "id": "kimi",
+    "label": "Kimi (Moonshot AI)",
+    "kind": "cloud",
+    "api": "openai",
+    "baseUrl": "https://api.moonshot.ai/v1",
+    "requiresKey": true,
+    "editableBaseUrl": false,
+    "editableApi": false,
+    "keyUrl": "https://platform.moonshot.ai/console/api-keys"
+  },
+  {
+    "id": "custom",
+    "label": "Custom endpoint",
+    "kind": "custom",
+    "api": "openai",
+    "baseUrl": "",
+    "requiresKey": false,
+    "editableBaseUrl": true,
+    "editableApi": true,
+    "keyUrl": ""
+  }
+]

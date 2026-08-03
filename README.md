@@ -7,11 +7,11 @@
 ![TailwindCSS](https://img.shields.io/badge/Tailwind%20CSS-%2338B2AC.svg?logo=tailwind-css&logoColor=white)
 ![Visual Studio Code](https://custom-icon-badges.demolab.com/badge/Visual%20Studio%20Code-0078d7.svg?logo=vsc&logoColor=white)
 
-Resuma is an open-source desktop application for building beautiful, professional resumes using local AI models. Your data never leaves your device.
+Resuma is an open-source desktop application for building beautiful, professional resumes using local AI models. With the default local setup, your data never leaves your device.
 
-Powered by Tauri, Rust, React (TSX), and llama.cpp, Resuma brings the power of private AI directly to your desktop, ensuring fast performance and complete privacy.
+Powered by Tauri, Rust, React (TSX), and llama.cpp, Resuma brings the power of private AI directly to your desktop, ensuring fast performance and complete privacy. If you would rather use a model you already host or pay for, you can point it at Ollama, LM Studio, or a cloud API with your own key instead.
 
-> ⚡ **Offline and private**: No external servers, complete control over your data.
+> ⚡ **Local by default**: No external servers unless you configure one yourself.
 
 > ⚡ **Cross-platform**: Works on Windows, macOS, and Linux.
 
@@ -31,6 +31,9 @@ Powered by Tauri, Rust, React (TSX), and llama.cpp, Resuma brings the power of p
 - 🧠 Local AI processing for resume tailoring, keyword optimization, and ATS-friendly formatting
 - 🖼️ PDF preview with page splitting and dynamic layout adjustments
 - 🛠️ Supports multiple local models and hardware backends (CPU, CUDA, HIP, Vulkan)
+- ☁️ Optional cloud APIs (Anthropic, OpenAI, Gemini, DeepSeek, Kimi, or a custom endpoint) using your own key
+- 🖧 Optional local model hosts (Ollama, LM Studio, or any OpenAI-compatible endpoint)
+- 🔑 API keys kept in the OS credential manager, never in the settings file or its exports
 - 🚀 Cross-platform support: Windows, macOS, and Linux
 - 🔍 Advanced search and filtering for resume entries
 - 🎨 Theming support with light/dark modes
