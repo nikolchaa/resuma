@@ -11,9 +11,13 @@ use tauri_plugin_prevent_default::Builder as PreventDefaultBuilder;
 #[cfg(target_os = "windows")]
 use tauri_plugin_prevent_default::PlatformOptions;
 
-mod rpc;
 mod llm;
+mod remote;
+mod rpc;
+mod secrets;
+use remote::list_remote_models;
 use rpc::{set_activity, start_rpc, stop_rpc};
+use secrets::{delete_api_key, has_api_key, keystore_status, set_api_key};
 
 #[tauri::command]
 async fn download_and_extract(
@@ -162,7 +166,15 @@ async fn check_asset_ready(asset_type: String, asset_name: String) -> Result<boo
 
 #[tauri::command]
 async fn call_llm(prompt: String, llm_settings: serde_json::Value) -> Result<String, String> {
-    llm::call_llm(prompt, llm_settings).await
+    // "local" runs the bundled llama.cpp binary; everything else is an HTTP
+    // provider, cloud or self-hosted.
+    let is_local = llm_settings["provider"].as_str().unwrap_or("local") == "local";
+
+    if is_local {
+        llm::call_llm(prompt, llm_settings).await
+    } else {
+        remote::call_remote(prompt, llm_settings).await
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -197,6 +209,11 @@ pub fn run() {
             check_asset_ready,
             set_activity,
             stop_rpc,
+            set_api_key,
+            delete_api_key,
+            has_api_key,
+            keystore_status,
+            list_remote_models,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

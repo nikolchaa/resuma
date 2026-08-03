@@ -39,6 +39,12 @@ import {
 import { showError, showSuccess } from "@/lib/toastUtils";
 import { RuntimeEntry } from "@/lib/selectRecommendedRuntime";
 import { useLanguage } from "@/contexts/LanguageContext";
+import {
+  defaultRemoteSettings,
+  getProvider,
+  providerList,
+} from "@/lib/resolveProvider";
+import { RemoteProviderSetup } from "@/components/RemoteProviderSetup";
 
 type Props = {
   llm: SettingsType["llm"];
@@ -57,6 +63,9 @@ export const ArtificialSettings = ({
   const { t } = useLanguage();
   const settings = llm.settings;
   const system = useSystem();
+
+  const provider = getProvider(llm.provider);
+  const isLocal = provider.kind === "bundled";
 
   const [downloadStatusMap, setDownloadStatusMap] = useState<DownloadStatusMap>(
     {}
@@ -345,6 +354,47 @@ export const ArtificialSettings = ({
 
   return (
     <div className='flex flex-col gap-4'>
+      {/* Provider */}
+      <div className='flex items-center justify-between h-9'>
+        <Label className='w-1/3'>{t("ai.provider")}</Label>
+        <Select
+          value={llm.provider}
+          onValueChange={(value) => {
+            const next = getProvider(value);
+            updateSettings("llm", {
+              provider: value,
+              remote: defaultRemoteSettings(next, llm.remote),
+            });
+          }}
+        >
+          <SelectTrigger className='w-2/3 text-right'>
+            <SelectValue placeholder={t("ai.provider.select")} />
+          </SelectTrigger>
+          <SelectContent>
+            {providerList.map((entry) => (
+              <SelectItem key={entry.id} value={entry.id}>
+                {entry.label}{" "}
+                <Badge variant='outline'>
+                  {t(`ai.provider.kind.${entry.kind}`)}
+                </Badge>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {!isLocal && (
+        <RemoteProviderSetup
+          provider={provider}
+          remote={llm.remote}
+          onChange={(patch) =>
+            updateSettings("llm", { remote: { ...llm.remote, ...patch } })
+          }
+        />
+      )}
+
+      {isLocal && (
+        <>
       {/* Runtime */}
       <div className='flex items-center justify-between h-9'>
         <Label className='w-1/3'>{t("ai.runtime")}</Label>
@@ -777,6 +827,8 @@ export const ArtificialSettings = ({
           </div>
         ))}
       </div>
+        </>
+      )}
     </div>
   );
 };

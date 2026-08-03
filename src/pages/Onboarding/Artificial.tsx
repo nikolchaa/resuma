@@ -50,6 +50,20 @@ import {
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { showError } from "@/lib/toastUtils";
 import { useLanguage } from "@/contexts/LanguageContext";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  defaultRemoteSettings,
+  getProvider,
+  isRemoteConfigured,
+  providerList,
+} from "@/lib/resolveProvider";
+import { RemoteProviderSetup } from "@/components/RemoteProviderSetup";
 
 const Artificial = () => {
   const { t } = useLanguage();
@@ -61,6 +75,10 @@ const Artificial = () => {
   const [runtime, setRuntime] = useState<RuntimeEntry | null>(null);
   const [model, setModel] = useState<ModelSelection>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [remoteHasKey, setRemoteHasKey] = useState(false);
+
+  const provider = getProvider(state.llm.provider);
+  const isLocal = provider.kind === "bundled";
 
   const [downloadStatusMap, setDownloadStatusMap] = useState<DownloadStatusMap>(
     {}
@@ -335,6 +353,43 @@ const Artificial = () => {
       </CardHeader>
 
       <CardContent className='flex flex-col gap-4'>
+        {/* Provider */}
+        <div className='flex flex-col gap-2'>
+          <Label className='text-muted-foreground text-sm'>
+            {t("ai.provider")}
+          </Label>
+          <Select
+            value={state.llm.provider}
+            onValueChange={(value) => {
+              const next = getProvider(value);
+              update("llm", {
+                provider: value,
+                remote: defaultRemoteSettings(next, state.llm.remote),
+              });
+            }}
+          >
+            <SelectTrigger className='w-full'>
+              <SelectValue placeholder={t("ai.provider.select")} />
+            </SelectTrigger>
+            <SelectContent>
+              {providerList.map((entry) => (
+                <SelectItem key={entry.id} value={entry.id}>
+                  {entry.label}{" "}
+                  <Badge variant='outline'>{t(`ai.provider.kind.${entry.kind}`)}</Badge>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {/* Remote providers get their disclosure from RemoteProviderSetup. */}
+          {isLocal && (
+            <p className='text-xs text-muted-foreground'>
+              {t("ai.provider.localHint")}
+            </p>
+          )}
+        </div>
+
+        {isLocal ? (
+          <>
         {/* System Info */}
         <div className='flex flex-col gap-2'>
           <Label className='text-muted-foreground text-sm'>
@@ -693,13 +748,25 @@ const Artificial = () => {
             </Button>
           </div>
         )}
+          </>
+        ) : (
+          <RemoteProviderSetup
+            provider={provider}
+            remote={state.llm.remote}
+            onChange={(patch) =>
+              update("llm", { remote: { ...state.llm.remote, ...patch } })
+            }
+            onKeyStatusChange={setRemoteHasKey}
+          />
+        )}
 
         {/* Continue */}
         <div className='flex justify-end mt-4'>
           <Button
             disabled={
-              !(runtimeStatus.state === "ready") ||
-              !(modelStatus.state === "ready")
+              isLocal
+                ? runtimeStatus.state !== "ready" || modelStatus.state !== "ready"
+                : !isRemoteConfigured(provider, state.llm.remote, remoteHasKey)
             }
             onClick={() => {
               apply("llm").then(() => navigate("/onboarding/step3"));

@@ -35,5 +35,17 @@ tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-prevent-default = { version = "2.0", features = ["unstable-windows"] }
 dirs-next = "2.0.0"
-keyring = "3"
+# Platform credential stores must be opted into explicitly; without them
+# keyring falls back to an in-memory mock and secrets are lost on restart.
+keyring = { version = "3", features = [
+    "windows-native",
+    "apple-native",
+    "sync-secret-service",
+    "crypto-rust",
+    "vendored",
+] }
+# Fallback vault for systems with no reachable credential store (headless
+# Linux, no Secret Service daemon). See src/secrets.rs.
+aes-gcm = "0.10"
+sha2 = "0.10"
 
