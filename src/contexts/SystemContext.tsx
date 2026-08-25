@@ -8,20 +8,37 @@ import {
 import {
   getCpuInfo,
   getGpuInfo,
+  getMemoryInfo,
   getOsInfo,
-  getRamInfo,
-  CpuInfo,
-  GpuInfo,
-  OsInfo,
-  RamInfo,
 } from "tauri-plugin-hwinfo";
+
+// Minimal summaries of the plugin's rich per-device data. getCpuInfo/getGpuInfo
+// return one entry per socket/adapter; we expose only the primary device.
+type CpuSummary = {
+  manufacturer: string;
+  model: string;
+  maxFrequency: number;
+  threads: number;
+};
+
+type GpuSummary = {
+  manufacturer: string;
+  model: string;
+  vramMb: number;
+  supportsCuda: boolean;
+  supportsVulkan: boolean;
+};
+
+type RamSummary = { sizeMb: number };
+
+type OsSummary = { name: string; version: string };
 
 // Type combining all system info
 type SystemInfo = {
-  cpu: CpuInfo;
-  gpu: GpuInfo;
-  ram: RamInfo;
-  os: OsInfo;
+  cpu: CpuSummary;
+  gpu: GpuSummary;
+  ram: RamSummary;
+  os: OsSummary;
 };
 
 const defaultSystemInfo: SystemInfo = {
@@ -49,13 +66,32 @@ export function SystemProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     async function fetchSystem() {
-      const [cpu, gpu, ram, os] = await Promise.all([
+      const [cpus, gpus, ram, os] = await Promise.all([
         getCpuInfo(),
-        getGpuInfo(),
-        getRamInfo(),
+        getGpuInfo({ detail: "capabilities" }),
+        getMemoryInfo(),
         getOsInfo(),
       ]);
-      setInfo({ cpu, gpu, ram, os });
+      const cpu = cpus[0];
+      const gpu = gpus[0];
+
+      setInfo({
+        cpu: {
+          manufacturer: cpu?.manufacturer ?? "Unknown",
+          model: cpu?.model ?? "Unknown",
+          maxFrequency: cpu?.maxFrequency ?? 0,
+          threads: cpu?.threads ?? 0,
+        },
+        gpu: {
+          manufacturer: gpu?.manufacturer ?? "Unknown",
+          model: gpu?.model ?? "Unknown",
+          vramMb: gpu?.vramMb ?? 0,
+          supportsCuda: gpu?.api.cuda ?? false,
+          supportsVulkan: gpu?.api.vulkan ?? false,
+        },
+        ram: { sizeMb: ram.totalMb },
+        os: { name: os.name, version: os.version },
+      });
     }
 
     fetchSystem();
