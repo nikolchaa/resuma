@@ -13,7 +13,6 @@ import { useEffect, useState } from "react";
 import { SettingsType } from "@/contexts/OnboardingContext";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
-import modelList from "@/data/models.json";
 import { updateSection } from "@/lib/store";
 import { showError, showSuccess, showWarning } from "@/lib/toastUtils";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -128,25 +127,18 @@ export const BasicSettings = ({
         const parsed = JSON.parse(content);
 
         setDraftSettings((prev) => {
-          const currentModelId = prev.llm.model;
-          const modelMeta = modelList.find((m) => m.name === currentModelId);
-          const maxGpuLayers = modelMeta?.layers || prev.llm.settings.gpuLayers;
-
           const parsedSettings = {
-            ...parsed,
+            ...prev,
             llm: {
               ...prev.llm,
               ...parsed.llm,
               // Downloaded assets belong to this machine, not the export.
-              model: currentModelId,
+              model: prev.llm.model,
               runtime: prev.llm.runtime,
               settings: {
                 ...prev.llm.settings,
                 ...(parsed.llm?.settings ?? {}),
-                gpuLayers: Math.min(
-                  parsed.llm?.settings?.gpuLayers ?? maxGpuLayers,
-                  maxGpuLayers,
-                ),
+                gpuLayers: Math.max(0, Number(parsed.llm?.settings?.gpuLayers) || 0),
               },
               // Provider choice and model id travel; the API key does not -
               // it stays in the OS credential store of the original machine.

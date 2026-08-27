@@ -25,6 +25,7 @@ Powered by Tauri, Rust, React (TSX), and llama.cpp, Resuma brings the power of p
 - 📂 Full local data storage (no external servers)
 - ✨ Elegant onboarding and user experience
 - ⚙️ Advanced model configuration (mmap, mlock, gpu_layers, context size, etc.)
+- 🤗 Live model discovery: search thousands of GGUF models on Hugging Face, pick a quantization, and download it in-app
 - 👨‍💼 Customizable personal information, education, projects, skills, and more
 - 📄 Dynamic PDF generation with LaTeX-inspired layouts
 - 🖋️ AI-powered resume section enhancement and trimming based on job descriptions

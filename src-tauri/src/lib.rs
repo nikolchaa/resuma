@@ -11,23 +11,35 @@ use tauri_plugin_prevent_default::Builder as PreventDefaultBuilder;
 #[cfg(target_os = "windows")]
 use tauri_plugin_prevent_default::PlatformOptions;
 
+mod gguf;
+mod huggingface;
 mod llm;
 mod remote;
 mod rpc;
 mod secrets;
+use huggingface::{get_huggingface_files, search_huggingface_models};
 use remote::list_remote_models;
 use rpc::{set_activity, start_rpc, stop_rpc};
 use secrets::{delete_api_key, has_api_key, keystore_status, set_api_key};
+use gguf::asset_model_layers;
 
 #[tauri::command]
 async fn download_and_extract(
     window: tauri::Window,
     asset_name: String,
-    asset_url: String,
+    asset_urls: Vec<String>,
     no_extract: bool,
     asset_type: String, // e.g., "runtimes", "models", etc.
 ) -> Result<(), String> {
     spawn(async move {
+        if asset_urls.is_empty() {
+            let _ = window.emit(
+                &format!("download_error:{}", asset_name),
+                "No download URLs provided".to_string(),
+            );
+            return;
+        }
+
         let base_dir = dirs::data_dir()
             .ok_or_else(|| "Failed to find data directory".to_string())
             .unwrap()
@@ -43,70 +55,84 @@ async fn download_and_extract(
             return;
         }
 
-        let filename = asset_url.split('/').last().unwrap_or("download.zip");
-        let file_path = base_dir.join(filename);
+        // Sharded models download several files into one folder; progress is
+        // reported across every known byte so the bar stays meaningful.
+        let mut grand_total: u64 = 0;
+        let mut downloaded_total: u64 = 0;
+        let mut last_file_path: Option<PathBuf> = None;
 
-        let client = Client::new();
-        let response = match client.get(&asset_url).send().await {
-            Ok(res) => res,
-            Err(e) => {
-                let _ = window.emit(
-                    &format!("download_error:{}", asset_name),
-                    format!("Download failed: {e}"),
-                );
-                return;
-            }
-        };
+        for url in &asset_urls {
+            let filename = url.split('/').last().unwrap_or("download.zip");
+            let file_path = base_dir.join(filename);
+            last_file_path = Some(file_path.clone());
 
-        let total_size = response.content_length().unwrap_or(0);
-        let mut downloaded: u64 = 0;
-        let mut stream = response.bytes_stream();
-        let mut file = match File::create(&file_path) {
-            Ok(f) => f,
-            Err(e) => {
-                let _ = window.emit(
-                    &format!("download_error:{}", asset_name),
-                    format!("Failed to create file: {e}"),
-                );
-                return;
-            }
-        };
-
-        while let Some(item) = stream.next().await {
-            match item {
-                Ok(chunk) => {
-                    if let Err(e) = file.write_all(&chunk) {
-                        let _ = window.emit(
-                            &format!("download_error:{}", asset_name),
-                            format!("Failed writing file: {e}"),
-                        );
-                        return;
-                    }
-                    downloaded += chunk.len() as u64;
-                    let progress = if total_size > 0 {
-                        (downloaded as f64 / total_size as f64) * 100.0
-                    } else {
-                        0.0
-                    };
-                    let _ = window.emit(&format!("download_progress:{}", asset_name), progress);
-                }
+            let client = Client::new();
+            let response = match client.get(url).send().await {
+                Ok(res) => res,
                 Err(e) => {
                     let _ = window.emit(
                         &format!("download_error:{}", asset_name),
-                        format!("Download stream error: {e}"),
+                        format!("Download failed: {e}"),
                     );
                     return;
+                }
+            };
+
+            grand_total += response.content_length().unwrap_or(0);
+            let mut stream = response.bytes_stream();
+            let mut file = match File::create(&file_path) {
+                Ok(f) => f,
+                Err(e) => {
+                    let _ = window.emit(
+                        &format!("download_error:{}", asset_name),
+                        format!("Failed to create file: {e}"),
+                    );
+                    return;
+                }
+            };
+
+            while let Some(item) = stream.next().await {
+                match item {
+                    Ok(chunk) => {
+                        if let Err(e) = file.write_all(&chunk) {
+                            let _ = window.emit(
+                                &format!("download_error:{}", asset_name),
+                                format!("Failed writing file: {e}"),
+                            );
+                            return;
+                        }
+                        downloaded_total += chunk.len() as u64;
+                        let progress = if grand_total > 0 {
+                            (downloaded_total as f64 / grand_total as f64) * 100.0
+                        } else {
+                            0.0
+                        };
+                        let _ =
+                            window.emit(&format!("download_progress:{}", asset_name), progress);
+                    }
+                    Err(e) => {
+                        let _ = window.emit(
+                            &format!("download_error:{}", asset_name),
+                            format!("Download stream error: {e}"),
+                        );
+                        return;
+                    }
                 }
             }
         }
 
         let _ = window.emit(
             &format!("download_complete:{}", asset_name),
-            file_path.to_string_lossy().to_string(),
+            last_file_path
+                .as_ref()
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or_default(),
         );
 
-        if !no_extract {
-            if let Err(e) = extract_zip(&file_path, &base_dir) {
+        // A multi-part model has several zip-less files; extraction only ever
+        // makes sense for the single-file runtime archives.
+        if !no_extract && asset_urls.len() == 1 && last_file_path.is_some() {
+            if let Err(e) = extract_zip(&last_file_path.unwrap(), &base_dir) {
                 let _ = window.emit(
                     &format!("extract_error:{}", asset_name),
                     format!("Extraction failed: {e}"),
@@ -164,6 +190,41 @@ async fn check_asset_ready(asset_type: String, asset_name: String) -> Result<boo
     Ok(base_dir.exists())
 }
 
+/// Total bytes on disk for one downloaded asset folder, following
+/// `check_asset_ready`'s convention (`asset_type` is already plural, e.g.
+/// "models"). Used to show the installed footprint of a model.
+#[tauri::command]
+async fn asset_disk_usage(asset_type: String, asset_name: String) -> Result<u64, String> {
+    let base_dir = dirs::data_dir()
+        .ok_or_else(|| "Failed to find data directory".to_string())?
+        .join("com.resuma.app")
+        .join(asset_type)
+        .join(asset_name);
+
+    if !base_dir.exists() {
+        return Ok(0);
+    }
+
+    fn dir_size(path: &std::path::Path) -> u64 {
+        let mut total = 0u64;
+
+        if let Ok(entries) = fs::read_dir(path) {
+            for entry in entries.flatten() {
+                let entry_path = entry.path();
+                if entry_path.is_dir() {
+                    total += dir_size(&entry_path);
+                } else if let Ok(metadata) = entry.metadata() {
+                    total += metadata.len();
+                }
+            }
+        }
+
+        total
+    }
+
+    Ok(dir_size(&base_dir))
+}
+
 #[tauri::command]
 async fn call_llm(prompt: String, llm_settings: serde_json::Value) -> Result<String, String> {
     // "local" runs the bundled llama.cpp binary; everything else is an HTTP
@@ -207,6 +268,8 @@ pub fn run() {
             call_llm,
             download_and_extract,
             check_asset_ready,
+            asset_disk_usage,
+            asset_model_layers,
             set_activity,
             stop_rpc,
             set_api_key,
@@ -214,6 +277,8 @@ pub fn run() {
             has_api_key,
             keystore_status,
             list_remote_models,
+            search_huggingface_models,
+            get_huggingface_files,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

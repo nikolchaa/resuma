@@ -42,14 +42,17 @@ import { invoke } from "@tauri-apps/api/core";
 import { useDownloadListeners } from "@/hooks/useDownloadListeners";
 import { checkAssetReady } from "@/lib/checkAssetReady";
 import { DownloadStatusMap } from "@/types/downloadStatus";
-import { getModels } from "@/lib/resolveModel";
 import {
-  ModelSelection,
-  selectRecommendedModel,
+  getTierResults,
+  TierResult,
+} from "@/lib/resolveModel";
+import {
+  selectRecommendedTier,
 } from "@/lib/selectRecommendedModel";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { showError } from "@/lib/toastUtils";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { describePrimaryGpu, effectiveVramMb } from "@/lib/gpuSelection";
 import {
   Select,
   SelectContent,
@@ -65,6 +68,8 @@ import {
 } from "@/lib/resolveProvider";
 import { RemoteProviderSetup } from "@/components/RemoteProviderSetup";
 
+const safeName = (name: string) => name.replace(/\./g, "_");
+
 const Artificial = () => {
   const { t } = useLanguage();
   const { state, update, apply, exists } = useOnboarding();
@@ -73,7 +78,8 @@ const Artificial = () => {
   const system = useSystem();
 
   const [runtime, setRuntime] = useState<RuntimeEntry | null>(null);
-  const [model, setModel] = useState<ModelSelection>(null);
+  const [tierResults, setTierResults] = useState<TierResult[]>([]);
+  const [selectedTierId, setSelectedTierId] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [remoteHasKey, setRemoteHasKey] = useState(false);
 
@@ -85,19 +91,34 @@ const Artificial = () => {
   );
 
   const cpu = system?.cpu?.model;
-  const gpu = system?.gpu?.model;
-  const gpuVram = system?.gpu?.vramMb;
+  const gpuLabel = describePrimaryGpu(system);
   const ram = system?.ram?.sizeMb ? Math.round(system.ram.sizeMb / 1024) : null;
+  // system.gpu is already the priority-picked primary adapter.
+  const gpuVramMb = system?.gpu ? effectiveVramMb(system.gpu, system.ram.sizeMb) : null;
 
-  const runtimeStatus = runtime?.name.replace(/\./g, "_")
-    ? downloadStatusMap[runtime.name.replace(/\./g, "_")] ?? {
+  const runtimeStatus = runtime?.name
+    ? downloadStatusMap[runtime.name] ?? {
         state: "idle",
         progress: 0,
       }
     : { state: "idle", progress: 0 };
 
-  const modelStatus = model?.model.name.replace(/\./g, "_")
-    ? downloadStatusMap[model.model.name.replace(/\./g, "_")] ?? {
+  // Hardware detection may land late; re-score whenever specs arrive and
+  // preselect the recommended tier exactly once hardware is known.
+  useEffect(() => {
+    setTierResults(getTierResults(system));
+    setRuntime(() => selectRecommendedRuntime(getRuntimes(system)));
+  }, [system]);
+
+  const selectedTier =
+    tierResults.find((tier) => tier.id === selectedTierId) ?? null;
+
+  useEffect(() => {
+    setSelectedTierId(selectRecommendedTier(tierResults)?.id ?? null);
+  }, [tierResults]);
+
+  const modelStatus = selectedTier
+    ? downloadStatusMap[safeName(selectedTier.model.name)] ?? {
         state: "idle",
         progress: 0,
       }
@@ -106,8 +127,8 @@ const Artificial = () => {
   const [defaultSettings, setDefaultSettings] = useState<LLMSettings>(
     getAdaptiveSettings({
       ramGb: ram,
-      gpuVramMb: gpuVram,
-      model: model,
+      gpuVramMb: gpuVramMb,
+      model: selectedTier,
     })
   );
 
@@ -115,11 +136,11 @@ const Artificial = () => {
     setDefaultSettings(
       getAdaptiveSettings({
         ramGb: ram,
-        gpuVramMb: gpuVram,
-        model: model,
+        gpuVramMb: gpuVramMb,
+        model: selectedTier,
       })
     );
-  }, [system, model]);
+  }, [system, selectedTier]);
 
   useEffect(() => {
     const checkAndSet = async () => {
@@ -133,17 +154,12 @@ const Artificial = () => {
   }, [defaultSettings]);
 
   useEffect(() => {
-    setRuntime(() => selectRecommendedRuntime(getRuntimes(system)));
-    setModel(() => selectRecommendedModel(getModels(system)));
-  }, [system]);
-
-  useEffect(() => {
     const checkRuntimeExistence = async () => {
       if (!runtime?.name) return;
 
-      const exists = await checkAssetReady("runtimes", runtime.name);
+      const assetExists = await checkAssetReady("runtimes", runtime.name);
 
-      if (exists) {
+      if (assetExists) {
         setDownloadStatusMap((prev) => ({
           ...prev,
           [runtime.name]: {
@@ -161,140 +177,31 @@ const Artificial = () => {
   }, [runtime]);
 
   useEffect(() => {
-    const checkModelExistence = async () => {
-      if (!model?.model.name.replace(/\./g, "_")) return;
+    const checkAndApplyTier = async () => {
+      if (!selectedTier) return;
 
-      const exists = await checkAssetReady(
-        "models",
-        model.model.name.replace(/\./g, "_")
-      );
+      const assetName = safeName(selectedTier.model.name);
+      const assetExists = await checkAssetReady("models", assetName);
 
-      if (exists) {
+      if (assetExists) {
         setDownloadStatusMap((prev) => ({
           ...prev,
-          [model.model.name.replace(/\./g, "_")]: {
+          [assetName]: {
             state: "ready",
             progress: 100,
           },
         }));
       }
+
+      update("llm", { model: selectedTier.model.name });
     };
 
-    checkModelExistence();
-    update("llm", {
-      model: model?.model.name ?? "",
-    });
-  }, [model]);
-
-  useDownloadListeners(runtime?.name, {
-    onProgress: (progress) => {
-      if (!runtime?.name) return;
-      setDownloadStatusMap((prev) => ({
-        ...prev,
-        [runtime.name]: {
-          state: "downloading",
-          progress,
-        },
-      }));
-    },
-    onComplete: () => {
-      if (!runtime?.name) return;
-      setDownloadStatusMap((prev) => ({
-        ...prev,
-        [runtime.name]: {
-          ...prev[runtime.name],
-          state: "extracting",
-        },
-      }));
-    },
-    onError: (error) => {
-      if (!runtime?.name) return;
-      showError(`${t("ai.downloadErrorPrefix")} ${runtime.name}`, error);
-      setDownloadStatusMap((prev) => ({
-        ...prev,
-        [runtime.name]: {
-          ...prev[runtime.name],
-          state: "error",
-        },
-      }));
-    },
-    onExtractComplete: () => {
-      if (!runtime?.name) return;
-      setDownloadStatusMap((prev) => ({
-        ...prev,
-        [runtime.name]: {
-          state: "ready",
-          progress: 100,
-        },
-      }));
-    },
-    onExtractError: (error) => {
-      if (!runtime?.name) return;
-      showError(`${t("ai.extractErrorPrefix")} ${runtime.name}`, error);
-      setDownloadStatusMap((prev) => ({
-        ...prev,
-        [runtime.name]: {
-          ...prev[runtime.name],
-          state: "error",
-        },
-      }));
-    },
-  });
-
-  useDownloadListeners(model?.model.name.replace(/\./g, "_"), {
-    onProgress: (progress) => {
-      const safeName = model?.model.name.replace(/\./g, "_");
-      if (!safeName) return;
-      setDownloadStatusMap((prev) => ({
-        ...prev,
-        [safeName]: {
-          state: "downloading",
-          progress,
-        },
-      }));
-    },
-    onComplete: () => {
-      const safeName = model?.model.name.replace(/\./g, "_");
-      if (!safeName) return;
-      setDownloadStatusMap((prev) => ({
-        ...prev,
-        [safeName]: {
-          ...prev[safeName],
-          state: "ready",
-          progress: 100,
-        },
-      }));
-    },
-    onError: (error) => {
-      const safeName = model?.model.name.replace(/\./g, "_");
-      if (!safeName) return;
-      showError(`${t("ai.downloadErrorPrefix")} ${safeName}`, error);
-      setDownloadStatusMap((prev) => ({
-        ...prev,
-        [safeName]: {
-          ...prev[safeName],
-          state: "error",
-        },
-      }));
-    },
-    onExtractComplete: () => {},
-    onExtractError: (error) => {
-      const safeName = model?.model.name.replace(/\./g, "_");
-      if (!safeName) return;
-      showError(`${t("ai.extractErrorPrefix")} ${safeName}`, error);
-      setDownloadStatusMap((prev) => ({
-        ...prev,
-        [safeName]: {
-          ...prev[safeName],
-          state: "error",
-        },
-      }));
-    },
-  });
+    checkAndApplyTier();
+  }, [selectedTier]);
 
   const handleDownloadClick = async (
     assetName: string,
-    assetUrl: string,
+    assetUrls: string[],
     assetType: "runtime" | "model"
   ) => {
     if (!assetName) return;
@@ -310,7 +217,7 @@ const Artificial = () => {
     try {
       await invoke("download_and_extract", {
         assetName,
-        assetUrl,
+        assetUrls,
         noExtract: assetType === "model",
         assetType,
       });
@@ -402,11 +309,7 @@ const Artificial = () => {
             <span>
               GPU:{" "}
               <span className='font-medium'>
-                {gpu
-                  ? `${gpu}${
-                      gpuVram > 0 ? ` (${Math.round(gpuVram / 1024)} GB)` : ""
-                    }`
-                  : t("common.detecting")}
+                {gpuLabel ?? t("common.detecting")}
               </span>
             </span>
             <span>
@@ -418,92 +321,38 @@ const Artificial = () => {
           </div>
         </div>
 
-        {/* Model Download */}
+        {/* Starter model tiers */}
         <div className='flex flex-col gap-2'>
           <Label className='text-muted-foreground text-sm'>
-            {t("field.recommendedModel")}
+            {t("ai.tier.pickModel")}
           </Label>
-          <div className='flex items-center justify-between'>
-            <span className='font-medium'>
-              {model ? (
-                <>
-                  {model.model.label}{" "}
-                  <span className='text-muted-foreground text-sm'>
-                    ({model.model.size})
-                  </span>
-                </>
-              ) : model === null ? (
-                t("ai.recommendedModel.none")
-              ) : (
-                t("common.detecting")
-              )}
-            </span>
-            <Button
-              variant='secondary'
-              size='sm'
-              disabled={
-                modelStatus.state === "downloading" ||
-                modelStatus.state === "ready" ||
-                model === null
-              }
-              onClick={() => {
-                if (model?.model.name && model?.model.download) {
-                  handleDownloadClick(
-                    model.model.name.replace(/\./g, "_"),
-                    model.model.download,
-                    "model"
-                  );
+
+          {!selectedTier && tierResults.length === 0 && (
+            <p className='text-sm text-muted-foreground'>{t("common.detecting")}</p>
+          )}
+
+          {tierResults.map((tier) => (
+            <StarterTierRow
+              key={tier.id}
+              tier={tier}
+              selected={selectedTierId === tier.id}
+              status={
+                downloadStatusMap[safeName(tier.model.name)] ?? {
+                  state: "idle",
+                  progress: 0,
                 }
-              }}
-            >
-              {modelStatus.state === "ready" ? (
-                <>
-                  <Check className='w-4 h-4 mr-1' />
-                  {t("common.ready")}
-                </>
-              ) : modelStatus.state === "downloading" ? (
-                <>
-                  <Download className='w-4 h-4 mr-1' />
-                  {t("common.downloading")} ({Math.round(modelStatus.progress)}%)
-                </>
-              ) : (
-                <>
-                  <Download className='w-4 h-4 mr-1' />
-                  {t("common.download")}
-                </>
-              )}
-            </Button>
-          </div>
-          <div className='flex flex-wrap gap-2'>
-            <Badge variant='outline' className='flex items-center gap-1'>
-              {model?.status === "gpu" ? (
-                <>
-                  <Microchip className='h-3.5 w-3.5' />
-                  {t("ai.gpuCompatible")}
-                </>
-              ) : model?.status === "cpu" ? (
-                <>
-                  <Cpu className='h-3.5 w-3.5' />
-                  {t("ai.cpuCompatible")}
-                </>
-              ) : (
-                <>
-                  <X className='h-3.5 w-3.5' />
-                  {t("common.unsupported")}
-                </>
-              )}
-            </Badge>
-            {!(model === null) && (
-              <Badge variant='outline'>{model?.model.parameters}</Badge>
-            )}
-            {!(model === null) && (
-              <Badge variant='outline'>{model?.model.quantization}</Badge>
-            )}
-          </div>
-          <Progress
-            value={modelStatus.state === "ready" ? 100 : modelStatus.progress}
-            className='h-2 mt-2'
-          />
+              }
+              onSelect={() => setSelectedTierId(tier.id)}
+              onDownload={() =>
+                handleDownloadClick(
+                  safeName(tier.model.name),
+                  [tier.model.download],
+                  "model"
+                )
+              }
+              setStatus={setDownloadStatusMap}
+            />
+          ))}
         </div>
 
         {/* Runtime Download */}
@@ -539,7 +388,7 @@ const Artificial = () => {
                 if (runtime?.name && runtime?.download) {
                   handleDownloadClick(
                     runtime.name,
-                    runtime.download,
+                    [runtime.download],
                     "runtime"
                   );
                 }
@@ -650,18 +499,17 @@ const Artificial = () => {
                 type='number'
                 placeholder={`${defaultSettings.gpuLayers}`}
                 min={0}
-                max={defaultSettings.gpuLayers}
+                max={defaultSettings.gpuLayers || undefined}
                 value={state.llm?.settings.gpuLayers}
                 onChange={(e) => {
                   const value = e.target.value;
-                  if (+value >= 0 && +value <= defaultSettings.gpuLayers) {
+                  const ceiling = defaultSettings.gpuLayers;
+                  if (ceiling === 0 || (+value >= 0 && +value <= ceiling)) {
                     update("llm", {
                       settings: {
                         ...state.llm?.settings,
                         gpuLayers:
-                          value === ""
-                            ? defaultSettings.gpuLayers
-                            : Number(value),
+                          value === "" ? defaultSettings.gpuLayers : Number(value),
                       },
                     });
                   }
@@ -765,7 +613,9 @@ const Artificial = () => {
           <Button
             disabled={
               isLocal
-                ? runtimeStatus.state !== "ready" || modelStatus.state !== "ready"
+                ? runtimeStatus.state !== "ready" ||
+                  !selectedTier ||
+                  modelStatus.state !== "ready"
                 : !isRemoteConfigured(provider, state.llm.remote, remoteHasKey)
             }
             onClick={() => {
@@ -779,5 +629,142 @@ const Artificial = () => {
     </Card>
   );
 };
+
+/* ------------------------------------------------------------------ */
+/* One starter-model option                                            */
+/* ------------------------------------------------------------------ */
+
+function StarterTierRow({
+  tier,
+  selected,
+  status,
+  onSelect,
+  onDownload,
+  setStatus,
+}: {
+  tier: TierResult;
+  selected: boolean;
+  status: { state: string; progress: number };
+  onSelect: () => void;
+  onDownload: () => void;
+  setStatus: React.Dispatch<React.SetStateAction<DownloadStatusMap>>;
+}) {
+  const { t } = useLanguage();
+
+  useDownloadListeners(safeName(tier.model.name), {
+    onProgress: (progress) => {
+      setStatus((prev) => ({
+        ...prev,
+        [safeName(tier.model.name)]: { state: "downloading", progress },
+      }));
+    },
+    onComplete: () => {
+      setStatus((prev) => ({
+        ...prev,
+        [safeName(tier.model.name)]: { state: "ready", progress: 100 },
+      }));
+    },
+    onError: (error) => {
+      showError(
+        `${t("ai.downloadErrorPrefix")} ${safeName(tier.model.name)}`,
+        error
+      );
+      setStatus((prev) => ({
+        ...prev,
+        [safeName(tier.model.name)]: { state: "error", progress: 0 },
+      }));
+    },
+    onExtractComplete: () => {},
+    onExtractError: () => {},
+  });
+
+  const tierLabelKey = `ai.tier.${tier.id}`;
+  const tierDescKey = `ai.tier.${tier.id}.description`;
+
+  return (
+    <button
+      type='button'
+      onClick={onSelect}
+      className={`border rounded-xl px-3 py-2.5 shadow-sm bg-background text-left transition-colors w-full ${
+        selected ? "border-primary ring-1 ring-primary" : "hover:border-muted-foreground/40"
+      }`}
+    >
+      <div className='flex items-center justify-between gap-3'>
+        <div className='min-w-0'>
+          <div className='font-medium text-sm flex items-center gap-2'>
+            {tier.model.label}
+            <Badge variant='outline'>{t(tierLabelKey, tier.id)}</Badge>
+          </div>
+          <p className='text-xs text-muted-foreground mt-0.5 truncate'>
+            {t(tierDescKey, "")}
+          </p>
+          <div className='flex flex-wrap gap-1.5 mt-1.5'>
+            <Badge variant='outline' className='flex items-center gap-1'>
+              {tier.status === "gpu" ? (
+                <>
+                  <Microchip className='h-3 w-3' />
+                  {t("ai.gpuCompatible")}
+                </>
+              ) : tier.status === "cpu" ? (
+                <>
+                  <Cpu className='h-3 w-3' />
+                  {t("ai.cpuCompatible")}
+                </>
+              ) : (
+                <>
+                  <X className='h-3 w-3' />
+                  {t("common.unsupported")}
+                </>
+              )}
+            </Badge>
+            <Badge variant='outline'>{tier.model.parameters}</Badge>
+            <Badge variant='outline'>{tier.model.quantization}</Badge>
+            <Badge variant='outline'>{tier.model.size}</Badge>
+          </div>
+        </div>
+
+        <span onClick={(e) => e.stopPropagation()}>
+          <Button
+            variant={status.state === "ready" ? "ghost" : "secondary"}
+            size='sm'
+            disabled={
+              status.state === "downloading" ||
+              status.state === "ready" ||
+              tier.status === "unsupported"
+            }
+            onClick={() => {
+              onSelect();
+              if (status.state !== "ready") onDownload();
+            }}
+          >
+            {status.state === "ready" ? (
+              <>
+                <Check className='w-4 h-4 mr-1' />
+                {t("common.ready")}
+              </>
+            ) : status.state === "downloading" ? (
+              <>
+                <Download className='w-4 h-4 mr-1' />
+                {`${t("common.downloading")} (${Math.round(status.progress)}%)`}
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4 mr-1" />
+                {t("common.download")}
+              </>
+            )}
+          </Button>
+        </span>
+      </div>
+
+      {(status.state === "downloading" || status.state === "ready") && (
+        <Progress
+          value={status.state === "ready" ? 100 : status.progress}
+          className='h-1.5 mt-2'
+        />
+      )}
+    </button>
+  );
+}
 
 export default Artificial;

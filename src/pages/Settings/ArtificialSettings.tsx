@@ -8,26 +8,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  RotateCcw,
-  Info,
-  Microchip,
-  Cpu,
-  X,
-  Download,
-  Check,
-  Trash2,
-} from "lucide-react";
+import { RotateCcw, Info, Download, Check, Trash2, X } from "lucide-react";
 import { SettingsType } from "@/contexts/OnboardingContext";
-import { getModels, ModelEntry } from "@/lib/resolveModel";
 import { useSystem } from "@/contexts/SystemContext";
 import { CardDescription, CardTitle } from "@/components/ui/card";
 import { getRuntimes } from "@/lib/resolveRuntime";
 import { Badge } from "@/components/ui/badge";
+import { DownloadState } from "@/types/download";
 import { DownloadStatusMap } from "@/types/downloadStatus";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { useDownloadListeners } from "@/hooks/useDownloadListeners";
 import { BaseDirectory, readDir, remove } from "@tauri-apps/plugin-fs";
 import {
   Select,
@@ -39,18 +29,20 @@ import {
 import { showError, showSuccess } from "@/lib/toastUtils";
 import { RuntimeEntry } from "@/lib/selectRecommendedRuntime";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useDownloadListeners } from "@/hooks/useDownloadListeners";
 import {
   defaultRemoteSettings,
   getProvider,
   providerList,
 } from "@/lib/resolveProvider";
 import { RemoteProviderSetup } from "@/components/RemoteProviderSetup";
+import { HfModelBrowser } from "@/components/HfModelBrowser";
 
 type Props = {
   llm: SettingsType["llm"];
   updateSettings: <K extends keyof SettingsType>(
     section: K,
-    data: Partial<SettingsType[K]>
+    data: Partial<SettingsType[K]>,
   ) => void;
   stockSettings: SettingsType["llm"];
 };
@@ -68,109 +60,114 @@ export const ArtificialSettings = ({
   const isLocal = provider.kind === "bundled";
 
   const [downloadStatusMap, setDownloadStatusMap] = useState<DownloadStatusMap>(
-    {}
+    {},
   );
-  const [deletingModel, setDeletingModel] = useState<string | null>(null);
   const [deletingRuntime, setDeletingRuntime] = useState<string | null>(null);
-  const [availableModels, setAvailableModels] = useState<ModelEntry[]>([]);
   const [availableRuntimes, setAvailableRuntimes] = useState<RuntimeEntry[]>(
-    []
+    [],
   );
+  const [downloadedModels, setDownloadedModels] = useState<string[]>([]);
+  /** Real decoder-block counts parsed from each installed GGUF (0 = unknown). */
+  const [layerCounts, setLayerCounts] = useState<Record<string, number>>({});
 
+  // Maximum offloadable layers for the selected model. Parsed from the GGUF
+  // metadata on install; until known we allow a high ceiling that llama.cpp
+  // clamps to the real count at load time.
+  const knownLayers = layerCounts[llm.model];
+  const maxGpuLayers = knownLayers && knownLayers > 0 ? knownLayers : 999;
+  /** "-1" is the llama.cpp sentinel for "offload everything that fits". */
+  const autoLayers = settings.gpuLayers === -1;
+  const isCpuRuntime =
+    getRuntimes(system).find((r) => r.runtime.name === llm.runtime)?.runtime
+      .backend === "cpu";
+
+  // Layer counts back the GPU Layers clamp and auto-fill. Refreshed whenever
+  // the set of downloaded models changes.
   useEffect(() => {
-    const loadAllDownloadedAssets = async () => {
-      let modelFolders: string[] = [];
-      let runtimeFolders: string[] = [];
+    let cancelled = false;
 
-      try {
-        const modelEntries = await readDir("models", {
-          baseDir: BaseDirectory.AppData,
-        });
-        modelFolders = modelEntries
-          .filter((e) => e.name && e.isDirectory)
-          .map((e) => e.name as string);
-      } catch (error) {
-        showError(
-          t("ai.errorReadingModels"),
-          (error as Error).message || "An unexpected error occurred"
-        );
+    const missing = downloadedModels.filter(
+      (name) => layerCounts[name] === undefined,
+    );
+    if (missing.length === 0) return;
+    // Unknown models report 0; never re-query them forever.
+    setLayerCounts((prev) => {
+      const next = { ...prev };
+      for (const name of missing) next[name] = -1; // pending marker
+      return next;
+    });
+
+    Promise.all(
+      missing.map(async (name) => {
+        try {
+          const meta = await invoke<
+            { blockCount: number; nextnLayers: number } | number
+          >("asset_model_layers", { assetName: name });
+          // Older app builds return the bare count; tolerate both.
+          const blockCount =
+            typeof meta === "number" ? meta : meta?.blockCount ?? 0;
+          return [name, blockCount] as const;
+        } catch {
+          return [name, 0] as const;
+        }
+      })
+    ).then((entries) => {
+      if (!cancelled) {
+        setLayerCounts((prev) => ({
+          ...prev,
+          ...Object.fromEntries(entries),
+        }));
       }
+    });
 
-      try {
-        const runtimeEntries = await readDir("runtimes", {
-          baseDir: BaseDirectory.AppData,
-        });
-        runtimeFolders = runtimeEntries
-          .filter((e) => e.name && e.isDirectory)
-          .map((e) => e.name as string);
-      } catch (error) {
-        showError(
-          t("ai.errorReadingRuntimes"),
-          (error as Error).message || "An unexpected error occurred"
-        );
-      }
-
-      // Update status map
-      const modelReadyMap: DownloadStatusMap = {};
-      modelFolders.forEach((name) => {
-        modelReadyMap[name] = { state: "ready", progress: 100 };
-      });
-
-      const runtimeReadyMap: DownloadStatusMap = {};
-      runtimeFolders.forEach((name) => {
-        runtimeReadyMap[name] = { state: "ready", progress: 100 };
-      });
-
-      setDownloadStatusMap((prev) => ({
-        ...modelReadyMap,
-        ...runtimeReadyMap,
-        ...prev,
-      }));
-
-      // Filter available models/runtimes
-      const models = getModels(system)
-        .filter((entry) =>
-          modelFolders.includes(entry.model.name.replace(/\./g, "_"))
-        )
-        .map((entry) => entry.model);
-
-      const runtimes = getRuntimes(system)
-        .filter((entry) => runtimeFolders.includes(entry.runtime.name))
-        .map((entry) => entry.runtime);
-
-      setAvailableModels(models);
-      setAvailableRuntimes(runtimes);
+    return () => {
+      cancelled = true;
     };
+  }, [downloadedModels]);
 
-    loadAllDownloadedAssets();
-  }, [system]);
-
-  const handleDeleteModel = async (modelName: string) => {
-    const normalized = modelName.replace(/\./g, "_");
-    setDeletingModel(normalized);
+  /**
+   * Re-scans the runtimes directory. Runs on mount, after every runtime
+   * settles (extract completes), and after deletions - so the Runtime
+   * dropdown always reflects what is actually installed.
+   */
+  const refreshRuntimes = useCallback(async () => {
+    let runtimeFolders: string[] = [];
 
     try {
-      await remove(`models/${normalized}`, {
-        recursive: true,
+      const runtimeEntries = await readDir("runtimes", {
         baseDir: BaseDirectory.AppData,
       });
-
-      setDownloadStatusMap((prev) => {
-        const updated = { ...prev };
-        delete updated[normalized];
-        return updated;
-      });
-
-      showSuccess(t("ai.modelDeleted"), `"${modelName}" was removed successfully`);
+      runtimeFolders = runtimeEntries
+        .filter((e) => e.name && e.isDirectory)
+        .map((e) => e.name as string);
     } catch (error) {
       showError(
-        t("ai.modelDeleteFailed"),
-        (error as Error).message || "An unexpected error occurred"
+        t("ai.errorReadingRuntimes"),
+        (error as Error).message || "An unexpected error occurred",
       );
-    } finally {
-      setDeletingModel(null);
     }
-  };
+
+    // Update status map
+    const runtimeReadyMap: DownloadStatusMap = {};
+    runtimeFolders.forEach((name) => {
+      runtimeReadyMap[name] = { state: "ready", progress: 100 };
+    });
+
+    setDownloadStatusMap((prev) => ({
+      ...runtimeReadyMap,
+      ...prev,
+    }));
+
+    const runtimes = getRuntimes(system)
+      .filter((entry) => runtimeFolders.includes(entry.runtime.name))
+      .map((entry) => entry.runtime);
+
+    setAvailableRuntimes(runtimes);
+  }, [system, t]);
+
+  useEffect(() => {
+    refreshRuntimes();
+  }, [refreshRuntimes]);
 
   const handleDeleteRuntime = async (runtimeName: string) => {
     setDeletingRuntime(runtimeName);
@@ -187,122 +184,25 @@ export const ArtificialSettings = ({
         return updated;
       });
 
-      showSuccess(t("ai.runtimeDeleted"), `"${runtimeName}" was removed successfully`);
+      showSuccess(
+        t("ai.runtimeDeleted"),
+        `"${runtimeName}" was removed successfully`,
+      );
+      await refreshRuntimes();
     } catch (error) {
       showError(
         t("ai.runtimeDeleteFailed"),
-        (error as Error).message || "An unexpected error occurred"
+        (error as Error).message || "An unexpected error occurred",
       );
     } finally {
       setDeletingRuntime(null);
     }
   };
 
-  getModels(system).forEach((entry) => {
-    const safeName = entry.model.name.replace(/\./g, "_");
-    useDownloadListeners(safeName, {
-      onProgress: (progress) => {
-        setDownloadStatusMap((prev) => ({
-          ...prev,
-          [safeName]: {
-            state: "downloading",
-            progress,
-          },
-        }));
-      },
-      onComplete: () => {
-        setDownloadStatusMap((prev) => ({
-          ...prev,
-          [safeName]: {
-            ...prev[safeName],
-            state: "ready",
-            progress: 100,
-          },
-        }));
-      },
-      onError: (error) => {
-        showError(
-          `${t("ai.downloadErrorPrefix")} ${safeName}`,
-          error || "An unexpected error occurred"
-        );
-        setDownloadStatusMap((prev) => ({
-          ...prev,
-          [safeName]: {
-            ...prev[safeName],
-            state: "error",
-          },
-        }));
-      },
-      onExtractComplete: () => {},
-      onExtractError: () => {},
-    });
-  });
-
-  getRuntimes(system).forEach((entry) => {
-    const name = entry.runtime.name;
-    if (!name) return;
-
-    useDownloadListeners(name, {
-      onProgress: (progress) => {
-        setDownloadStatusMap((prev) => ({
-          ...prev,
-          [name]: {
-            state: "downloading",
-            progress,
-          },
-        }));
-      },
-      onComplete: () => {
-        setDownloadStatusMap((prev) => ({
-          ...prev,
-          [name]: {
-            ...prev[name],
-            state: "extracting",
-          },
-        }));
-      },
-      onError: (error) => {
-        showError(
-          `${t("ai.downloadErrorPrefix")} ${name}`,
-          error || "An unexpected error occurred"
-        );
-        setDownloadStatusMap((prev) => ({
-          ...prev,
-          [name]: {
-            ...prev[name],
-            state: "error",
-          },
-        }));
-      },
-      onExtractComplete: () => {
-        setDownloadStatusMap((prev) => ({
-          ...prev,
-          [name]: {
-            state: "ready",
-            progress: 100,
-          },
-        }));
-      },
-      onExtractError: (error) => {
-        showError(
-          `${t("ai.extractErrorPrefix")} ${name}`,
-          error || "An unexpected error occurred"
-        );
-        setDownloadStatusMap((prev) => ({
-          ...prev,
-          [name]: {
-            ...prev[name],
-            state: "error",
-          },
-        }));
-      },
-    });
-  });
-
   const handleDownloadClick = async (
     assetName: string,
     assetUrl: string,
-    assetType: "runtime" | "model"
+    assetType: "runtime" | "model",
   ) => {
     if (!assetName) return;
 
@@ -317,14 +217,14 @@ export const ArtificialSettings = ({
     try {
       await invoke("download_and_extract", {
         assetName,
-        assetUrl,
+        assetUrls: [assetUrl],
         noExtract: assetType === "model",
         assetType,
       });
     } catch (err) {
       showError(
         `${t("ai.downloadErrorPrefix")} ${assetName}`,
-        (err as Error).message || "An unexpected error occurred"
+        (err as Error).message || "An unexpected error occurred",
       );
 
       setDownloadStatusMap((prev) => ({
@@ -395,440 +295,393 @@ export const ArtificialSettings = ({
 
       {isLocal && (
         <>
-      {/* Runtime */}
-      <div className='flex items-center justify-between h-9'>
-        <Label className='w-1/3'>{t("ai.runtime")}</Label>
-        <Select
-          value={llm.runtime}
-          onValueChange={(value) => updateSettings("llm", { runtime: value })}
-        >
-          <SelectTrigger className='w-2/3 text-right'>
-            <SelectValue placeholder={t("ai.runtime.select")} />
-          </SelectTrigger>
-          <SelectContent>
-            {availableRuntimes.map((runtime) => (
-              <SelectItem key={runtime.name} value={runtime.name}>
-                {runtime.label}{" "}
-                <Badge variant='outline'>{runtime.backend.toUpperCase()}</Badge>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+          {/* Runtime */}
+          <div className='flex items-center justify-between h-9'>
+            <Label className='w-1/3'>{t("ai.runtime")}</Label>
+            <Select
+              value={llm.runtime}
+              onValueChange={(value) =>
+                updateSettings("llm", { runtime: value })
+              }
+            >
+              <SelectTrigger className='w-2/3 text-right'>
+                <SelectValue
+                  placeholder={
+                    availableRuntimes.length > 0
+                      ? t("ai.runtime.select")
+                      : t("ai.runtime.none")
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {availableRuntimes.map((runtime) => (
+                  <SelectItem key={runtime.name} value={runtime.name}>
+                    {runtime.label}{" "}
+                    <Badge variant='outline'>
+                      {runtime.backend.toUpperCase()}
+                    </Badge>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-      {/* Model */}
-      <div className='flex items-center justify-between h-9'>
-        <Label className='w-1/3'>{t("ai.model")}</Label>
-        <Select
-          value={llm.model}
-          onValueChange={(value) => {
-            const modelEntry = getModels(system).find(
-              (entry) => entry.model.name === value
-            );
-            const maxLayers = modelEntry?.model.layers ?? 48;
+          {/* Model */}
+          <div className='flex items-center justify-between h-9'>
+            <Label className='w-1/3'>{t("ai.model")}</Label>
+            <Select
+              value={llm.model}
+              onValueChange={(value) => {
+                // Known layer counts prefill the input - but never silently kick
+                // the user out of Auto (-1) mode.
+                const layers = layerCounts[value];
+                updateSettings("llm", {
+                  model: value,
+                  ...(layers > 0 && !autoLayers
+                    ? { settings: { ...settings, gpuLayers: layers } }
+                    : {}),
+                });
+              }}
+            >
+              <SelectTrigger className='w-2/3 text-right'>
+                <SelectValue
+                  placeholder={
+                    downloadedModels.length > 0
+                      ? t("ai.model.select")
+                      : t("ai.model.none")
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {downloadedModels.map((name) => (
+                  <SelectItem key={name} value={name}>
+                    {name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-            updateSettings("llm", {
-              model: value,
-              settings: {
-                ...llm.settings,
-                gpuLayers: maxLayers,
-              },
-            });
-          }}
-        >
-          <SelectTrigger className='w-2/3 text-right'>
-            <SelectValue placeholder={t("ai.model.select")} />
-          </SelectTrigger>
-          <SelectContent>
-            {availableModels.map((model) => {
-              const fullEntry = getModels(system).find(
-                (e) => e.model.name === model.name
-              );
-              const status = fullEntry?.status?.toUpperCase() ?? "UNKNOWN";
+          {/* Context Size */}
+          <div className='flex items-center justify-between h-9'>
+            <Label className='w-1/3'>
+              {t("ai.contextSize")}{" "}
+              {renderParamTooltip("ctx_size", t("ai.contextSize.tooltip"))}
+            </Label>
+            <Input
+              type='number'
+              min={1}
+              max={16384}
+              value={settings.ctxSize}
+              onChange={(e) =>
+                updateSettings("llm", {
+                  settings: { ...settings, ctxSize: Number(e.target.value) },
+                })
+              }
+              className='text-right w-2/3'
+            />
+          </div>
 
-              return (
-                <SelectItem key={model.name} value={model.name}>
-                  {model.label} <Badge variant='outline'>{model.size}</Badge>
-                  <Badge variant='outline'>{status}</Badge>
-                </SelectItem>
-              );
-            })}
-          </SelectContent>
-        </Select>
-      </div>
+          {/* GPU Layers */}
+          <div className='flex items-center justify-between h-9'>
+            <Label className='w-1/3'>
+              {t("ai.gpuLayers")}{" "}
+              {renderParamTooltip(
+                "gpu_layers",
+                knownLayers > 0
+                  ? t("ai.gpuLayers.tooltip")
+                  : t("ai.gpuLayers.unknown"),
+              )}
+            </Label>
 
-      {/* Context Size */}
-      <div className='flex items-center justify-between h-9'>
-        <Label className='w-1/3'>
-           {t("ai.contextSize")}{" "}
-           {renderParamTooltip(
-             "ctx_size",
-             t("ai.contextSize.tooltip")
-           )}
-        </Label>
-        <Input
-          type='number'
-          min={1}
-          max={16384}
-          value={settings.ctxSize}
-          onChange={(e) =>
-            updateSettings("llm", {
-              settings: { ...settings, ctxSize: Number(e.target.value) },
-            })
-          }
-          className='text-right w-2/3'
-        />
-      </div>
+            <Input
+              type='number'
+              min={0}
+              max={maxGpuLayers}
+              disabled={autoLayers || isCpuRuntime}
+              value={settings.gpuLayers}
+              onChange={(e) =>
+                updateSettings("llm", {
+                  settings: {
+                    ...settings,
+                    gpuLayers: Math.min(
+                      Math.max(0, Number(e.target.value)),
+                      maxGpuLayers,
+                    ),
+                  },
+                })
+              }
+              className='text-right w-2/3'
+            />
+          </div>
 
-      {/* GPU Layers */}
-      <div className='flex items-center justify-between h-9'>
-        <Label className='w-1/3'>
-           {t("ai.gpuLayers")}{" "}
-           {renderParamTooltip(
-             "gpu_layers",
-             t("ai.gpuLayers.tooltip")
-           )}
-        </Label>
+          {/* Auto GPU Offload */}
+          <div className='flex items-center justify-between h-9'>
+            <Label className='w-1/3'>
+              {t("ai.autoGpuLayers")}{" "}
+              {renderParamTooltip(
+                "gpu_layers=-1",
+                t("ai.autoGpuLayers.tooltip"),
+              )}
+            </Label>
+            <Switch
+              checked={autoLayers}
+              disabled={isCpuRuntime}
+              onCheckedChange={(checked) =>
+                updateSettings("llm", {
+                  settings: {
+                    ...settings,
+                    // "Auto" is spelled exactly how llama.cpp understands it.
+                    gpuLayers: checked
+                      ? -1
+                      : Math.min(Math.max(0, settings.gpuLayers), maxGpuLayers),
+                  },
+                })
+              }
+            />
+          </div>
 
-        <Input
-          type='number'
-          min={0}
-          disabled={
-            getRuntimes(system).find((r) => r.runtime.name === llm.runtime)
-              ?.runtime.backend === "cpu"
-          }
-          max={
-            getModels(system).find((entry) => entry.model.name === llm.model)
-              ?.model.layers ?? 48
-          }
-          value={settings.gpuLayers}
-          onChange={(e) =>
-            updateSettings("llm", {
-              settings: {
-                ...settings,
-                gpuLayers: Math.min(
-                  Math.max(0, Number(e.target.value)),
-                  getModels(system).find(
-                    (entry) => entry.model.name === llm.model
-                  )?.model.layers ?? 48
-                ),
-              },
-            })
-          }
-          className='text-right w-2/3'
-        />
-      </div>
+          {/* Flash Attention */}
+          <div className='flex items-center justify-between h-9'>
+            <Label className='w-1/3'>
+              {t("ai.flashAttention")}{" "}
+              {renderParamTooltip("flash_attn", t("ai.flashAttention.tooltip"))}
+            </Label>
+            <Switch
+              checked={settings.flashAttn}
+              onCheckedChange={(checked) =>
+                updateSettings("llm", {
+                  settings: { ...settings, flashAttn: checked },
+                })
+              }
+            />
+          </div>
 
-      {/* Flash Attention */}
-      <div className='flex items-center justify-between h-9'>
-        <Label className='w-1/3'>
-           {t("ai.flashAttention")}{" "}
-           {renderParamTooltip(
-             "flash_attn",
-             t("ai.flashAttention.tooltip")
-           )}
-        </Label>
-        <Switch
-          checked={settings.flashAttn}
-          onCheckedChange={(checked) =>
-            updateSettings("llm", {
-              settings: { ...settings, flashAttn: checked },
-            })
-          }
-        />
-      </div>
+          {/* Memory Lock */}
+          <div className='flex items-center justify-between h-9'>
+            <Label className='w-1/3'>
+              {t("ai.memoryLock")}{" "}
+              {renderParamTooltip("mlock", t("ai.memoryLock.tooltip"))}
+            </Label>
+            <Switch
+              checked={settings.mlock}
+              onCheckedChange={(checked) =>
+                updateSettings("llm", {
+                  settings: { ...settings, mlock: checked },
+                })
+              }
+            />
+          </div>
 
-      {/* Memory Lock */}
-      <div className='flex items-center justify-between h-9'>
-        <Label className='w-1/3'>
-           {t("ai.memoryLock")}{" "}
-           {renderParamTooltip(
-             "mlock",
-             t("ai.memoryLock.tooltip")
-           )}
-        </Label>
-        <Switch
-          checked={settings.mlock}
-          onCheckedChange={(checked) =>
-            updateSettings("llm", {
-              settings: { ...settings, mlock: checked },
-            })
-          }
-        />
-      </div>
+          {/* Disable MMAP */}
+          <div className='flex items-center justify-between h-9'>
+            <Label className='w-1/3'>
+              {t("ai.disableMmap")}{" "}
+              {renderParamTooltip("no_mmap", t("ai.disableMmap.tooltip"))}
+            </Label>
+            <Switch
+              checked={settings.noMmap}
+              onCheckedChange={(checked) =>
+                updateSettings("llm", {
+                  settings: { ...settings, noMmap: checked },
+                })
+              }
+            />
+          </div>
 
-      {/* Disable MMAP */}
-      <div className='flex items-center justify-between h-9'>
-        <Label className='w-1/3'>
-           {t("ai.disableMmap")}{" "}
-           {renderParamTooltip(
-             "no_mmap",
-             t("ai.disableMmap.tooltip")
-           )}
-        </Label>
-        <Switch
-          checked={settings.noMmap}
-          onCheckedChange={(checked) =>
-            updateSettings("llm", {
-              settings: { ...settings, noMmap: checked },
-            })
-          }
-        />
-      </div>
-
-      {/* Reset */}
-      <Button
-        className='text-destructive'
-        variant={"ghost"}
-        onClick={() => {
-          updateSettings("llm", stockSettings);
-        }}
-      >
-        <RotateCcw className='mr-1' /> {t("ai.resetDefaults")}
-      </Button>
-
-      {/* Description */}
-      <div className='flex flex-col gap-1.5 my-2'>
-        <CardTitle className='text-2xl font-semibold'>{t("ai.models")}</CardTitle>
-        <CardDescription className='text-sm text-muted-foreground'>
-          {t("ai.models.description")}
-        </CardDescription>
-      </div>
-
-      <div className='flex gap-4 overflow-x-auto scrollbar-override pb-2'>
-        {getModels(system).map((entry) => (
-          <div
-            key={entry.model.name}
-            className='min-w-[260px] shrink-0 border rounded-lg p-4 flex flex-col justify-between shadow-sm bg-background gap-3'
+          {/* Reset */}
+          <Button
+            className='text-destructive'
+            variant={"ghost"}
+            onClick={() => {
+              updateSettings("llm", stockSettings);
+            }}
           >
-            <div className='font-medium text-lg'>
-              {entry.model.label}{" "}
-              <span className='text-muted-foreground text-sm'>
-                ({entry.model.size})
-              </span>
-            </div>
+            <RotateCcw className='mr-1' /> {t("ai.resetDefaults")}
+          </Button>
 
-            <div className='flex flex-wrap gap-2'>
-              <Badge variant='outline' className='flex items-center gap-1'>
-                {entry.status === "gpu" ? (
-                  <>
-                    <Microchip className='h-3.5 w-3.5' />
-                    {t("ai.gpuCompatible")}
-                  </>
-                ) : entry.status === "cpu" ? (
-                  <>
-                    <Cpu className='h-3.5 w-3.5' />
-                    {t("ai.cpuCompatible")}
-                  </>
-                ) : (
-                  <>
-                    <X className='h-3.5 w-3.5' />
-                    {t("common.unsupported")}
-                  </>
-                )}
-              </Badge>
-              <Badge variant='outline'>{entry.model.parameters}</Badge>
-              <Badge variant='outline'>{entry.model.quantization}</Badge>
-            </div>
+          {/* Live Hugging Face model browser */}
+          <HfModelBrowser onChanged={setDownloadedModels} />
 
-            <div className='flex gap-2 mt-2'>
-              <Button
-                size='sm'
-                disabled={
-                  !entry.model.download ||
-                  entry.status === "unsupported" ||
-                  downloadStatusMap[entry.model.name.replace(/\./g, "_")]
-                    ?.state === "ready" ||
-                  downloadStatusMap[entry.model.name.replace(/\./g, "_")]
-                    ?.state === "downloading" ||
-                  deletingModel === entry.model.name.replace(/\./g, "_")
-                }
-                onClick={() => {
-                  handleDownloadClick(
-                    entry.model.name.replace(/\./g, "_"),
-                    entry.model.download,
-                    "model"
-                  );
-                }}
-                className='flex-grow'
+          {/* Runtime download lifecycle: status badges + auto-refresh of the
+          runtime list once a runtime finishes extracting. */}
+          {getRuntimes(system).map((entry) => (
+            <RuntimeWatcher
+              key={entry.runtime.name}
+              name={entry.runtime.name}
+              onStatus={(patch) =>
+                setDownloadStatusMap((prev) => ({
+                  ...prev,
+                  [entry.runtime.name]: {
+                    ...prev[entry.runtime.name],
+                    ...patch,
+                  },
+                }))
+              }
+              onSettled={refreshRuntimes}
+            />
+          ))}
+
+          {/* Description */}
+          <div className='flex flex-col gap-1.5 my-2'>
+            <CardTitle className='text-2xl font-semibold'>
+              {t("ai.runtimes")}
+            </CardTitle>
+            <CardDescription className='text-sm text-muted-foreground'>
+              {t("ai.runtimes.description")}
+            </CardDescription>
+          </div>
+
+          <div className='flex flex-col gap-3'>
+            {getRuntimes(system).map((entry) => (
+              <div
+                key={entry.runtime.name}
+                className='flex items-center justify-between border rounded-xl px-2 py-2 pl-4 shadow-sm'
               >
-                {(entry.model.name.replace(/\./g, "_")
-                  ? downloadStatusMap[entry.model.name.replace(/\./g, "_")] ?? {
-                      state: "idle",
-                      progress: 0,
-                    }
-                  : { state: "idle", progress: 0 }
-                ).state === "ready" ? (
-                  <>
-                    <Check className='w-4 h-4 mr-1' />
-                    {t("common.ready")}
-                  </>
-                ) : (entry.model.name.replace(/\./g, "_")
-                    ? downloadStatusMap[
-                        entry.model.name.replace(/\./g, "_")
-                      ] ?? {
-                        state: "idle",
-                        progress: 0,
-                      }
-                    : { state: "idle", progress: 0 }
-                  ).state === "downloading" ? (
-                  <>
-                    <Download className='w-4 h-4 mr-1' />
-                    {t("common.downloading")} (
-                    {Math.round(
-                      (entry.model.name.replace(/\./g, "_")
-                        ? downloadStatusMap[
-                            entry.model.name.replace(/\./g, "_")
-                          ] ?? {
-                            state: "idle",
-                            progress: 0,
-                          }
-                        : { state: "idle", progress: 0 }
-                      ).progress
-                    )}
-                    %)
-                  </>
-                ) : (
-                  <>
-                    <Download className='w-4 h-4 mr-1' />
-                    {t("common.download")}
-                  </>
-                )}
-              </Button>
-              {downloadStatusMap[entry.model.name.replace(/\./g, "_")]
-                ?.state === "ready" && (
-                <Button
-                  variant='ghost'
-                  size='sm'
-                  className='text-destructive'
-                  onClick={() => handleDeleteModel(entry.model.name)}
-                >
-                  <Trash2 className='w-4 h-4' />
-                </Button>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Description */}
-      <div className='flex flex-col gap-1.5 my-2'>
-        <CardTitle className='text-2xl font-semibold'>{t("ai.runtimes")}</CardTitle>
-        <CardDescription className='text-sm text-muted-foreground'>
-          {t("ai.runtimes.description")}
-        </CardDescription>
-      </div>
-
-      <div className='flex flex-col gap-3'>
-        {getRuntimes(system).map((entry) => (
-          <div
-            key={entry.runtime.name}
-            className='flex items-center justify-between border rounded-xl px-2 py-2 pl-4 shadow-sm'
-          >
-            <div className='flex gap-2 items-center'>
-              <span className='font-medium'>
-                {entry.runtime.label}{" "}
-                <span className='text-muted-foreground'>
-                  ({entry.runtime.name})
-                </span>
-              </span>
-              <Badge variant='outline' className='w-fit'>
-                {entry.status === "confirmed" ? (
-                  <>
-                    <Check className='h-5 w-5' /> {t("common.supported")}
-                  </>
-                ) : entry.status === "unknown" ? (
-                  <>
-                    <X className='h-5 w-5' /> {t("common.unknown")}
-                  </>
-                ) : (
-                  <>
-                    <X className='h-5 w-5' /> {t("common.unsupported")}
-                  </>
-                )}
-              </Badge>
-            </div>
-
-            <div className='flex gap-2'>
-              {downloadStatusMap[entry.runtime.name]?.state === "ready" && (
-                <Button
-                  variant='ghost'
-                  size='sm'
-                  className='text-destructive'
-                  onClick={() => handleDeleteRuntime(entry.runtime.name)}
-                >
-                  <Trash2 className='w-4 h-4' />
-                </Button>
-              )}
-              {entry.status !== "unsupported" && (
-                <Button
-                  size='sm'
-                  variant='secondary'
-                  disabled={
-                    !entry.runtime.download ||
-                    downloadStatusMap[entry.runtime.name]?.state === "ready" ||
-                    downloadStatusMap[entry.runtime.name]?.state ===
-                      "downloading" ||
-                    downloadStatusMap[entry.runtime.name]?.state ===
-                      "extracting" ||
-                    deletingRuntime === entry.runtime.name
-                  }
-                  onClick={() =>
-                    handleDownloadClick(
-                      entry.runtime.name,
-                      entry.runtime.download,
-                      "runtime"
-                    )
-                  }
-                >
-                  {(() => {
-                    const state =
-                      downloadStatusMap[entry.runtime.name]?.state ?? "idle";
-                    const progress =
-                      downloadStatusMap[entry.runtime.name]?.progress ?? 0;
-
-                    if (state === "ready") {
-                      return (
-                        <>
-                          <Check className='w-4 h-4 mr-1' />
-                          {t("common.ready")}
-                        </>
-                      );
-                    }
-
-                    if (state === "downloading") {
-                      return (
-                        <>
-                          <Download className='w-4 h-4 mr-1' />
-                          {t("common.downloading")} ({Math.round(progress)}%)
-                        </>
-                      );
-                    }
-
-                    if (state === "extracting") {
-                      return (
-                        <>
-                          <Download className='w-4 h-4 mr-1' />
-                          {t("common.extracting")}
-                        </>
-                      );
-                    }
-
-                    return (
+                <div className='flex gap-2 items-center'>
+                  <span className='font-medium'>
+                    {entry.runtime.label}{" "}
+                    <span className='text-muted-foreground'>
+                      ({entry.runtime.name})
+                    </span>
+                  </span>
+                  <Badge variant='outline' className='w-fit'>
+                    {entry.status === "confirmed" ? (
                       <>
-                        <Download className='w-4 h-4 mr-1' />
-                          {t("common.download")}
+                        <Check className='h-5 w-5' /> {t("common.supported")}
                       </>
-                    );
-                  })()}
-                </Button>
-              )}
-            </div>
+                    ) : entry.status === "unknown" ? (
+                      <>
+                        <X className='h-5 w-5' /> {t("common.unknown")}
+                      </>
+                    ) : (
+                      <>
+                        <X className='h-5 w-5' /> {t("common.unsupported")}
+                      </>
+                    )}
+                  </Badge>
+                </div>
+
+                <div className='flex gap-2'>
+                  {downloadStatusMap[entry.runtime.name]?.state === "ready" && (
+                    <Button
+                      variant='ghost'
+                      size='sm'
+                      className='text-destructive'
+                      onClick={() => handleDeleteRuntime(entry.runtime.name)}
+                    >
+                      <Trash2 className='w-4 h-4' />
+                    </Button>
+                  )}
+                  {entry.status !== "unsupported" && (
+                    <Button
+                      size='sm'
+                      variant='secondary'
+                      disabled={
+                        !entry.runtime.download ||
+                        downloadStatusMap[entry.runtime.name]?.state ===
+                          "ready" ||
+                        downloadStatusMap[entry.runtime.name]?.state ===
+                          "downloading" ||
+                        downloadStatusMap[entry.runtime.name]?.state ===
+                          "extracting" ||
+                        deletingRuntime === entry.runtime.name
+                      }
+                      onClick={() =>
+                        handleDownloadClick(
+                          entry.runtime.name,
+                          entry.runtime.download,
+                          "runtime",
+                        )
+                      }
+                    >
+                      {(() => {
+                        const state =
+                          downloadStatusMap[entry.runtime.name]?.state ??
+                          "idle";
+                        const progress =
+                          downloadStatusMap[entry.runtime.name]?.progress ?? 0;
+
+                        if (state === "ready") {
+                          return (
+                            <>
+                              <Check className='w-4 h-4 mr-1' />
+                              {t("common.ready")}
+                            </>
+                          );
+                        }
+
+                        if (state === "downloading") {
+                          return (
+                            <>
+                              <Download className='w-4 h-4 mr-1' />
+                              {t("common.downloading")} ({Math.round(progress)}
+                              %)
+                            </>
+                          );
+                        }
+
+                        if (state === "extracting") {
+                          return (
+                            <>
+                              <Download className='w-4 h-4 mr-1' />
+                              {t("common.extracting")}
+                            </>
+                          );
+                        }
+
+                        return (
+                          <>
+                            <Download className='w-4 h-4 mr-1' />
+                            {t("common.download")}
+                          </>
+                        );
+                      })()}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
         </>
       )}
     </div>
   );
 };
+
+/* ------------------------------------------------------------------ */
+/* Runtime download lifecycle watcher                                  */
+/* ------------------------------------------------------------------ */
+
+function RuntimeWatcher({
+  name,
+  onStatus,
+  onSettled,
+}: {
+  name: string;
+  onStatus: (patch: { state?: DownloadState; progress?: number }) => void;
+  onSettled: () => void;
+}) {
+  const { t } = useLanguage();
+
+  useDownloadListeners(name, {
+    onProgress: (progress) => onStatus({ state: "downloading", progress }),
+    onComplete: () => onStatus({ state: "extracting" }),
+    onError: (error) => {
+      showError(`${t("ai.downloadErrorPrefix")} ${name}`, error);
+      onStatus({ state: "error", progress: 0 });
+    },
+    // Extraction finishing is what actually makes the runtime usable, so the
+    // list refresh happens here rather than on raw download completion.
+    onExtractComplete: () => {
+      onStatus({ state: "ready", progress: 100 });
+      onSettled();
+    },
+    onExtractError: (error) => {
+      showError(`${t("ai.extractErrorPrefix")} ${name}`, error);
+      onStatus({ state: "error", progress: 0 });
+    },
+  });
+
+  return null;
+}
