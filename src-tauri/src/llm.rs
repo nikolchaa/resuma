@@ -24,10 +24,16 @@ pub async fn call_llm(prompt: String, llm_settings: Value) -> Result<String, Str
     let app_data = get_app_data_path()?;
     let normalized_model = model.replace(".", "_");
 
-    let model_path = app_data
-        .join("models")
-        .join(&normalized_model)
-        .join(format!("{}.gguf", model));
+    // The model id is just the download folder; the actual weights file name
+    // varies per source (Hugging Face uploads, sharded multi-part models), so
+    // scan for GGUF files and take the first shard lexicographically.
+    let model_dir = app_data.join("models").join(&normalized_model);
+    let model_path = find_gguf_file(&model_dir).ok_or_else(|| {
+        format!(
+            "No .gguf model file found in {:?}",
+            model_dir.to_string_lossy()
+        )
+    })?;
 
     #[cfg(target_os = "windows")]
     let runtime_path = app_data
@@ -77,7 +83,13 @@ pub async fn call_llm(prompt: String, llm_settings: Value) -> Result<String, Str
             args.push("--flash-attn".to_string());
         }
 
-        if let Some(gpu) = settings.get("gpuLayers").and_then(|v| v.as_u64()) {
+        // gpu_layers may be -1 ("auto" - llama.cpp offloads everything that
+        // fits), 0 (CPU-only execution), or an explicit layer count.
+        if let Some(gpu) = settings
+            .get("gpuLayers")
+            .and_then(|v| v.as_i64())
+            .filter(|gpu| *gpu >= -1)
+        {
             args.push("--gpu-layers".to_string());
             args.push(gpu.to_string());
         }
@@ -130,6 +142,27 @@ fn get_app_data_path() -> Result<PathBuf, String> {
     data_dir()
         .map(|base| base.join("com.resuma.app"))
         .ok_or("Failed to resolve platform-specific app data directory.".to_string())
+}
+
+/// Sharded GGUFs load from their first part ("-00001-of-…"), which sorts
+/// first alphabetically, so the lexicographically smallest file is correct
+/// for both single-file and sharded models.
+fn find_gguf_file(model_dir: &PathBuf) -> Option<PathBuf> {
+    let mut ggufs: Vec<PathBuf> = std::fs::read_dir(model_dir)
+        .ok()?
+        .filter_map(|entry| entry.ok())
+        .map(|entry| entry.path())
+        .filter(|path| {
+            path.is_file()
+                && path
+                    .extension()
+                    .map(|ext| ext.eq_ignore_ascii_case("gguf"))
+                    .unwrap_or(false)
+        })
+        .collect();
+
+    ggufs.sort();
+    ggufs.into_iter().next()
 }
 
 pub fn extract_think_to_end(text: &str) -> Option<String> {
