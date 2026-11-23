@@ -18,6 +18,7 @@ import { showWarning } from "@/lib/toastUtils";
 import { ArrowLeft } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAiEnabled } from "@/hooks/useAiEnabled";
+import { normalizeResume } from "@/lib/resumeMigration";
 
 type ResumeWizardProps = {
   generateThumbnail: (data: ResumeData) => Promise<string>;
@@ -114,14 +115,15 @@ export const ResumeWizard = ({ generateThumbnail }: ResumeWizardProps) => {
     };
 
     if (!trim && !enhance) {
-      const newResume: ResumeData = {
+      // Normalised so new files carry the current schema and defaults.
+      const newResume: ResumeData = normalizeResume({
         id: suggestedId,
         title,
         updated: new Date().toISOString(),
         image: "https://placehold.co/210x297?text=New+Resume",
         content,
         jobDesc: jobDesc || undefined,
-      };
+      })!;
       newResume.image = await generateThumbnail(newResume);
 
       await saveResume(newResume);
@@ -236,14 +238,15 @@ export const ResumeWizard = ({ generateThumbnail }: ResumeWizardProps) => {
     setCurrentSection(t("wizard.status.finalizing"));
     await new Promise((res) => setTimeout(res, 1500));
 
-    const newResume: ResumeData = {
+    // Normalised so AI-edited content can't leave malformed fields behind.
+    const newResume: ResumeData = normalizeResume({
       id: suggestedId,
       title,
       updated: new Date().toISOString(),
       image: "https://placehold.co/210x297?text=New+Resume",
       content,
       jobDesc: jobDesc || undefined,
-    };
+    })!;
     newResume.image = await generateThumbnail(newResume);
 
     await saveResume(newResume);
