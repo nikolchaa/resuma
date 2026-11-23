@@ -106,7 +106,12 @@ export async function saveResume(data: ResumeData): Promise<void> {
   await writeFile(
     path,
     new TextEncoder().encode(
-      JSON.stringify({ ...data, schema: CURRENT_SCHEMA }, null, 2)
+      JSON.stringify(
+        // Never downgrade the stamp of a file written by a newer Resuma.
+        { ...data, schema: Math.max(data.schema ?? 0, CURRENT_SCHEMA) },
+        null,
+        2
+      )
     ),
     {
       baseDir: BaseDirectory.AppData,
