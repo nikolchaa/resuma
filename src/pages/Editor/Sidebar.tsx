@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { DesignEditor } from "./DesignEditor";
+import { CustomSectionsEditor } from "./CustomSectionsEditor";
+import type { EditorMode } from "@/contexts/OnboardingContext";
 import { ArrowLeft } from "lucide-react";
 import { PersonalEditor } from "./PersonalEditor";
 import { ExperienceEditor } from "./ExperienceEditor";
@@ -20,6 +23,8 @@ type SidebarProps = {
   setDraft: React.Dispatch<React.SetStateAction<ResumeData | null>>;
   handleDiscard: () => void;
   handleSave: () => void;
+  mode: EditorMode;
+  setMode: (mode: EditorMode) => void;
 };
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -27,9 +32,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setDraft,
   handleDiscard,
   handleSave,
+  mode,
+  setMode,
 }) => {
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<string>("resume");
+
+  // Design-only tabs disappear in Simple mode; fall back to the first tab.
+  useEffect(() => {
+    if (mode === "simple" && (activeTab === "design" || activeTab === "custom")) {
+      setActiveTab("resume");
+    }
+  }, [mode, activeTab]);
   const [openLoader, setOpenLoader] = useState(false);
   const [currentSection, setCurrentSection] = useState<string | undefined>(
     undefined
@@ -68,11 +82,40 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: "projects", label: t("editor.sidebar.projects") },
     { id: "skills", label: t("editor.sidebar.skills") },
     { id: "awards", label: t("editor.sidebar.awards") },
+    ...(mode === "design"
+      ? [
+          { id: "custom", label: t("editor.sidebar.custom") },
+          { id: "design", label: t("editor.sidebar.design") },
+        ]
+      : []),
   ];
 
   return (
     <div className='bg-background min-w-[28rem] w-[28rem] max-w-[28rem] border-r shadow-sm flex flex-col'>
-      <Logo className='w-full p-8' />
+      <Logo className='w-full p-8 pb-4' />
+
+      {/* Editor mode */}
+      <div
+        role='radiogroup'
+        aria-label={t("editor.mode.label")}
+        className='mx-4 mb-2 grid grid-cols-2 gap-1 rounded-lg bg-muted p-1'
+      >
+        {(["simple", "design"] as const).map((m) => (
+          <button
+            key={m}
+            role='radio'
+            aria-checked={mode === m}
+            onClick={() => setMode(m)}
+            className={`rounded-md px-3 py-1 text-sm transition-colors ${
+              mode === m
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {t(`editor.mode.${m}`)}
+          </button>
+        ))}
+      </div>
 
       {/* Custom Tabs */}
       <div className='flex flex-wrap gap-2 p-4 border-b sticky top-0 z-10 bg-background w-full'>
@@ -186,6 +229,32 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 setOpenLoader={setOpenLoader}
                 setCurrentSection={setCurrentSection}
               />
+            </m.div>
+          )}
+          {activeTab === "design" && (
+            <m.div
+              key='design'
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <DesignEditor
+                draft={draft}
+                setDraft={setDraft}
+                onEditCustom={() => setActiveTab("custom")}
+              />
+            </m.div>
+          )}
+          {activeTab === "custom" && (
+            <m.div
+              key='custom'
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <CustomSectionsEditor draft={draft} setDraft={setDraft} />
             </m.div>
           )}
           {activeTab === "resume" && (

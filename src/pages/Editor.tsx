@@ -11,7 +11,7 @@ import { save } from "@tauri-apps/plugin-dialog";
 import { writeFile } from "@tauri-apps/plugin-fs";
 import { Sidebar } from "./Editor/Sidebar";
 import { getSection } from "@/lib/store";
-import { SettingsType } from "@/contexts/OnboardingContext";
+import { EditorMode, SettingsType } from "@/contexts/OnboardingContext";
 import { showError, showSuccess, showWarning } from "@/lib/toastUtils";
 import { updateDiscordPresence } from "@/lib/discord";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -57,6 +57,7 @@ export const Editor = () => {
 
   const [pdfFormat, setPdfFormat] = useState<"A4" | "LETTER">("A4"); // Default
   const [language, setLanguage] = useState<AppLanguage>("en");
+  const [mode, setMode] = useState<EditorMode>("simple");
 
   // Live preview: re-laid-out on every change, painted in place (no flash).
   const { doc, error: renderError } = useRenderedResume(
@@ -88,6 +89,7 @@ export const Editor = () => {
       const format = settings?.paperSize === "US" ? "LETTER" : "A4";
       setPdfFormat(format);
       setLanguage(normalizeLanguage(settings?.language));
+      setMode(settings?.editorMode === "design" ? "design" : "simple");
     };
 
     fetchPaperSize();
@@ -168,6 +170,8 @@ export const Editor = () => {
         setDraft={setDraft}
         handleDiscard={handleDiscard}
         handleSave={handleSave}
+        mode={mode}
+        setMode={setMode}
       />
 
       {/* PDF Preview */}

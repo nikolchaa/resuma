@@ -33,7 +33,7 @@ export const BasicSettings = ({
   setDraftSettings,
   setSettings,
 }: Props) => {
-  const { theme, paperSize, language, contentSize, discordPresence } =
+  const { theme, paperSize, language, contentSize, discordPresence, editorMode } =
     settings;
   const { setTheme } = useTheme();
   const { t, setLanguage } = useLanguage();
@@ -237,6 +237,28 @@ export const BasicSettings = ({
             <SelectItem value='lg'>
               {t("settings.contentSize.large")}
             </SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Default editor mode */}
+      <div className='flex items-center justify-between gap-4'>
+        <div className='flex flex-col gap-1 w-1/3'>
+          <Label>{t("settings.editorMode")}</Label>
+          <span className='text-sm text-muted-foreground'>
+            {t("settings.editorMode.description")}
+          </span>
+        </div>
+        <Select
+          value={editorMode ?? "simple"}
+          onValueChange={(v) => handleChange("editorMode", v)}
+        >
+          <SelectTrigger className='w-2/3'>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value='simple'>{t("editor.mode.simple")}</SelectItem>
+            <SelectItem value='design'>{t("editor.mode.design")}</SelectItem>
           </SelectContent>
         </Select>
       </div>

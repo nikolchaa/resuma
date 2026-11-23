@@ -7,6 +7,9 @@ import {
   RemoteSettings,
 } from "@/lib/resolveProvider";
 
+/** Simple = forms only; Design adds template options, section layout and custom sections. */
+export type EditorMode = "simple" | "design";
+
 export type SettingsType = {
   app: {
     theme: "light" | "dark" | "system";
@@ -15,6 +18,8 @@ export type SettingsType = {
     contentSize: "md" | "lg";
     /** Opt-in Discord Rich Presence (generic text only). Off by default. */
     discordPresence: boolean;
+    /** Editor mode the editor opens in. Missing in older settings = "simple". */
+    editorMode?: EditorMode;
   };
   llm: {
     /** Provider id from data/providers.json; "local" runs bundled llama.cpp. */
@@ -89,6 +94,7 @@ export const defaultState: SettingsType = {
     language: "en",
     contentSize: "md",
     discordPresence: false,
+    editorMode: "simple",
   },
   llm: {
     provider: LOCAL_PROVIDER_ID,
