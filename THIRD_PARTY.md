@@ -11,8 +11,6 @@ This project, **Resuma**, makes use of various third-party open-source libraries
 | React                    | MIT     | [https://reactjs.org](https://reactjs.org)                                                     |
 | React DOM                | MIT     | [https://reactjs.org](https://reactjs.org)                                                     |
 | react-router-dom         | MIT     | [https://reactrouter.com](https://reactrouter.com)                                             |
-| @react-pdf/renderer      | MIT     | [https://github.com/diegomura/react-pdf](https://github.com/diegomura/react-pdf)               |
-| react-pdf                | MIT     | [https://github.com/wojtekmaj/react-pdf](https://github.com/wojtekmaj/react-pdf)               |
 | pdf-lib                  | MIT     | [https://github.com/Hopding/pdf-lib](https://github.com/Hopding/pdf-lib)                       |
 | @pdf-lib/fontkit         | MIT     | [https://github.com/Hopding/fontkit](https://github.com/Hopding/fontkit)                       |
 | motion                   | MIT     | [https://motion.dev](https://motion.dev)                                                       |
@@ -27,6 +25,7 @@ This project, **Resuma**, makes use of various third-party open-source libraries
 | vite                     | MIT     | [https://vitejs.dev](https://vitejs.dev)                                                       |
 | vite-plugin-svgr         | MIT     | [https://github.com/pd4d10/vite-plugin-svgr](https://github.com/pd4d10/vite-plugin-svgr)       |
 | vitest (development)     | MIT     | [https://vitest.dev](https://vitest.dev)                                                       |
+| pdfjs-dist (development) | Apache 2.0 | [https://github.com/mozilla/pdf.js](https://github.com/mozilla/pdf.js)                     |
 
 ### Tauri and Rust Dependencies
 
