@@ -1,0 +1,74 @@
+\template[id=modern, name=Modern, version=1]
+\option[accent, type=color, default=#00d9cb, label="Accent colour"]
+
+\page{margin: 40; font-family: @font; font-size: 11; color: #414141}
+
+\style[name]{font-size: 24; text-transform: uppercase; text-align: center; margin-bottom: 4}
+\style[first]{font-weight: light; color: #5D5D5D}
+\style[last]{font-weight: bold; color: #414141}
+\style[location]{font-size: 8; font-weight: bold; color: @accent; text-transform: uppercase;
+  text-align: center; margin-bottom: 3}
+\style[contact]{font-size: 8; color: #999999; text-align: center; margin-bottom: 6}
+\style[heading]{font-size: 14; font-weight: bold; color: #222222; text-transform: uppercase;
+  margin-top: 10; margin-bottom: 4; padding-bottom: 2; border-bottom: 1 @accent; keep: with-next}
+\style[entry]{margin-bottom: 6}
+\style[title]{font-size: 10; font-weight: bold; color: #333333}
+\style[subtitle]{font-size: 9; color: #5D5D5D}
+\style[date]{font-size: 8; color: #5D5D5D}
+\style[desc]{font-size: 9; color: #414141; margin-top: 2}
+
+\header{
+  \p[name]{\span[first]{\v[first]{fullName}} \span[last]{\v[rest]{fullName}}}
+  \if{location}{\p[location]{\v[nolink]{location}}}
+  \p[contact]{\join[sep=" | "]{\v{email}}{\v{phone}}{\v{website}}{\v{linkedin}}{\v{github}}}
+}
+
+\section[education]{
+  \p[heading]{\label{education}}
+  \entries[entry]{
+    \p[title]{\v{school}}
+    \p[subtitle]{\join[sep=" — "]{\v{degree}}{\v{location}}}
+    \p[date]{\range[sep=" - "]{date}}
+    \if{gpa}{\p[desc]{\label{gpa}: \v{gpa}}}
+    \if{courses}{\p[desc]{\label{courses}: \list[sep=", "]{courses}}}
+  }
+}
+
+\section[experience]{
+  \p[heading]{\label{experience}}
+  \entries[entry]{
+    \p[title]{\v{jobTitle}}
+    \p[subtitle]{\join[sep=" — "]{\v{company}}{\v{location}}}
+    \p[date]{\range[sep=" - "]{date}}
+    \if{description}{\p[desc]{\v{description}}}
+    \if{notes}{\p[desc]{\lines[prefix="• "]{notes}}}
+  }
+}
+
+\section[projects]{
+  \p[heading]{\label{projects}}
+  \entries[entry]{
+    \p[title]{\v{name}}
+    \p[subtitle]{\join[sep=" — "]{\v{date.from}}{\v[nolink]{link}}}
+    \p[desc]{\v{description}}
+    \if{technologies}{\p[desc]{\label{tech}: \list[sep=", "]{technologies}}}
+  }
+}
+
+\section[awards]{
+  \p[heading]{\label{awards}}
+  \entries[entry]{
+    \p[title]{\v{title}}
+    \p[subtitle]{\join[sep=" — "]{\v{organizer}}{\v{location}}}
+    \p[date]{\v{date.from}}
+    \p[desc]{\v{description}}
+  }
+}
+
+\section[skills]{
+  \p[heading]{\label{skills}}
+  \entries[entry]{
+    \p[title]{\v{category}}
+    \p[desc]{\list[sep=", "]{items}}
+  }
+}

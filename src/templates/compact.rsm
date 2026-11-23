@@ -1,0 +1,65 @@
+\template[id=compact, name=Compact, version=1]
+
+\page{margin: 40; font-family: @font; font-size: 11; color: #414141}
+
+\style[name]{font-size: 18; font-weight: bold; text-transform: uppercase; margin-bottom: 2}
+\style[contact]{font-size: 9; color: #1f2937; margin-bottom: 2}
+\style[hr]{margin-top: 8; border-bottom: 1 #888888}
+\style[heading]{font-size: 14; font-weight: bold; text-transform: uppercase;
+  margin-top: 10; margin-bottom: 4; keep: with-next}
+\style[entry]{margin-bottom: 6}
+\style[bold]{font-weight: bold}
+\style[sub]{font-size: 9}
+
+\header{
+  \p[name]{\v{fullName}}
+  \p[contact]{\join[sep=" • "]{\v[nolink]{location}}{\v{phone}}}
+  \p[contact]{\join[sep=" • "]{\v{email}}{\v{website}}{\v{linkedin}}{\v{github}}}
+  \hr[hr]
+}
+
+\section[education]{
+  \p[heading]{\label{education}}
+  \entries[entry]{
+    \p[bold]{\join[sep=" — "]{\v{degree}}{\v{school}}}
+    \p[sub]{\join[sep=" · "]{\v{location}}{\range[sep=" - "]{date}}}
+    \if{gpa}{\p[sub]{\label{gpa}: \v{gpa}}}
+    \if{courses}{\p[sub]{\label{relevantCoursework}: \list[sep=", "]{courses}}}
+  }
+}
+
+\section[experience]{
+  \p[heading]{\label{experience}}
+  \entries[entry]{
+    \p[bold]{\join[sep=" — "]{\v{jobTitle}}{\v{company}}}
+    \p[sub]{\join[sep=" · "]{\v{location}}{\range[sep=" - "]{date}}}
+    \if{description}{\p[sub]{\v{description}}}
+    \each{notes}{\p[sub]{• \v{.}}}
+  }
+}
+
+\section[projects]{
+  \p[heading]{\label{projects}}
+  \entries[entry]{
+    \p[bold]{\v{name}\if{link}{ — \span[sub]{\v{link}}}}
+    \p[sub]{\v{date.from}}
+    \p[sub]{\v{description}}
+    \if{technologies}{\p[sub]{\label{tech}: \list[sep=", "]{technologies}}}
+  }
+}
+
+\section[awards]{
+  \p[heading]{\label{awards}}
+  \entries[entry]{
+    \p[bold]{\join[sep=" — "]{\v{title}}{\v{organizer}}}
+    \p[sub]{\join[sep=" · "]{\v{location}}{\v{date.from}}}
+    \p[sub]{\v{description}}
+  }
+}
+
+\section[skills]{
+  \p[heading]{\label{skills}}
+  \entries{
+    \p[sub]{\span[bold]{\v{category}: }\list[sep=", "]{items}}
+  }
+}
