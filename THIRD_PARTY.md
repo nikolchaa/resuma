@@ -13,6 +13,7 @@ This project, **Resuma**, makes use of various third-party open-source libraries
 | react-router-dom         | MIT     | [https://reactrouter.com](https://reactrouter.com)                                             |
 | pdf-lib                  | MIT     | [https://github.com/Hopding/pdf-lib](https://github.com/Hopding/pdf-lib)                       |
 | @pdf-lib/fontkit         | MIT     | [https://github.com/Hopding/fontkit](https://github.com/Hopding/fontkit)                       |
+| CodeMirror 6 (`codemirror`, `@codemirror/*`) | MIT | [https://codemirror.net](https://codemirror.net)                                  |
 | motion                   | MIT     | [https://motion.dev](https://motion.dev)                                                       |
 | canvas-confetti          | MIT     | [https://github.com/catdad/canvas-confetti](https://github.com/catdad/canvas-confetti)         |
 | lucide-react             | ISC     | [https://github.com/lucide-icons/lucide](https://github.com/lucide-icons/lucide)               |
