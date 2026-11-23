@@ -38,12 +38,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<string>("resume");
 
+  // Custom sections stay editable in Simple mode once a resume has any.
+  const hasCustom = (draft?.content.custom?.length ?? 0) > 0;
+  const showCustomTab = mode === "design" || hasCustom;
+
   // Design-only tabs disappear in Simple mode; fall back to the first tab.
   useEffect(() => {
-    if (mode === "simple" && (activeTab === "design" || activeTab === "custom")) {
+    if (
+      (mode === "simple" && activeTab === "design") ||
+      (activeTab === "custom" && !showCustomTab)
+    ) {
       setActiveTab("resume");
     }
-  }, [mode, activeTab]);
+  }, [mode, activeTab, showCustomTab]);
+
+  const hiddenSections = new Set(draft?.content.layout?.hidden ?? []);
+  const unhide = (key: string) =>
+    setDraft((d) =>
+      d?.content.layout
+        ? {
+            ...d,
+            content: {
+              ...d.content,
+              layout: {
+                ...d.content.layout,
+                hidden: (d.content.layout.hidden ?? []).filter((k) => k !== key),
+              },
+            },
+          }
+        : d
+    );
   const [openLoader, setOpenLoader] = useState(false);
   const [currentSection, setCurrentSection] = useState<string | undefined>(
     undefined
@@ -82,12 +106,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: "projects", label: t("editor.sidebar.projects") },
     { id: "skills", label: t("editor.sidebar.skills") },
     { id: "awards", label: t("editor.sidebar.awards") },
-    ...(mode === "design"
-      ? [
-          { id: "custom", label: t("editor.sidebar.custom") },
-          { id: "design", label: t("editor.sidebar.design") },
-        ]
-      : []),
+    ...(showCustomTab ? [{ id: "custom", label: t("editor.sidebar.custom") }] : []),
+    ...(mode === "design" ? [{ id: "design", label: t("editor.sidebar.design") }] : []),
   ];
 
   return (
@@ -137,6 +157,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Tab Content */}
       <div className='flex-1 overflow-y-auto p-4'>
+        {hiddenSections.has(activeTab as never) && (
+          <div className='mb-4 flex items-center justify-between gap-3 rounded-md border border-dashed p-3 text-sm text-muted-foreground'>
+            <span>{t("design.sections.hiddenNote")}</span>
+            <Button size='sm' variant='outline' onClick={() => unhide(activeTab)}>
+              {t("design.sections.show")}
+            </Button>
+          </div>
+        )}
         <AnimatePresence mode='wait'>
           {activeTab === "personal" && (
             <m.div

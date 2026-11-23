@@ -17,6 +17,20 @@ export const CustomSectionsEditor = ({ draft, setDraft }: Props) => {
   const { t } = useLanguage();
   if (!draft) return null;
   const sections = draft.content.custom ?? [];
+  const hidden = new Set(draft.content.layout?.hidden ?? []);
+
+  const unhide = (key: SectionKey) =>
+    setDraft((d) =>
+      d?.content.layout
+        ? {
+            ...d,
+            content: {
+              ...d.content,
+              layout: { ...d.content.layout, hidden: (d.content.layout.hidden ?? []).filter((k) => k !== key) },
+            },
+          }
+        : d
+    );
 
   const setSections = (fn: (c: CustomSection[]) => CustomSection[]) =>
     setDraft((d) => (d ? { ...d, content: { ...d.content, custom: fn(d.content.custom ?? []) } } : d));
@@ -59,6 +73,14 @@ export const CustomSectionsEditor = ({ draft, setDraft }: Props) => {
 
       {sections.map((section) => (
         <div key={section.id} className='flex flex-col gap-4 rounded-md border p-3'>
+          {hidden.has(`custom:${section.id}`) && (
+            <div className='flex items-center justify-between gap-3 rounded-md border border-dashed p-3 text-sm text-muted-foreground'>
+              <span>{t("design.sections.hiddenNote")}</span>
+              <Button size='sm' variant='outline' onClick={() => unhide(`custom:${section.id}`)}>
+                {t("design.sections.show")}
+              </Button>
+            </div>
+          )}
           <div className='flex items-center gap-2'>
             <Label className='w-1/3'>{t("design.custom.sectionTitle")}</Label>
             <Input
