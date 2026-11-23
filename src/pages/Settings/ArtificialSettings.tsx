@@ -36,6 +36,7 @@ import {
   providerList,
 } from "@/lib/resolveProvider";
 import { RemoteProviderSetup } from "@/components/RemoteProviderSetup";
+import { ProviderOption } from "@/components/ProviderOption";
 import { HfModelBrowser } from "@/components/HfModelBrowser";
 
 type Props = {
@@ -58,6 +59,7 @@ export const ArtificialSettings = ({
 
   const provider = getProvider(llm.provider);
   const isLocal = provider.kind === "bundled";
+  const isNone = provider.kind === "none";
 
   const [downloadStatusMap, setDownloadStatusMap] = useState<DownloadStatusMap>(
     {},
@@ -166,8 +168,11 @@ export const ArtificialSettings = ({
   }, [system, t]);
 
   useEffect(() => {
+    // With "No AI" nothing was ever downloaded, so the runtimes folder may
+    // not exist; scanning it would only surface a spurious error toast.
+    if (isNone) return;
     refreshRuntimes();
-  }, [refreshRuntimes]);
+  }, [refreshRuntimes, isNone]);
 
   const handleDeleteRuntime = async (runtimeName: string) => {
     setDeletingRuntime(runtimeName);
@@ -273,17 +278,20 @@ export const ArtificialSettings = ({
           <SelectContent>
             {providerList.map((entry) => (
               <SelectItem key={entry.id} value={entry.id}>
-                {entry.label}{" "}
-                <Badge variant='outline'>
-                  {t(`ai.provider.kind.${entry.kind}`)}
-                </Badge>
+                <ProviderOption provider={entry} />
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
 
-      {!isLocal && (
+      {isNone && (
+        <p className='text-sm text-muted-foreground'>
+          {t("ai.provider.noneHint")}
+        </p>
+      )}
+
+      {!isLocal && !isNone && (
         <RemoteProviderSetup
           provider={provider}
           remote={llm.remote}

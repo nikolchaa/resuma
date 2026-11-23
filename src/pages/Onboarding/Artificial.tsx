@@ -67,6 +67,7 @@ import {
   providerList,
 } from "@/lib/resolveProvider";
 import { RemoteProviderSetup } from "@/components/RemoteProviderSetup";
+import { ProviderOption } from "@/components/ProviderOption";
 
 const safeName = (name: string) => name.replace(/\./g, "_");
 
@@ -85,6 +86,7 @@ const Artificial = () => {
 
   const provider = getProvider(state.llm.provider);
   const isLocal = provider.kind === "bundled";
+  const isNone = provider.kind === "none";
 
   const [downloadStatusMap, setDownloadStatusMap] = useState<DownloadStatusMap>(
     {}
@@ -281,8 +283,7 @@ const Artificial = () => {
             <SelectContent>
               {providerList.map((entry) => (
                 <SelectItem key={entry.id} value={entry.id}>
-                  {entry.label}{" "}
-                  <Badge variant='outline'>{t(`ai.provider.kind.${entry.kind}`)}</Badge>
+                  <ProviderOption provider={entry} />
                 </SelectItem>
               ))}
             </SelectContent>
@@ -293,9 +294,14 @@ const Artificial = () => {
               {t("ai.provider.localHint")}
             </p>
           )}
+          {isNone && (
+            <p className='text-xs text-muted-foreground'>
+              {t("ai.provider.noneHint")}
+            </p>
+          )}
         </div>
 
-        {isLocal ? (
+        {isNone ? null : isLocal ? (
           <>
         {/* System Info */}
         <div className='flex flex-col gap-2'>
@@ -612,7 +618,9 @@ const Artificial = () => {
         <div className='flex justify-end mt-4'>
           <Button
             disabled={
-              isLocal
+              isNone
+                ? false
+                : isLocal
                 ? runtimeStatus.state !== "ready" ||
                   !selectedTier ||
                   modelStatus.state !== "ready"

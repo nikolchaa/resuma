@@ -227,6 +227,11 @@ async fn asset_disk_usage(asset_type: String, asset_name: String) -> Result<u64,
 
 #[tauri::command]
 async fn call_llm(prompt: String, llm_settings: serde_json::Value) -> Result<String, String> {
+    // "No AI" provider: refuse outright so nothing is spawned or sent.
+    if llm_settings["provider"].as_str() == Some("none") {
+        return Err("AI features are turned off (No AI provider).".into());
+    }
+
     // "local" runs the bundled llama.cpp binary; everything else is an HTTP
     // provider, cloud or self-hosted.
     let is_local = llm_settings["provider"].as_str().unwrap_or("local") == "local";

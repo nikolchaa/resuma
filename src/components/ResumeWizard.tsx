@@ -17,6 +17,7 @@ import { cleanSpecialCharacters } from "@/lib/resumeUtils";
 import { showWarning } from "@/lib/toastUtils";
 import { ArrowLeft } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAiEnabled } from "@/hooks/useAiEnabled";
 
 type ResumeWizardProps = {
   generateThumbnail: (data: ResumeData) => Promise<string>;
@@ -32,6 +33,10 @@ export const ResumeWizard = ({ generateThumbnail }: ResumeWizardProps) => {
   const [suggestedId, setSuggestedId] = useState("untitled");
   const [trim, setTrim] = useState(false);
   const [currentSection, setCurrentSection] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  // With the "No AI" provider the job-description / trim / enhance steps are
+  // skipped and the resume is created straight from step 1.
+  const aiEnabled = useAiEnabled();
 
   const sectionLabel = (section: string) => {
     switch (section) {
@@ -323,7 +328,33 @@ export const ResumeWizard = ({ generateThumbnail }: ResumeWizardProps) => {
                 <p className='text-sm text-muted-foreground'>
                   {t("wizard.filename")} <code>{suggestedId}.resume</code>
                 </p>
-                <Button onClick={() => setStep(2)}>{t("wizard.next")}</Button>
+                {aiEnabled === false ? (
+                  <>
+                    <p className='text-sm text-muted-foreground'>
+                      {t("ai.off.wizardHint")}
+                    </p>
+                    <Button
+                      disabled={creating}
+                      onClick={async () => {
+                        setCreating(true);
+                        try {
+                          await handleFinish(false);
+                        } finally {
+                          setCreating(false);
+                        }
+                      }}
+                    >
+                      {t("wizard.create")}
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    disabled={aiEnabled === null}
+                    onClick={() => setStep(2)}
+                  >
+                    {t("wizard.next")}
+                  </Button>
+                )}
               </div>
             )}
 

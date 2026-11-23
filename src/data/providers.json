@@ -97,5 +97,16 @@
     "editableBaseUrl": true,
     "editableApi": true,
     "keyUrl": ""
+  },
+  {
+    "id": "none",
+    "label": "No AI",
+    "kind": "none",
+    "api": "llamacpp",
+    "baseUrl": "",
+    "requiresKey": false,
+    "editableBaseUrl": false,
+    "editableApi": false,
+    "keyUrl": ""
   }
 ]

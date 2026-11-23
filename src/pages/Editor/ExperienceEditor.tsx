@@ -8,6 +8,7 @@ import { ResumeData } from "@/lib/resumesStore";
 import { runTextEnhancement } from "@/lib/llmUtils";
 import { showWarning } from "@/lib/toastUtils";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAiEnabled } from "@/hooks/useAiEnabled";
 
 type Props = {
   settings?: ResumeData["content"]["experience"];
@@ -28,6 +29,7 @@ export const ExperienceEditor = ({
   setCurrentSection,
 }: Props) => {
   const { t } = useLanguage();
+  const aiEnabled = useAiEnabled();
   const entries = settings ?? [];
 
   const sync = (next: ResumeData["content"]["experience"]) => {
@@ -143,6 +145,11 @@ export const ExperienceEditor = ({
 
   return (
     <div className='flex flex-col gap-6'>
+      {aiEnabled === false && (
+        <p className='text-sm text-muted-foreground'>
+          {t("ai.off.editorHint")}
+        </p>
+      )}
       {entries.map((entry, idx) => (
         <div key={idx} className='flex flex-col gap-4 border-b pb-4'>
           {/* Job Title */}
@@ -188,13 +195,15 @@ export const ExperienceEditor = ({
           <div className='flex flex-col gap-2'>
             <div className='flex items-center justify-between'>
               <Label>{t("field.description")}</Label>
-              <Button
-                size='icon'
-                variant='outline'
-                onClick={() => handleAIEnhance(idx, "description")}
-              >
-                <Sparkles className='h-4 w-4' />
-              </Button>
+              {aiEnabled && (
+                <Button
+                  size='icon'
+                  variant='outline'
+                  onClick={() => handleAIEnhance(idx, "description")}
+                >
+                  <Sparkles className='h-4 w-4' />
+                </Button>
+              )}
             </div>
             <Textarea
               placeholder={t("placeholder.workDescription")}
@@ -227,13 +236,15 @@ export const ExperienceEditor = ({
                   value={note}
                   onChange={(e) => handleNoteChange(idx, nidx, e.target.value)}
                 />
-                <Button
-                  size='icon'
-                  variant='outline'
-                  onClick={() => handleAIEnhance(idx, "notes", nidx)}
-                >
-                  <Sparkles className='h-4 w-4' />
-                </Button>
+                {aiEnabled && (
+                  <Button
+                    size='icon'
+                    variant='outline'
+                    onClick={() => handleAIEnhance(idx, "notes", nidx)}
+                  >
+                    <Sparkles className='h-4 w-4' />
+                  </Button>
+                )}
                 <Button
                   variant='ghost'
                   className='text-destructive'

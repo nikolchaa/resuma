@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getSettings } from "./store";
 import { SettingsType } from "@/contexts/OnboardingContext";
+import { isAiDisabled } from "./resolveProvider";
 
 type LLMSettings = SettingsType["llm"];
 
@@ -9,6 +10,10 @@ const callLLM = async (prompt: string): Promise<string> => {
   try {
     const settings = await getSettings();
     const llmSettings: LLMSettings = settings.llm;
+
+    if (isAiDisabled(llmSettings?.provider)) {
+      throw new Error("AI features are turned off (No AI provider).");
+    }
 
     const result = await invoke<string>("call_llm", {
       prompt,
