@@ -43,7 +43,7 @@ export const DesignEditor = ({ draft, setDraft, onEditCustom }: Props) => {
   const custom = content.custom ?? [];
   const hidden = new Set(layout.hidden ?? []);
   // Every section in display order, including hidden ones.
-  const keys = sectionOrder(template, { ...content, layout: { ...layout, hidden: [] } });
+  const keys = sectionOrder(template, content, true);
   const options = template.options.filter((o) => o.name !== "font");
   const values = resolveOptionValues(template, draft.font, draft.templateOptions);
 

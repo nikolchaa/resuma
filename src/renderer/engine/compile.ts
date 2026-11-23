@@ -5,6 +5,7 @@
  * resolved here; layout only sees styled paragraphs, stacks, rows and rules.
  */
 import type { ResumeContent, SectionKey } from "@/lib/resumesStore";
+import { orderedSections } from "@/lib/sectionLayout";
 import { AppLanguage, t } from "@/lib/i18n";
 import type { BlockNode, InlineNode, Template } from "../template/template";
 import {
@@ -13,7 +14,6 @@ import {
   LABELS,
   PERSONAL_FIELDS,
   RESUME_FONTS,
-  SECTION_KINDS,
   SectionKind,
   TemplateSectionKind,
 } from "../template/schema";
@@ -373,19 +373,9 @@ export function compileDocument(input: CompileInput): CompiledDocument {
  * remaining sections in the template's order, then custom sections. Hidden
  * sections are dropped.
  */
-export function sectionOrder(template: Template, content: ResumeContent): SectionKey[] {
-  const builtins = template.sections
-    .map((s) => s.kind)
-    .filter((k): k is SectionKind => k !== "*");
-  // Built-ins the template doesn't style still exist; keep them in a stable spot.
-  for (const k of SECTION_KINDS) if (!builtins.includes(k)) builtins.push(k);
-  const customs = (content.custom ?? []).map((c) => `custom:${c.id}` as SectionKey);
-  const all: SectionKey[] = [...builtins, ...customs];
-  const known = new Set(all);
-  const preferred = (content.layout?.order ?? []).filter((k) => known.has(k));
-  const ordered = [...new Set([...preferred, ...all])];
-  const hidden = new Set(content.layout?.hidden ?? []);
-  return ordered.filter((k) => !hidden.has(k));
+export function sectionOrder(template: Template, content: ResumeContent, includeHidden = false): SectionKey[] {
+  const builtins = template.sections.map((s) => s.kind).filter((k): k is SectionKind => k !== "*");
+  return orderedSections(content, builtins, includeHidden);
 }
 
 /** A plain custom-section body for templates without `\section[*]`, reusing their usual style names. */

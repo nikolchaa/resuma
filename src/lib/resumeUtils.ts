@@ -1,4 +1,5 @@
-import { ResumeData } from "@/lib/resumesStore";
+import { ResumeData, SectionKey } from "@/lib/resumesStore";
+import { orderedSections } from "@/lib/sectionLayout";
 
 export const formatResumeTxt = (content: ResumeData["content"]): string => {
   let textOutput = "";
@@ -21,120 +22,105 @@ export const formatResumeTxt = (content: ResumeData["content"]): string => {
     textOutput += "\n";
   }
 
-  // === Education ===
-  if (content.education?.length) {
-    textOutput += "===============================\n";
-    textOutput += "          EDUCATION\n";
-    textOutput += "===============================\n";
+  const dates = (d?: { from?: string; to?: string }) =>
+    d?.from || d?.to ? `${d.from || ""}${d.to ? ` – ${d.to}` : ""}\n` : "";
 
-    content.education.forEach((edu) => {
-      if (edu.degree) textOutput += `${edu.degree}\n`;
-      if (edu.school || edu.location)
-        textOutput += `${edu.school || ""}${
-          edu.location ? `, ${edu.location}` : ""
-        }\n`;
-      if (edu.date?.from || edu.date?.to)
-        textOutput += `${edu.date.from || ""}${
-          edu.date.to ? ` – ${edu.date.to}` : ""
-        }\n`;
-      if (edu.gpa) textOutput += `GPA: ${edu.gpa}\n`;
-      if (edu.courses?.length)
-        textOutput += `Courses: ${edu.courses.join(", ")}\n`;
+  // Section headings: the user's renamed title, else the default (centred as before).
+  const header = (key: SectionKey, centred: string) => {
+    const renamed = content.layout?.titles?.[key]?.trim();
+    textOutput += "===============================\n";
+    textOutput += renamed ? `          ${renamed.toUpperCase()}\n` : centred;
+    textOutput += "===============================\n";
+  };
+
+  const builtins: Record<string, () => void> = {
+    education: () => {
+      if (!content.education?.length) return;
+      header("education", "          EDUCATION\n");
+      content.education.forEach((edu) => {
+        if (edu.degree) textOutput += `${edu.degree}\n`;
+        if (edu.school || edu.location)
+          textOutput += `${edu.school || ""}${edu.location ? `, ${edu.location}` : ""}\n`;
+        textOutput += dates(edu.date);
+        if (edu.gpa) textOutput += `GPA: ${edu.gpa}\n`;
+        if (edu.courses?.length) textOutput += `Courses: ${edu.courses.join(", ")}\n`;
+        textOutput += "\n";
+      });
+    },
+    experience: () => {
+      if (!content.experience?.length) return;
+      header("experience", "         EXPERIENCE\n");
+      content.experience.forEach((exp) => {
+        if (exp.jobTitle) textOutput += `${exp.jobTitle}\n`;
+        if (exp.company || exp.location)
+          textOutput += `${exp.company || ""}${exp.location ? `, ${exp.location}` : ""}\n`;
+        textOutput += dates(exp.date);
+        if (exp.description) textOutput += `${exp.description}\n`;
+        if (exp.notes?.length) {
+          textOutput += "Notes:\n";
+          exp.notes.forEach((note) => (textOutput += `- ${note}\n`));
+        }
+        textOutput += "\n";
+      });
+    },
+    projects: () => {
+      if (!content.projects?.length) return;
+      header("projects", "          PROJECTS\n");
+      content.projects.forEach((proj) => {
+        if (proj.name) textOutput += `${proj.name}\n`;
+        if (proj.date?.from) textOutput += `${proj.date.from}\n`;
+        if (proj.description) textOutput += `${proj.description}\n`;
+        if (proj.technologies?.length)
+          textOutput += `Technologies: ${proj.technologies.join(", ")}\n`;
+        if (proj.link) textOutput += `Link: ${proj.link}\n`;
+        textOutput += "\n";
+      });
+    },
+    skills: () => {
+      if (!content.skills?.length) return;
+      header("skills", "          SKILLS\n");
+      content.skills.forEach((skill) => {
+        if (skill.category && skill.items?.length) {
+          textOutput += `${skill.category}: ${skill.items.join(", ")}\n`;
+        }
+      });
       textOutput += "\n";
-    });
-  }
+    },
+    awards: () => {
+      if (!content.awards?.length) return;
+      header("awards", "          AWARDS\n");
+      content.awards.forEach((award) => {
+        if (award.title) textOutput += `${award.title}\n`;
+        if (award.organizer || award.location)
+          textOutput += `${award.organizer || ""}${award.location ? `, ${award.location}` : ""}\n`;
+        if (award.date?.from) textOutput += `${award.date.from}\n`;
+        if (award.description) textOutput += `${award.description}\n`;
+        textOutput += "\n";
+      });
+    },
+  };
 
-  // === Experience ===
-  if (content.experience?.length) {
-    textOutput += "===============================\n";
-    textOutput += "         EXPERIENCE\n";
-    textOutput += "===============================\n";
-
-    content.experience.forEach((exp) => {
-      if (exp.jobTitle) textOutput += `${exp.jobTitle}\n`;
-      if (exp.company || exp.location)
-        textOutput += `${exp.company || ""}${
-          exp.location ? `, ${exp.location}` : ""
-        }\n`;
-      if (exp.date?.from || exp.date?.to)
-        textOutput += `${exp.date.from || ""}${
-          exp.date.to ? ` – ${exp.date.to}` : ""
-        }\n`;
-      if (exp.description) textOutput += `${exp.description}\n`;
-      if (exp.notes?.length) {
-        textOutput += "Notes:\n";
-        exp.notes.forEach((note) => (textOutput += `- ${note}\n`));
-      }
-      textOutput += "\n";
-    });
-  }
-
-  // === Projects ===
-  if (content.projects?.length) {
-    textOutput += "===============================\n";
-    textOutput += "          PROJECTS\n";
-    textOutput += "===============================\n";
-
-    content.projects.forEach((proj) => {
-      if (proj.name) textOutput += `${proj.name}\n`;
-      if (proj.date?.from) textOutput += `${proj.date.from}\n`;
-      if (proj.description) textOutput += `${proj.description}\n`;
-      if (proj.technologies?.length)
-        textOutput += `Technologies: ${proj.technologies.join(", ")}\n`;
-      if (proj.link) textOutput += `Link: ${proj.link}\n`;
-      textOutput += "\n";
-    });
-  }
-
-  // === Skills ===
-  if (content.skills?.length) {
-    textOutput += "===============================\n";
-    textOutput += "          SKILLS\n";
-    textOutput += "===============================\n";
-
-    content.skills.forEach((skill) => {
-      if (skill.category && skill.items?.length) {
-        textOutput += `${skill.category}: ${skill.items.join(", ")}\n`;
-      }
-    });
-    textOutput += "\n";
-  }
-
-  // === Awards ===
-  if (content.awards?.length) {
-    textOutput += "===============================\n";
-    textOutput += "          AWARDS\n";
-    textOutput += "===============================\n";
-
-    content.awards.forEach((award) => {
-      if (award.title) textOutput += `${award.title}\n`;
-      if (award.organizer || award.location)
-        textOutput += `${award.organizer || ""}${
-          award.location ? `, ${award.location}` : ""
-        }\n`;
-      if (award.date?.from) textOutput += `${award.date.from}\n`;
-      if (award.description) textOutput += `${award.description}\n`;
-      textOutput += "\n";
-    });
-  }
-
-  // === Custom sections ===
-  for (const section of content.custom ?? []) {
-    if (!section.entries?.length) continue;
-    textOutput += "===============================\n";
-    textOutput += `          ${(section.title || "").toUpperCase()}\n`;
-    textOutput += "===============================\n";
-
+  const customSection = (id: string) => {
+    const section = content.custom?.find((s) => s.id === id);
+    if (!section?.entries?.length) return;
+    const key = `custom:${id}` as SectionKey;
+    header(key, `          ${(section.title || "").toUpperCase()}\n`);
     section.entries.forEach((entry) => {
       const head = [entry.title, entry.subtitle].filter(Boolean).join(" — ");
       if (head) textOutput += `${head}\n`;
       if (entry.location) textOutput += `${entry.location}\n`;
-      if (entry.date?.from || entry.date?.to)
-        textOutput += `${entry.date.from || ""}${entry.date.to ? ` – ${entry.date.to}` : ""}\n`;
+      textOutput += dates(entry.date);
       if (entry.description) textOutput += `${entry.description}\n`;
       entry.items?.filter(Boolean).forEach((item) => (textOutput += `- ${item}\n`));
       textOutput += "\n";
     });
+  };
+
+  // Same order and hiding as the rendered resume, so hidden sections also
+  // stay out of the ATS keyword and buzzword checks.
+  for (const key of orderedSections(content)) {
+    if (key.startsWith("custom:")) customSection(key.slice("custom:".length));
+    else builtins[key]?.();
   }
 
   return textOutput;
