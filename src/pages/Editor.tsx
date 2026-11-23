@@ -3,7 +3,8 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { loadResume, saveResume } from "@/lib/resumesStore";
 import { ResumeData } from "@/lib/resumesStore";
 import { ResumeWizard } from "@/components/ResumeWizard";
-import { Download, Minus, Plus, RotateCcw } from "lucide-react";
+import { Download, Minus, Plus, Redo2, RotateCcw, Undo2 } from "lucide-react";
+import { useHistoryState } from "@/hooks/useHistoryState";
 import { Button } from "@/components/ui/button";
 
 import { save } from "@tauri-apps/plugin-dialog";
@@ -31,8 +32,28 @@ export const Editor = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [resume, setResume] = useState<ResumeData | null>(null);
-  const [draft, setDraft] = useState<ResumeData | null>(null);
+  // The draft keeps undo/redo history; typing bursts become one step.
+  const history = useHistoryState<ResumeData>(null);
+  const draft = history.value;
+  const setDraft = history.set;
   const isNew = location.pathname === "/new";
+
+  useEffect(() => {
+    if (isNew) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+      const key = e.key.toLowerCase();
+      if (key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        history.undo();
+      } else if ((key === "z" && e.shiftKey) || key === "y") {
+        e.preventDefault();
+        history.redo();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isNew, history.undo, history.redo]);
 
   const [pdfFormat, setPdfFormat] = useState<"A4" | "LETTER">("A4"); // Default
   const [language, setLanguage] = useState<AppLanguage>("en");
@@ -79,11 +100,11 @@ export const Editor = () => {
           navigate("/", { replace: true });
         } else {
           setResume(res);
-          setDraft(structuredClone(res)); // safe editable copy
+          history.reset(structuredClone(res)); // safe editable copy, fresh history
         }
       });
     }
-  }, [id, isNew, navigate]);
+  }, [id, isNew, navigate, history.reset]);
 
   const handleSave = async () => {
     if (draft) {
@@ -97,7 +118,7 @@ export const Editor = () => {
 
       await saveResume(updatedDraft);
       setResume(structuredClone(updatedDraft)); // Sync resume to draft
-      setDraft(updatedDraft); // Also update the draft state itself
+      history.replace(updatedDraft); // not an undo step: only metadata changed
 
       showSuccess(t("editor.toast.savedTitle"), t("editor.toast.savedDesc"));
     }
@@ -105,7 +126,7 @@ export const Editor = () => {
 
   const handleDiscard = () => {
     if (resume) {
-      setDraft(structuredClone(resume));
+      history.reset(structuredClone(resume));
     }
     navigate("/");
   };
@@ -170,6 +191,29 @@ export const Editor = () => {
           )}
 
           <div className='absolute bottom-8 left-[calc(calc(100vw/2)+calc(28rem/2))] -translate-x-1/2 bg-background border shadow-sm rounded-lg flex items-center gap-2 p-2 z-30 text-foreground'>
+            <Button
+              size='sm'
+              variant='outline'
+              className='hover:text-muted-foreground'
+              onClick={history.undo}
+              disabled={!history.canUndo}
+              title={`${t("editor.undo")} (Ctrl+Z)`}
+              aria-label={t("editor.undo")}
+            >
+              <Undo2 className='h-4 w-4' />
+            </Button>
+            <Button
+              size='sm'
+              variant='outline'
+              className='hover:text-muted-foreground'
+              onClick={history.redo}
+              disabled={!history.canRedo}
+              title={`${t("editor.redo")} (Ctrl+Shift+Z)`}
+              aria-label={t("editor.redo")}
+            >
+              <Redo2 className='h-4 w-4' />
+            </Button>
+            <div className='w-px h-6 bg-border' />
             <Button
               size='sm'
               variant='outline'
