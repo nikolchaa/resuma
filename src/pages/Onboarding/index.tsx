@@ -1,6 +1,6 @@
 import { Progress } from "@/components/ui/progress";
 import { SettingsType, useOnboarding } from "@/contexts/OnboardingContext";
-import { invoke } from "@tauri-apps/api/core";
+import { updateDiscordPresence } from "@/lib/discord";
 import { ArrowLeft } from "lucide-react";
 import { motion as m, AnimatePresence } from "motion/react";
 import { useEffect, useState } from "react";
@@ -74,13 +74,7 @@ export const Onboarding = () => {
       state = stepActivityMap[currentPath].state;
     }
 
-    invoke("set_activity", { details, state }).catch(
-      (error) =>
-        console.log(
-          "Failed to update Discord presence",
-          (error as Error).message
-        ) // only for debugging, not shown to user
-    );
+    updateDiscordPresence(details, state);
   }, [currentPath]);
 
   return (

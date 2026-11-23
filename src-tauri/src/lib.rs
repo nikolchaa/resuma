@@ -240,12 +240,6 @@ async fn call_llm(prompt: String, llm_settings: serde_json::Value) -> Result<Str
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    const DISCORD_CLIENT_ID: &str = "1368618733454495855";
-
-    if let Err(e) = start_rpc(DISCORD_CLIENT_ID.to_string()) {
-        eprintln!("Discord RPC failed to start: {e}");
-    }
-
     #[cfg(target_os = "windows")]
     let prevent_default_plugin = PreventDefaultBuilder::new()
         .platform(PlatformOptions {
@@ -270,6 +264,7 @@ pub fn run() {
             check_asset_ready,
             asset_disk_usage,
             asset_model_layers,
+            start_rpc,
             set_activity,
             stop_rpc,
             set_api_key,

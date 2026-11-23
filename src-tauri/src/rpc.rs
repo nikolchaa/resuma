@@ -9,9 +9,18 @@ lazy_static! {
     static ref DISCORD_CLIENT: Mutex<Option<DiscordIpcClient>> = Mutex::new(None);
 }
 
+const DISCORD_CLIENT_ID: &str = "1368618733454495855";
+
+/// Connects to the local Discord client. Called only by the frontend when the
+/// user has turned on "Discord presence" in settings (off by default), so no
+/// IPC connection is made otherwise. Async so that connecting never blocks
+/// the main thread.
 #[tauri::command]
-pub fn start_rpc(client_id: String) -> Result<(), String> {
-    let mut client = DiscordIpcClient::new(&client_id).map_err(|e| e.to_string())?;
+pub async fn start_rpc() -> Result<(), String> {
+    if DISCORD_CLIENT.lock().unwrap().is_some() {
+        return Ok(());
+    }
+    let mut client = DiscordIpcClient::new(DISCORD_CLIENT_ID).map_err(|e| e.to_string())?;
     client.connect().map_err(|e| e.to_string())?;
     *DISCORD_CLIENT.lock().unwrap() = Some(client);
     Ok(())

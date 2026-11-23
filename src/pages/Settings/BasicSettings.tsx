@@ -17,6 +17,8 @@ import { updateSection } from "@/lib/store";
 import { showError, showSuccess, showWarning } from "@/lib/toastUtils";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { AppLanguage } from "@/lib/i18n";
+import { Switch } from "@/components/ui/switch";
+import { setDiscordPresenceEnabled } from "@/lib/discord";
 
 type Props = {
   settings: SettingsType["app"];
@@ -31,7 +33,8 @@ export const BasicSettings = ({
   setDraftSettings,
   setSettings,
 }: Props) => {
-  const { theme, paperSize, language, contentSize } = settings;
+  const { theme, paperSize, language, contentSize, discordPresence } =
+    settings;
   const { setTheme } = useTheme();
   const { t, setLanguage } = useLanguage();
 
@@ -49,7 +52,7 @@ export const BasicSettings = ({
 
   const handleChange = async (
     key: keyof SettingsType["app"],
-    value: string,
+    value: string | boolean,
   ) => {
     // 1) Update local React state
     setDraftSettings((prev) => ({
@@ -65,6 +68,7 @@ export const BasicSettings = ({
     if (key === "theme") setTheme(value as "light" | "dark" | "system");
     if (key === "contentSize") applyContentSizeClass(value as "md" | "lg");
     if (key === "language") setLanguage(value as AppLanguage);
+    if (key === "discordPresence") setDiscordPresenceEnabled(value === true);
 
     // 3) Persist to settings.dat
     try {
@@ -235,6 +239,23 @@ export const BasicSettings = ({
             </SelectItem>
           </SelectContent>
         </Select>
+      </div>
+
+      {/* Discord Rich Presence (opt-in) */}
+      <div className='flex items-center justify-between gap-4'>
+        <div className='flex flex-col gap-1'>
+          <Label htmlFor='discord-presence'>
+            {t("settings.discordPresence")}
+          </Label>
+          <span className='text-sm text-muted-foreground'>
+            {t("settings.discordPresence.description")}
+          </span>
+        </div>
+        <Switch
+          id='discord-presence'
+          checked={discordPresence ?? false}
+          onCheckedChange={(v) => handleChange("discordPresence", v)}
+        />
       </div>
 
       <span className='text-sm text-muted-foreground'>

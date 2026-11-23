@@ -13,6 +13,8 @@ export type SettingsType = {
     paperSize: "A4" | "US";
     language: "en" | "rs";
     contentSize: "md" | "lg";
+    /** Opt-in Discord Rich Presence (generic text only). Off by default. */
+    discordPresence: boolean;
   };
   llm: {
     /** Provider id from data/providers.json; "local" runs bundled llama.cpp. */
@@ -86,6 +88,7 @@ export const defaultState: SettingsType = {
     paperSize: "A4",
     language: "en",
     contentSize: "md",
+    discordPresence: false,
   },
   llm: {
     provider: LOCAL_PROVIDER_ID,

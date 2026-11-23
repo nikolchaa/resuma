@@ -19,7 +19,7 @@ import { AwardsSettings } from "./AwardsSettings";
 
 import { Back } from "@/components/Back";
 import { useEffect, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { updateDiscordPresence } from "@/lib/discord";
 
 import { defaultState, SettingsType } from "@/contexts/OnboardingContext";
 import { getSection, updateSection } from "@/lib/store";
@@ -42,6 +42,7 @@ export default function Settings() {
       paperSize: "A4",
       language: "en",
       contentSize: "md",
+      discordPresence: false,
     },
     llm: defaultState.llm,
     personal: {
@@ -264,13 +265,7 @@ export default function Settings() {
         break;
     }
 
-    invoke("set_activity", { details, state }).catch(
-      (error) =>
-        console.log(
-          "Failed to update Discord presence",
-          (error as Error).message
-        ) // only for debugging, not shown to user
-    );
+    updateDiscordPresence(details, state);
   }, [activeTab]);
 
   useEffect(() => {
