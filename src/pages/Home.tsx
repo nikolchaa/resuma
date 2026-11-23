@@ -30,6 +30,7 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import { showError, showSuccess, showWarning } from "@/lib/toastUtils";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { normalizeResume } from "@/lib/resumeMigration";
 
 export const Home = () => {
   const navigate = useNavigate();
@@ -128,19 +129,22 @@ export const Home = () => {
       }
 
       const raw = await readTextFile(selected);
-      const parsed = JSON.parse(raw) as ResumeData;
+      // Migrates older files and rejects anything that isn't a resume.
+      const parsed = normalizeResume(JSON.parse(raw));
+      if (!parsed) throw new Error("This file is not a Resuma resume.");
 
       // Create safe, unique ID
       const baseId = slugify(parsed.id || parsed.title || "imported-resume");
       const uniqueId = await getUniqueId(baseId);
 
+      // Keep everything the file carries (template, font, …), not just content.
       const resumeToSave: ResumeData = {
+        ...parsed,
         id: uniqueId,
         title: parsed.title || "Imported Resume",
         updated: new Date().toISOString(),
         image:
           parsed.image || "https://placehold.co/210x297?text=Imported+Resume",
-        content: parsed.content,
         jobDesc: parsed.jobDesc ?? undefined,
       };
 
