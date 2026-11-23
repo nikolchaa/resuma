@@ -13,6 +13,8 @@ This project, **Resuma**, makes use of various third-party open-source libraries
 | react-router-dom         | MIT     | [https://reactrouter.com](https://reactrouter.com)                                             |
 | @react-pdf/renderer      | MIT     | [https://github.com/diegomura/react-pdf](https://github.com/diegomura/react-pdf)               |
 | react-pdf                | MIT     | [https://github.com/wojtekmaj/react-pdf](https://github.com/wojtekmaj/react-pdf)               |
+| pdf-lib                  | MIT     | [https://github.com/Hopding/pdf-lib](https://github.com/Hopding/pdf-lib)                       |
+| @pdf-lib/fontkit         | MIT     | [https://github.com/Hopding/fontkit](https://github.com/Hopding/fontkit)                       |
 | motion                   | MIT     | [https://motion.dev](https://motion.dev)                                                       |
 | canvas-confetti          | MIT     | [https://github.com/catdad/canvas-confetti](https://github.com/catdad/canvas-confetti)         |
 | lucide-react             | ISC     | [https://github.com/lucide-icons/lucide](https://github.com/lucide-icons/lucide)               |
@@ -24,6 +26,7 @@ This project, **Resuma**, makes use of various third-party open-source libraries
 | tw-animate-css           | MIT     | [https://github.com/Wombosvideo/tw-animate-css](https://github.com/Wombosvideo/tw-animate-css) |
 | vite                     | MIT     | [https://vitejs.dev](https://vitejs.dev)                                                       |
 | vite-plugin-svgr         | MIT     | [https://github.com/pd4d10/vite-plugin-svgr](https://github.com/pd4d10/vite-plugin-svgr)       |
+| vitest (development)     | MIT     | [https://vitest.dev](https://vitest.dev)                                                       |
 
 ### Tauri and Rust Dependencies
 
