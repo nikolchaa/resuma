@@ -8,6 +8,7 @@ import { ResumeData } from "@/lib/resumesStore";
 import { showWarning } from "@/lib/toastUtils";
 import { runTextEnhancement } from "@/lib/llmUtils";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAiEnabled } from "@/hooks/useAiEnabled";
 
 type Props = {
   settings?: ResumeData["content"]["projects"];
@@ -28,6 +29,7 @@ export const ProjectsEditor = ({
   setCurrentSection,
 }: Props) => {
   const { t } = useLanguage();
+  const aiEnabled = useAiEnabled();
   const entries = settings ?? [];
 
   const sync = (next: ResumeData["content"]["projects"]) => {
@@ -128,6 +130,11 @@ export const ProjectsEditor = ({
 
   return (
     <div className='flex flex-col gap-6'>
+      {aiEnabled === false && (
+        <p className='text-sm text-muted-foreground'>
+          {t("ai.off.editorHint")}
+        </p>
+      )}
       {entries.map((entry, idx) => (
         <div key={idx} className='flex flex-col gap-4 border-b pb-4'>
           {/* Project Name */}
@@ -154,13 +161,15 @@ export const ProjectsEditor = ({
           <div className='flex flex-col gap-2'>
             <div className='flex items-center justify-between'>
               <Label>{t("field.description")}</Label>
-              <Button
-                size='icon'
-                variant='outline'
-                onClick={() => handleAIEnhance(idx)}
-              >
-                <Sparkles className='h-4 w-4' />
-              </Button>
+              {aiEnabled && (
+                <Button
+                  size='icon'
+                  variant='outline'
+                  onClick={() => handleAIEnhance(idx)}
+                >
+                  <Sparkles className='h-4 w-4' />
+                </Button>
+              )}
             </div>
             <Textarea
               placeholder={t("placeholder.projectDescription")}

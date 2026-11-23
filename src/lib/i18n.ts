@@ -237,6 +237,13 @@ const translations: Record<AppLanguage, Record<string, string>> = {
     "ai.provider.kind.server": "Local server",
     "ai.provider.kind.cloud": "Cloud",
     "ai.provider.kind.custom": "Custom",
+    "ai.provider.none": "No AI",
+    "ai.provider.noneHint":
+      "AI features are turned off. Nothing is downloaded and no AI requests are made. You can pick a provider later in Settings → AI Settings.",
+    "ai.off.wizardHint":
+      "AI features are off, so job tailoring, trimming and enhancement are skipped. Turn them on in Settings → AI Settings.",
+    "ai.off.editorHint":
+      "AI enhancement is off. Turn it on in Settings → AI Settings.",
     "ai.provider.localHint":
       "Runs entirely on your device. Requires a one-time model and runtime download.",
     "ai.provider.disclosure.title": "Your data leaves your device.",
@@ -402,6 +409,7 @@ const translations: Record<AppLanguage, Record<string, string>> = {
       "AI can enhance your resume with keywords for better ATS compatibility.",
     "wizard.filename": "Filename:",
     "wizard.next": "Next",
+    "wizard.create": "Create resume",
     "wizard.job.placeholder":
       "Paste job description from Indeed, LinkedIn, etc.",
     "wizard.skip": "Skip",
@@ -669,6 +677,13 @@ const translations: Record<AppLanguage, Record<string, string>> = {
     "ai.provider.kind.server": "Lokalni server",
     "ai.provider.kind.cloud": "Cloud",
     "ai.provider.kind.custom": "Prilagođeno",
+    "ai.provider.none": "Bez AI",
+    "ai.provider.noneHint":
+      "AI funkcije su isključene. Ništa se ne preuzima i ne šalju se AI zahtevi. Provajdera možeš izabrati kasnije u Podešavanja → AI podešavanja.",
+    "ai.off.wizardHint":
+      "AI funkcije su isključene, pa se prilagođavanje oglasu, skraćivanje i unapređivanje preskaču. Uključi ih u Podešavanja → AI podešavanja.",
+    "ai.off.editorHint":
+      "AI unapređivanje je isključeno. Uključi ga u Podešavanja → AI podešavanja.",
     "ai.provider.localHint":
       "Izvršava se u potpunosti na tvom uređaju. Zahteva jednokratno preuzimanje modela i runtime-a.",
     "ai.provider.disclosure.title": "Tvoji podaci napuštaju uređaj.",
@@ -834,6 +849,7 @@ const translations: Record<AppLanguage, Record<string, string>> = {
       "AI može unaprediti rezime ključnim rečima za bolju ATS kompatibilnost.",
     "wizard.filename": "Naziv fajla:",
     "wizard.next": "Dalje",
+    "wizard.create": "Napravi biografiju",
     "wizard.job.placeholder":
       "Nalepi opis posla sa Indeed-a, LinkedIn-a i slično.",
     "wizard.skip": "Preskoči",

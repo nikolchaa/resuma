@@ -5,9 +5,10 @@ export type ApiFlavor = "llamacpp" | "openai" | "anthropic" | "gemini" | "ollama
 
 /**
  * `bundled` is the downloaded llama.cpp runtime, `server` a model host running
- * on the user's machine or network, `cloud` a hosted API.
+ * on the user's machine or network, `cloud` a hosted API. `none` turns every
+ * AI feature off: nothing is downloaded and no AI request is ever made.
  */
-export type ProviderKind = "bundled" | "server" | "cloud" | "custom";
+export type ProviderKind = "bundled" | "server" | "cloud" | "custom" | "none";
 
 export interface ProviderEntry {
   id: string;
@@ -30,12 +31,18 @@ export interface RemoteSettings {
 }
 
 export const LOCAL_PROVIDER_ID = "local";
+export const NO_AI_PROVIDER_ID = "none";
 
 export const providerList = providers as ProviderEntry[];
 
 export const remoteProviders = providerList.filter(
-  (provider) => provider.kind !== "bundled"
+  (provider) => provider.kind !== "bundled" && provider.kind !== "none"
 );
+
+/** True when the user picked "No AI": every AI action is hidden or refused. */
+export function isAiDisabled(id: string | undefined): boolean {
+  return id === NO_AI_PROVIDER_ID;
+}
 
 /** Flavors a custom endpoint can be pointed at. */
 export const apiFlavors: Exclude<ApiFlavor, "llamacpp">[] = [

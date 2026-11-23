@@ -53,6 +53,14 @@ This project, **Resuma**, makes use of various third-party open-source libraries
 | llama.cpp            | MIT        | [https://github.com/ggml-org/llama.cpp](https://github.com/ggml-org/llama.cpp) |
 | Qwen3 (GGUF variant) | Apache 2.0 | [https://github.com/QwenLM/Qwen3](https://github.com/QwenLM/Qwen3)             |
 
+### Icon Assets
+
+| Asset                                                                                  | License | Source                                                                         |
+| -------------------------------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------ |
+| LobeHub Icons (`@lobehub/icons-static-svg` 1.106.0) - monochrome provider logos for Anthropic, OpenAI, Gemini, DeepSeek, Kimi, LM Studio, Ollama | MIT     | [https://github.com/lobehub/lobe-icons](https://github.com/lobehub/lobe-icons) |
+
+The provider logos are copied unmodified into `src/assets/providers/` and bundled with the app; they are never fetched at runtime. The icons for Local (llama.cpp), Custom endpoint and No AI come from lucide-react (ISC). The logos are trademarks of their respective owners and are used only to identify each provider.
+
 ### Font Dependencies
 
 | Font          | License     | Source                                                                                             |
