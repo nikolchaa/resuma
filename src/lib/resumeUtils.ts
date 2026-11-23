@@ -118,6 +118,25 @@ export const formatResumeTxt = (content: ResumeData["content"]): string => {
     });
   }
 
+  // === Custom sections ===
+  for (const section of content.custom ?? []) {
+    if (!section.entries?.length) continue;
+    textOutput += "===============================\n";
+    textOutput += `          ${(section.title || "").toUpperCase()}\n`;
+    textOutput += "===============================\n";
+
+    section.entries.forEach((entry) => {
+      const head = [entry.title, entry.subtitle].filter(Boolean).join(" — ");
+      if (head) textOutput += `${head}\n`;
+      if (entry.location) textOutput += `${entry.location}\n`;
+      if (entry.date?.from || entry.date?.to)
+        textOutput += `${entry.date.from || ""}${entry.date.to ? ` – ${entry.date.to}` : ""}\n`;
+      if (entry.description) textOutput += `${entry.description}\n`;
+      entry.items?.filter(Boolean).forEach((item) => (textOutput += `- ${item}\n`));
+      textOutput += "\n";
+    });
+  }
+
   return textOutput;
 };
 
