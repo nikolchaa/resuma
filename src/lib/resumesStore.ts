@@ -8,6 +8,7 @@ import {
   BaseDirectory,
 } from "@tauri-apps/plugin-fs";
 import { join } from "@tauri-apps/api/path";
+import { CURRENT_SCHEMA, normalizeResume } from "./resumeMigration";
 
 // Types
 export interface ResumeData {
@@ -19,6 +20,7 @@ export interface ResumeData {
   jobDesc?: string; // optional job description for AI generation
   theme?: string; // optional theme for the resume
   font?: string; // optional font for the resume
+  schema?: number; // file format version; missing = 1 (see resumeMigration.ts)
 }
 
 export interface ResumeContent {
@@ -103,7 +105,9 @@ export async function saveResume(data: ResumeData): Promise<void> {
   const path = await getResumePath(data.id);
   await writeFile(
     path,
-    new TextEncoder().encode(JSON.stringify(data, null, 2)),
+    new TextEncoder().encode(
+      JSON.stringify({ ...data, schema: CURRENT_SCHEMA }, null, 2)
+    ),
     {
       baseDir: BaseDirectory.AppData,
     }
@@ -116,7 +120,7 @@ export async function loadResume(id: string): Promise<ResumeData | null> {
     const raw = await readTextFile(path, {
       baseDir: BaseDirectory.AppData,
     });
-    return JSON.parse(raw) as ResumeData;
+    return normalizeResume(JSON.parse(raw));
   } catch {
     return null;
   }
@@ -141,8 +145,8 @@ export async function listResumes(): Promise<ResumeData[]> {
         const raw = await readTextFile(fullPath, {
           baseDir: BaseDirectory.AppData,
         });
-        const parsed = JSON.parse(raw) as ResumeData;
-        resumes.push(parsed);
+        const parsed = normalizeResume(JSON.parse(raw));
+        if (parsed) resumes.push(parsed);
       } catch {
         // skip unreadable or corrupted files
       }
