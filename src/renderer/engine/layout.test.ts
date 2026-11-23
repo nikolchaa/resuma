@@ -96,7 +96,7 @@ describe("renderResume", () => {
     expect(texts(doc).join("")).toContain("Supercali");
   });
 
-  it("paginates and never leaves a heading at the bottom of a page", () => {
+  it("paginates", () => {
     const data = sampleResume();
     data.content.experience = Array.from({ length: 30 }, (_, i) => ({
       ...data.content.experience[0],
@@ -104,11 +104,24 @@ describe("renderResume", () => {
     }));
     const doc = renderResume(data, { format: "A4", language: "en", fonts });
     expect(doc.pages.length).toBeGreaterThan(2);
-    for (const p of doc.pages) {
-      const textItems = p.items.filter((i) => i.type === "text");
-      const last = textItems[textItems.length - 1] as { text: string };
-      expect(["EXPERIENCE", "PROJECTS", "AWARDS", "SKILLS"]).not.toContain(last.text);
-      for (const i of textItems) expect(i.y).toBeLessThan(841.89 - 40);
+    for (const p of doc.pages)
+      for (const i of p.items) if (i.type === "text") expect(i.y).toBeLessThan(841.89 - 40);
+  });
+
+  it.each(["professional", "modern", "compact"])("%s never leaves a heading at the bottom of a page", (theme) => {
+    const headings = ["EDUCATION", "EXPERIENCE", "PROJECTS", "AWARDS", "SKILLS"];
+    // Sweep entry counts so page breaks land at many different points.
+    for (let n = 1; n <= 40; n++) {
+      const data = { ...sampleResume(), theme };
+      data.content.experience = Array.from({ length: n }, (_, i) => ({
+        ...data.content.experience[0],
+        jobTitle: `Role ${i}`,
+      }));
+      const doc = renderResume(data, { format: "A4", language: "en", fonts });
+      for (const p of doc.pages) {
+        const textItems = p.items.filter((i) => i.type === "text") as { text: string }[];
+        expect(headings, `n=${n}, page ${p.index + 1}`).not.toContain(textItems[textItems.length - 1].text);
+      }
     }
   });
 

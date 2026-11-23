@@ -14,6 +14,15 @@ describe("compileTemplate", () => {
     );
   });
 
+  it.each(Object.keys(BUILTIN_TEMPLATES))("built-in template %s is valid with CRLF line endings", (id) => {
+    // Windows checkouts may convert .rsm files to CRLF.
+    const crlf = BUILTIN_TEMPLATES[id].replace(/\r\n/g, "\n").replace(/\n/g, "\r\n");
+    const lf = compileTemplate(BUILTIN_TEMPLATES[id].replace(/\r\n/g, "\n"));
+    const { template, diagnostics } = compileTemplate(crlf);
+    expect(diagnostics).toEqual([]);
+    expect(template).toEqual(lf.template);
+  });
+
   it("rejects unknown fields with the available ones listed", () => {
     const { template, diagnostics } = compileTemplate(wrap("\\header{\\p{\\v{nmae}}}"));
     expect(template).toBeNull();
