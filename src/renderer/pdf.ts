@@ -1,12 +1,11 @@
 /**
  * PDF painter: writes the laid-out pages with pdf-lib. Fonts are the same
- * bytes used for measuring, embedded as subsets with the same OpenType
+ * bytes used for measuring, embedded with the same OpenType
  * features, so text lands exactly where the preview shows it. Text stays
  * real text (selectable, ATS-readable), and links become URI annotations.
  */
 import { PDFDocument, PDFFont, PDFName, PDFString, rgb } from "pdf-lib";
-import * as fontkit from "@pdf-lib/fontkit";
-import { FONT_FEATURES, FontSet } from "./engine/fonts";
+import { FONT_FEATURES, FontSet, fontkit } from "./engine/fonts";
 import type { RenderedDocument } from "./engine/types";
 
 const hexToRgb = (hex: string) => {
@@ -33,7 +32,9 @@ export async function writePdf(doc: RenderedDocument, fonts: FontSet): Promise<U
   const embedded = new Map<string, PDFFont>();
   for (const f of fonts.all()) {
     if (!doc.fontKeys.includes(f.key)) continue;
-    embedded.set(f.key, await pdf.embedFont(f.bytes, { subset: true, features: FONT_FEATURES as never }));
+    // Full embedding: pdf-lib's subsetter drops glyphs from Inter (verified
+    // visually), and our fonts are small enough (≤ ~310 KB) to embed whole.
+    embedded.set(f.key, await pdf.embedFont(f.bytes, { subset: false, features: FONT_FEATURES as never }));
   }
 
   for (const laid of doc.pages) {

@@ -5,8 +5,15 @@
  * (pdf-lib, same fontkit fork) and registered in the DOM (FontFace), with
  * kerning and ligatures off everywhere so glyph advances match exactly.
  */
-import * as fontkit from "@pdf-lib/fontkit";
+import * as fontkitModule from "@pdf-lib/fontkit";
 import type { Weight } from "../template/styles";
+
+/**
+ * The ES build of @pdf-lib/fontkit only has a default export, while Node
+ * resolves the UMD build's named exports; accept both.
+ */
+export const fontkit: typeof fontkitModule =
+  (fontkitModule as unknown as { default?: typeof fontkitModule }).default ?? fontkitModule;
 
 /** OpenType features used for measuring *and* PDF embedding. */
 export const FONT_FEATURES = { liga: false, kern: false, calt: false };
@@ -37,7 +44,7 @@ export type LoadedFont = {
   family: string;
   weight: Weight;
   bytes: Uint8Array;
-  font: fontkit.Font;
+  font: fontkitModule.Font;
   /** Per-em metrics (already divided by unitsPerEm). */
   ascent: number;
   descent: number;
