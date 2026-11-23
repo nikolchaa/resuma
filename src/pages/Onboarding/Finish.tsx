@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useOnboarding } from "@/contexts/OnboardingContext";
+import { setDiscordPresenceEnabled } from "@/lib/discord";
 
 type FinishContext = {
   fadeOut: boolean;
@@ -15,6 +17,7 @@ export default function Finish() {
   const { resolvedTheme } = useTheme();
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const { state } = useOnboarding();
 
   const { setFadeOut } = useOutletContext<FinishContext>();
 
@@ -53,6 +56,9 @@ export default function Finish() {
   }, [resolvedTheme]);
 
   const handleContinue = () => {
+    // Saved to settings with the rest of `app` on step 1; start presence now
+    // only if the user opted in there.
+    setDiscordPresenceEnabled(state.app.discordPresence ?? false);
     setFadeOut(true);
     setTimeout(() => {
       navigate("/");

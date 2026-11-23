@@ -65,6 +65,9 @@ const translations: Record<AppLanguage, Record<string, string>> = {
     "settings.contentSize.select": "Select size",
     "settings.contentSize.normal": "Normal (100%)",
     "settings.contentSize.large": "Large (125%)",
+    "settings.discordPresence": "Discord Presence",
+    "settings.discordPresence.description":
+      "Show that you're using Resuma on your Discord profile. Only generic status text is shared, never resume titles or content.",
     "settings.unsavedChanges": "You have unsaved changes.",
     "settings.tab.app": "App Settings",
     "settings.tab.ai": "AI Settings",
@@ -493,6 +496,9 @@ const translations: Record<AppLanguage, Record<string, string>> = {
     "settings.contentSize.select": "Izaberi veličinu",
     "settings.contentSize.normal": "Normalna (100%)",
     "settings.contentSize.large": "Velika (125%)",
+    "settings.discordPresence": "Discord prisustvo",
+    "settings.discordPresence.description":
+      "Prikaži na svom Discord profilu da koristiš Resuma. Deli se samo opšti status, nikada nazivi ili sadržaj biografija.",
     "settings.unsavedChanges": "Imate nesačuvane izmene.",
     "settings.tab.app": "Podešavanja aplikacije",
     "settings.tab.ai": "AI podešavanja",

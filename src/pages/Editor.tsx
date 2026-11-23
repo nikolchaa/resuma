@@ -14,7 +14,7 @@ import { Sidebar } from "./Editor/Sidebar";
 import { getSection } from "@/lib/store";
 import { SettingsType } from "@/contexts/OnboardingContext";
 import { showError, showSuccess, showWarning } from "@/lib/toastUtils";
-import { invoke } from "@tauri-apps/api/core";
+import { updateDiscordPresence } from "@/lib/discord";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { AppLanguage, normalizeLanguage } from "@/lib/i18n";
 
@@ -59,31 +59,12 @@ export const Editor = () => {
   }
 
   useEffect(() => {
-    const updateDiscordPresence = async () => {
-      let details = "Editing a resume";
-      let state = "Editor";
-
-      if (location.pathname.startsWith("/editor")) {
-        details = draft?.title ? `Editing ${draft.title}` : "Editing a resume";
-      } else if (location.pathname.startsWith("/new")) {
-        details = "Creating a new resume";
-      }
-
-      try {
-        await invoke("set_activity", {
-          details,
-          state,
-        });
-      } catch (error) {
-        console.log(
-          "Failed to update Discord presence",
-          (error as Error).message
-        ); // only for debugging, not shown to user
-      }
-    };
-
-    updateDiscordPresence();
-  }, [location.pathname, draft?.title]);
+    // Generic text only: resume titles and contents never go to Discord.
+    const details = location.pathname.startsWith("/new")
+      ? "Creating a new resume"
+      : "Editing a resume";
+    updateDiscordPresence(details, "Editor");
+  }, [location.pathname]);
 
   useEffect(() => {
     const fetchPaperSize = async () => {

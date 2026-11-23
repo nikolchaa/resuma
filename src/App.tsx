@@ -4,7 +4,10 @@ import { useEffect } from "react";
 import { getSection } from "./lib/store";
 import { applyContentSizeClass } from "./lib/ui";
 import { useTheme } from "./contexts/ThemeContext";
-import { invoke } from "@tauri-apps/api/core";
+import {
+  setDiscordPresenceEnabled,
+  updateDiscordPresence,
+} from "./lib/discord";
 import { SettingsType } from "./contexts/OnboardingContext";
 
 export default function App() {
@@ -33,6 +36,8 @@ export default function App() {
       const app = results[0] as SettingsType["app"];
       applyContentSizeClass(app?.contentSize ?? "md");
       setThemeContext(app?.theme ?? "system");
+      // Discord presence is opt-in; nothing connects to Discord unless it's on.
+      setDiscordPresenceEnabled(app?.discordPresence ?? false);
       const allExist = results.every(
         (sectionData) => sectionData !== undefined
       );
@@ -44,16 +49,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    let details = "Idling";
-    let state = "Home";
-
-    invoke("set_activity", { details, state }).catch(
-      (error) =>
-        console.log(
-          "Failed to update Discord presence",
-          (error as Error).message
-        ) // only for debugging, not shown to user
-    );
+    updateDiscordPresence("Idling", "Home");
   }, [location.pathname]);
 
   return (

@@ -7,6 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -28,7 +29,8 @@ const Basic = () => {
   const { apply, state, update } = useOnboarding();
   const { t, setLanguage } = useLanguage();
 
-  const { theme, paperSize, language, contentSize } = state.app;
+  const { theme, paperSize, language, contentSize, discordPresence } =
+    state.app;
 
   useEffect(() => {
     setThemeContext(theme);
@@ -130,6 +132,23 @@ const Basic = () => {
               </SelectItem>
             </SelectContent>
           </Select>
+        </div>
+
+        {/* Discord Rich Presence (opt-in, off by default) */}
+        <div className='flex items-center justify-between gap-4'>
+          <div className='flex flex-col gap-1'>
+            <Label htmlFor='onboarding-discord-presence'>
+              {t("settings.discordPresence")}
+            </Label>
+            <span className='text-sm text-muted-foreground'>
+              {t("settings.discordPresence.description")}
+            </span>
+          </div>
+          <Switch
+            id='onboarding-discord-presence'
+            checked={discordPresence ?? false}
+            onCheckedChange={(v) => update("app", { discordPresence: v })}
+          />
         </div>
 
         {/* Continue */}

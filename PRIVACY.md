@@ -8,7 +8,7 @@ This Privacy Policy describes how Resuma handles your data.
 
 ## 1. Data Collection
 
-Resuma is a local-first application. By default, **no personal data is collected, transmitted, or stored on external servers**. Sending resume content to an external AI provider is possible, but only after you explicitly configure one - see [Section 3](#3-optional-ai-providers).
+Resuma is a local-first application. By default, **no personal data is collected, transmitted, or stored on external servers**. Sending resume content to an external AI provider is possible, but only after you explicitly configure one - see [Section 3](#3-optional-ai-providers). Showing a generic status on your Discord profile is likewise opt-in - see [Section 4](#4-optional-discord-presence).
 
 All resume content, settings, model files, and AI runtime binaries are stored locally on your device:
 
@@ -62,19 +62,27 @@ Two things Resuma does guarantee: it never enables a third-party provider on you
 
 ---
 
-## 4. Third-Party Libraries
+## 4. Optional Discord Presence
+
+Resuma can show a Discord Rich Presence status ("Playing Resuma") on your Discord profile. This is **off by default** and can be turned on or off at any time in **Settings → App Settings → Discord Presence**.
+
+While it is off, Resuma does not connect to Discord at all. When it is on, Resuma talks only to the Discord app running on your own computer, which then shows the status to others according to your Discord settings. Only fixed, generic text is shared - for example "Editing a resume" or "Adjusting settings". Resume titles, resume content, and personal details are never sent.
+
+---
+
+## 5. Third-Party Libraries
 
 Resuma uses various open-source libraries and tools listed in [THIRD_PARTY.md](./THIRD_PARTY.md). These tools do **not** collect data unless explicitly stated.
 
 ---
 
-## 5. Your Control
+## 6. Your Control
 
 You have full control over all your data. You may delete files, settings, or models at any time using your file system or the in-app UI.
 
 ---
 
-## 6. Contact
+## 7. Contact
 
 For questions or privacy-related concerns, contact: [contact@nikolchaa.com](mailto:contact@nikolchaa.com)
 
