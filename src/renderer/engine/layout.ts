@@ -38,8 +38,8 @@ export function layoutDocument({ boxes, page, margin, fonts }: LayoutInput): {
     return f;
   };
 
-  const lineMetrics = (s: TextStyle) => {
-    const f = fontFor(s);
+  const lineMetrics = (s: TextStyle, f: LoadedFont = fontFor(s)) => {
+    usedFonts.add(f.key);
     const contentH = (f.ascent - f.descent) * s.size;
     const lh = s.lineHeight ? s.lineHeight * s.size : contentH + f.lineGap * s.size;
     return { lh, baseline: (lh - contentH) / 2 + f.ascent * s.size };
@@ -47,13 +47,14 @@ export function layoutDocument({ boxes, page, margin, fonts }: LayoutInput): {
 
   // ---- paragraphs ---------------------------------------------------------
 
-  type Piece = { text: string; style: TextStyle; href?: string; width: number };
+  type Piece = { text: string; style: TextStyle; font: LoadedFont; href?: string; width: number };
   type Unit = { pieces: Piece[]; width: number }; // unbreakable word (may span styles)
   type Token = { kind: "unit"; unit: Unit } | { kind: "space"; piece: Piece } | { kind: "br"; style: TextStyle };
 
   const tokenize = (runs: Run[]): Token[] => {
     const tokens: Token[] = [];
     let unit: Unit | null = null;
+    let lastFont: LoadedFont | null = null;
     const endUnit = () => {
       if (unit) tokens.push({ kind: "unit", unit });
       unit = null;
@@ -69,12 +70,19 @@ export function layoutDocument({ boxes, page, margin, fonts }: LayoutInput): {
         if (!part) continue;
         if (/^\s+$/.test(part)) {
           endUnit();
-          tokens.push({ kind: "space", piece: { text: " ", style: r.style, href: r.href, width: fonts.measure(f, " ", r.style.size) } });
+          // A space takes the font of the word before it, so fallback text stays one run.
+          const sf = lastFont && lastFont.weight === f.weight ? lastFont : f;
+          tokens.push({ kind: "space", piece: { text: " ", style: r.style, font: sf, href: r.href, width: fonts.measure(sf, " ", r.style.size) } });
         } else {
-          const piece = { text: part, style: r.style, href: r.href, width: fonts.measure(f, part, r.style.size) };
           if (!unit) unit = { pieces: [], width: 0 };
-          unit.pieces.push(piece);
-          unit.width += piece.width;
+          // Characters the font lacks (e.g. Cyrillic) switch to the fallback font.
+          for (const seg of fonts.segment(f, part)) {
+            usedFonts.add(seg.font.key);
+            const piece = { text: seg.text, style: r.style, font: seg.font, href: r.href, width: fonts.measure(seg.font, seg.text, r.style.size) };
+            unit.pieces.push(piece);
+            unit.width += piece.width;
+            lastFont = seg.font;
+          }
         }
       }
     }
@@ -87,7 +95,7 @@ export function layoutDocument({ boxes, page, margin, fonts }: LayoutInput): {
     const out: Unit[] = [];
     let cur: Unit = { pieces: [], width: 0 };
     for (const p of unit.pieces) {
-      const f = fontFor(p.style);
+      const f = p.font;
       let buf = "";
       for (const ch of Array.from(p.text)) {
         const w = fonts.measure(f, buf + ch, p.style.size);
@@ -162,7 +170,9 @@ export function layoutDocument({ boxes, page, margin, fonts }: LayoutInput): {
         w = Math.max(w, line);
         line = 0;
       } else {
-        line += fonts.measure(fontFor(r.style), r.text.replace(/\s+/g, " "), r.style.size);
+        for (const seg of fonts.segment(fontFor(r.style), r.text.replace(/\s+/g, " "))) {
+          line += fonts.measure(seg.font, seg.text, r.style.size);
+        }
       }
     }
     return Math.max(w, line);
@@ -172,11 +182,12 @@ export function layoutDocument({ boxes, page, margin, fonts }: LayoutInput): {
     const flows: Flow[] = [];
     breakLines(box.runs, box.style, width).forEach((line, li) => {
       // Line height/baseline: tallest piece (or the paragraph style if empty).
-      const styles = line.pieces.length ? line.pieces.map((p) => p.style) : [line.style];
+      const metrics = line.pieces.length
+        ? line.pieces.map((p) => lineMetrics(p.style, p.font))
+        : [lineMetrics(line.style)];
       let lh = 0;
       let baseline = 0;
-      for (const s of styles) {
-        const m = lineMetrics(s);
+      for (const m of metrics) {
         lh = Math.max(lh, m.lh);
         baseline = Math.max(baseline, m.baseline);
       }
@@ -191,14 +202,13 @@ export function layoutDocument({ boxes, page, margin, fonts }: LayoutInput): {
         let text = p.text;
         let w = p.width;
         let j = i + 1;
-        while (j < line.pieces.length && line.pieces[j].style === p.style && line.pieces[j].href === p.href) {
+        while (j < line.pieces.length && line.pieces[j].style === p.style && line.pieces[j].font === p.font && line.pieces[j].href === p.href) {
           text += line.pieces[j].text;
           w += line.pieces[j].width;
           j++;
         }
         const id = `${box.id}/l${li}/r${ri++}`;
-        const f = fontFor(p.style);
-        draws.push({ type: "text", id, x: cx, y: baseline, text, fontKey: f.key, size: p.style.size, color: p.style.color, width: w });
+        draws.push({ type: "text", id, x: cx, y: baseline, text, fontKey: p.font.key, size: p.style.size, color: p.style.color, width: w });
         if (p.href) draws.push({ type: "link", id: id + "/a", x: cx, y: 0, w, h: lh, href: p.href });
         cx += w;
         i = j;

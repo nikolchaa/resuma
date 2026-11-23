@@ -24,6 +24,9 @@ export const DOM_TEXT_CSS =
 
 export const FALLBACK_FAMILY = "Figtree";
 
+/** Family used for characters the chosen font lacks; Inter covers Cyrillic and Greek. */
+export const FALLBACK_COVERAGE_FAMILY = "Inter";
+
 /** Font files shipped with the app. "normal" is the Light cut (as before). */
 export const FONT_FILES: { family: string; weight: Weight; file: string }[] = [
   { family: "Figtree", weight: "normal", file: "Figtree-Light.ttf" },
@@ -104,5 +107,36 @@ export class FontSet {
 
   measure(f: LoadedFont, text: string, size: number): number {
     return text ? this.unitWidth(f, text) * size : 0;
+  }
+
+  private coverage = new Map<string, boolean>();
+
+  private covers(f: LoadedFont, ch: string): boolean {
+    const key = f.key + "\u0000" + ch;
+    let has = this.coverage.get(key);
+    if (has === undefined) {
+      const cp = ch.codePointAt(0)!;
+      has = cp < 0x20 || /\s/.test(ch) || f.font.hasGlyphForCodePoint(cp);
+      this.coverage.set(key, has);
+    }
+    return has;
+  }
+
+  /**
+   * Splits text into runs the font can draw, switching characters it lacks
+   * (e.g. Cyrillic in Figtree or Space Grotesk) to the fallback family at
+   * the same weight. Characters no font has stay with the primary font.
+   */
+  segment(f: LoadedFont, text: string): { font: LoadedFont; text: string }[] {
+    const fallback = this.fonts.get(fontKey(FALLBACK_COVERAGE_FAMILY, f.weight));
+    if (!fallback || fallback === f) return [{ font: f, text }];
+    const out: { font: LoadedFont; text: string }[] = [];
+    for (const ch of Array.from(text)) {
+      const use = this.covers(f, ch) || !this.covers(fallback, ch) ? f : fallback;
+      const last = out[out.length - 1];
+      if (last && last.font === use) last.text += ch;
+      else out.push({ font: use, text: ch });
+    }
+    return out;
   }
 }

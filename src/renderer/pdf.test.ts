@@ -40,6 +40,14 @@ describe("writePdf", () => {
     expect(meta.Producer).toBe("Resuma PDF Renderer");
   });
 
+  it("writes Cyrillic text through the fallback font", async () => {
+    const data = { ...sampleResume(), font: "spaceGrotesk" };
+    data.content.personal.fullName = "Ђорђе Ћирић";
+    const doc = renderResume(data, { format: "A4", language: "rs", fonts });
+    const { pages } = await readPdf(await writePdf(doc, fonts));
+    expect(pages[0].text).toContain("ЂОРЂЕ ЋИРИЋ");
+  });
+
   it("writes one PDF page per laid-out page", async () => {
     const data = sampleResume();
     data.content.experience = Array.from({ length: 30 }, () => data.content.experience[0]);

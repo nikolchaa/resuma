@@ -205,6 +205,22 @@ describe("renderResume", () => {
     expect(heading(tinted).color).toBe(heading(base).color);
   });
 
+  it("falls back to Inter for characters the chosen font lacks (Cyrillic)", () => {
+    const data = { ...sampleResume(), font: "figtree" };
+    data.content.personal.fullName = "Ана Петровић";
+    data.content.experience[0].description = "Радио на платформи — Belgrade office";
+    const doc = renderResume(data, { format: "A4", language: "en", fonts });
+    const items = doc.pages[0].items.filter((i) => i.type === "text") as { text: string; fontKey: string }[];
+    const name = items.find((i) => i.text === "АНА ПЕТРОВИЋ");
+    expect(name?.fontKey).toBe("Inter|bold");
+    // Latin parts of a mixed line stay in Figtree
+    const latin = items.find((i) => i.text.includes("Belgrade"));
+    expect(latin?.fontKey).toBe("Figtree|normal");
+    const cyr = items.find((i) => i.text.includes("Радио"));
+    expect(cyr?.fontKey).toBe("Inter|normal");
+    expect(doc.fontKeys).toEqual(expect.arrayContaining(["Inter|bold", "Inter|normal", "Figtree|normal"]));
+  });
+
   it("tolerates missing and malformed fields from old files", () => {
     const data = sampleResume();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
