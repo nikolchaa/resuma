@@ -21,6 +21,38 @@ export interface ResumeData {
   theme?: string; // optional theme for the resume
   font?: string; // optional font for the resume
   schema?: number; // file format version; missing = 1 (see resumeMigration.ts)
+  templateOptions?: Record<string, string>; // values for the template's \option[...]s
+}
+
+/** Section keys: the built-in sections, or `custom:<id>` for a custom section. */
+export type SectionKey =
+  | "education"
+  | "experience"
+  | "projects"
+  | "skills"
+  | "awards"
+  | `custom:${string}`;
+
+/** Optional, user-chosen arrangement of sections (Design mode). */
+export interface ResumeLayout {
+  order?: SectionKey[];
+  hidden?: SectionKey[];
+  titles?: Partial<Record<SectionKey, string>>;
+}
+
+export interface CustomEntry {
+  title: string;
+  subtitle: string;
+  location: string;
+  date: { from: string; to?: string };
+  description: string;
+  items: string[];
+}
+
+export interface CustomSection {
+  id: string;
+  title: string;
+  entries: CustomEntry[];
 }
 
 export interface ResumeContent {
@@ -77,6 +109,8 @@ export interface ResumeContent {
     description: string;
     location: string;
   }[];
+  layout?: ResumeLayout;
+  custom?: CustomSection[];
 }
 
 // Storage Constants

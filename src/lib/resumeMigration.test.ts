@@ -60,6 +60,48 @@ describe("normalizeResume", () => {
     expect(normalizeResume(structuredClone(once))).toEqual(once);
   });
 
+  it("normalises layout, custom sections and template options", () => {
+    const out = normalizeResume({
+      id: "x",
+      templateOptions: { accent: "#ff0000", bad: 3 },
+      content: {
+        layout: {
+          order: ["skills", "custom:langs", "nope", "skills", 4],
+          hidden: ["awards"],
+          titles: { skills: "Toolbox", nope: "x", experience: 5 },
+        },
+        custom: [
+          { id: "langs", title: "Languages", entries: [{ title: "Serbian", items: ["native", 1] }] },
+          { id: "langs", title: "Dupe" },
+          null,
+        ],
+      },
+    })!;
+    expect(out.templateOptions).toEqual({ accent: "#ff0000" });
+    expect(out.content.layout).toEqual({
+      order: ["skills", "custom:langs"],
+      hidden: ["awards"],
+      titles: { skills: "Toolbox" },
+    });
+    expect(out.content.custom?.map((s) => s.id)).toEqual(["langs", "langs-1"]);
+    expect(out.content.custom?.[0].entries[0]).toEqual({
+      title: "Serbian",
+      subtitle: "",
+      location: "",
+      date: { from: "" },
+      description: "",
+      items: ["native", "1"],
+    });
+    expect(out.content.custom?.[1].entries).toEqual([]);
+  });
+
+  it("does not add layout or custom to files that have none", () => {
+    const out = normalizeResume(structuredClone(v1File))!;
+    expect("layout" in out.content).toBe(false);
+    expect("custom" in out.content).toBe(false);
+    expect("templateOptions" in out).toBe(false);
+  });
+
   it("rejects things that are not resumes", () => {
     expect(normalizeResume(null)).toBeNull();
     expect(normalizeResume("text")).toBeNull();
