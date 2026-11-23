@@ -155,6 +155,10 @@ export function normalizeResume(raw: unknown): ResumeData | null {
     theme: str(raw.theme) || "professional",
     font: str(raw.font) || "figtree",
     ...(raw.templateOptions !== undefined && { templateOptions: stringRecord(raw.templateOptions) ?? {} }),
+    ...(raw.templateSource !== undefined &&
+      (typeof raw.templateSource === "string" && raw.templateSource.trim()
+        ? { templateSource: raw.templateSource }
+        : { templateSource: undefined })),
     schema: CURRENT_SCHEMA,
   } as ResumeData;
 }

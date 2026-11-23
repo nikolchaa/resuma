@@ -22,6 +22,8 @@ export interface ResumeData {
   font?: string; // optional font for the resume
   schema?: number; // file format version; missing = 1 (see resumeMigration.ts)
   templateOptions?: Record<string, string>; // values for the template's \option[...]s
+  /** The resume's own copy of a template (.rsm source); overrides `theme` when valid. */
+  templateSource?: string;
 }
 
 /** Section keys: the built-in sections, or `custom:<id>` for a custom section. */

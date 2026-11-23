@@ -221,6 +221,20 @@ describe("renderResume", () => {
     expect(doc.fontKeys).toEqual(expect.arrayContaining(["Inter|bold", "Inter|normal", "Figtree|normal"]));
   });
 
+  it("renders with the resume's own template and falls back when it is invalid", async () => {
+    const { resolveTemplate } = await import("..");
+    const { BUILTIN_TEMPLATES } = await import("@/templates");
+    const own = BUILTIN_TEMPLATES.compact.replace("\\style[name]{font-size: 18;", "\\style[name]{font-size: 30;");
+    const doc = renderResume({ ...sampleResume(), theme: "modern", templateSource: own }, { format: "A4", language: "en", fonts });
+    const name = doc.pages[0].items.find((i) => i.type === "text" && i.text === "JANE MARIE DOE") as { size: number };
+    expect(name.size).toBe(30);
+
+    const broken = resolveTemplate({ theme: "modern", templateSource: "\\template[id=x]\n\\p{oops" });
+    expect(broken.custom).toBe(false);
+    expect(broken.source).toBe(BUILTIN_TEMPLATES.modern);
+    expect(broken.diagnostics.length).toBeGreaterThan(0);
+  });
+
   it("tolerates missing and malformed fields from old files", () => {
     const data = sampleResume();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

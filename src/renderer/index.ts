@@ -8,7 +8,8 @@ import type { ResumeData } from "@/lib/resumesStore";
 import type { AppLanguage } from "@/lib/i18n";
 import { t } from "@/lib/i18n";
 import { templateSourceFor } from "@/templates";
-import { compileTemplate, TemplateResult } from "./template/template";
+import { compileTemplate, Template, TemplateResult } from "./template/template";
+import type { Diagnostic } from "./rsm/parse";
 import { compileDocument } from "./engine/compile";
 import { layoutDocument } from "./engine/layout";
 import { FontSet } from "./engine/fonts";
@@ -34,10 +35,32 @@ export type RenderOptions = {
   fonts: FontSet;
 };
 
-export function renderResume(data: ResumeData, { format, language, fonts }: RenderOptions): RenderedDocument {
-  let { template } = getTemplate(templateSourceFor(data.theme));
+export type ResolvedTemplate = {
+  template: Template;
+  /** The source the template came from (the resume's own copy or a built-in). */
+  source: string;
+  /** True when the resume's own template is in use. */
+  custom: boolean;
+  /** Problems in the resume's own template (it then falls back to the built-in). */
+  diagnostics: Diagnostic[];
+};
+
+/** The template a resume renders with: its own copy when valid, else its built-in theme. */
+export function resolveTemplate(data: Pick<ResumeData, "theme" | "templateSource">): ResolvedTemplate {
+  if (data.templateSource?.trim()) {
+    const own = getTemplate(data.templateSource);
+    if (own.template) return { template: own.template, source: data.templateSource, custom: true, diagnostics: own.diagnostics };
+    const builtin = resolveTemplate({ theme: data.theme });
+    return { ...builtin, diagnostics: own.diagnostics };
+  }
+  const source = templateSourceFor(data.theme);
   // Built-in templates are validated by tests; fall back defensively anyway.
-  if (!template) template = getTemplate(templateSourceFor()).template!;
+  const template = getTemplate(source).template ?? getTemplate(templateSourceFor()).template!;
+  return { template, source, custom: false, diagnostics: [] };
+}
+
+export function renderResume(data: ResumeData, { format, language, fonts }: RenderOptions): RenderedDocument {
+  const { template } = resolveTemplate(data);
 
   const { boxes, margin } = compileDocument({
     template,

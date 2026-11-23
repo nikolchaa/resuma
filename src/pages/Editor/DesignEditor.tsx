@@ -13,11 +13,10 @@ import {
 } from "@/components/ui/select";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { CustomSection, ResumeData, ResumeLayout, SectionKey } from "@/lib/resumesStore";
-import { getTemplate } from "@/renderer";
+import { resolveTemplate } from "@/renderer";
 import { resolveOptionValues, sectionOrder } from "@/renderer/engine/compile";
 import { FONT_FAMILIES } from "@/renderer/template/schema";
 import type { TemplateOption } from "@/renderer/template/template";
-import { templateSourceFor } from "@/templates";
 import { newCustomSection } from "@/lib/customSections";
 
 type Props = {
@@ -34,7 +33,10 @@ const sixDigit = (hex: string) =>
 
 export const DesignEditor = ({ draft, setDraft, onEditCustom }: Props) => {
   const { t } = useLanguage();
-  const template = useMemo(() => getTemplate(templateSourceFor(draft?.theme)).template, [draft?.theme]);
+  const template = useMemo(
+    () => resolveTemplate({ theme: draft?.theme, templateSource: draft?.templateSource }).template,
+    [draft?.theme, draft?.templateSource]
+  );
 
   if (!draft || !template) return null;
 
