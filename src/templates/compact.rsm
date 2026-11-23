@@ -10,6 +10,7 @@
 \style[entry]{margin-bottom: 6}
 \style[bold]{font-weight: bold}
 \style[sub]{font-size: 9}
+\style[link]{color: #1f2937}
 
 \header{
   \p[name]{\v{fullName}}
@@ -41,7 +42,7 @@
 \section[projects]{
   \p[heading]{\label{projects}}
   \entries[entry]{
-    \p[bold]{\v{name}\if{link}{ — \span[sub]{\v{link}}}}
+    \p[bold]{\v{name}\if{link}{ — \span[link]{\v{link}}}}
     \p[sub]{\v{date.from}}
     \p[sub]{\v{description}}
     \if{technologies}{\p[sub]{\label{tech}: \list[sep=", "]{technologies}}}
