@@ -5,8 +5,6 @@ import { ResumeData } from "@/lib/resumesStore";
 import { ResumeWizard } from "@/components/ResumeWizard";
 import { Download, Minus, Plus, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ResumePreview } from "@/components/ResumePreview";
-import { pdf } from "@react-pdf/renderer";
 
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeFile } from "@tauri-apps/plugin-fs";
@@ -17,14 +15,15 @@ import { showError, showSuccess, showWarning } from "@/lib/toastUtils";
 import { updateDiscordPresence } from "@/lib/discord";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { AppLanguage, normalizeLanguage } from "@/lib/i18n";
+import { SvgPage } from "@/renderer/browser/SvgPage";
+import {
+  generateResumePdf,
+  generateResumeThumbnail,
+  useRenderedResume,
+} from "@/renderer/browser/useRenderedResume";
 
-import { pdf as pdfRenderer } from "@react-pdf/renderer";
-import { Document, Page, pdfjs } from "react-pdf";
-import "react-pdf/dist/esm/Page/AnnotationLayer.css";
-import "react-pdf/dist/esm/Page/TextLayer.css";
-import worker from "react-pdf/node_modules/pdfjs-dist/build/pdf.worker.min.mjs?url";
-
-pdfjs.GlobalWorkerOptions.workerSrc = worker;
+/** Preview page width in CSS pixels at 100 % zoom. */
+const PAGE_WIDTH = 800;
 
 export const Editor = () => {
   const { t } = useLanguage();
@@ -33,30 +32,26 @@ export const Editor = () => {
   const location = useLocation();
   const [resume, setResume] = useState<ResumeData | null>(null);
   const [draft, setDraft] = useState<ResumeData | null>(null);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const isNew = location.pathname === "/new";
 
   const [pdfFormat, setPdfFormat] = useState<"A4" | "LETTER">("A4"); // Default
   const [language, setLanguage] = useState<AppLanguage>("en");
 
-  async function generateThumbnail(data: ResumeData): Promise<string> {
-    const pdfBlob = await pdfRenderer(
-      <ResumePreview data={data} format='A4' language={language} />
-    ).toBlob();
-    const pdf = await pdfjs.getDocument({
-      data: await pdfBlob.arrayBuffer(),
-    }).promise;
-    const page = await pdf.getPage(1);
-    const viewport = page.getViewport({ scale: 1 });
+  // Live preview: re-laid-out on every change, painted in place (no flash).
+  const { doc, error: renderError } = useRenderedResume(
+    isNew ? null : draft,
+    pdfFormat,
+    language
+  );
 
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d")!;
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
+  useEffect(() => {
+    if (renderError) {
+      showError(t("editor.toast.pdfGenerateFailed"), renderError.message);
+    }
+  }, [renderError]);
 
-    await page.render({ canvasContext: context, viewport }).promise;
-    return canvas.toDataURL("image/png");
-  }
+  const generateThumbnail = (data: ResumeData) =>
+    generateResumeThumbnail(data, language);
 
   useEffect(() => {
     // Generic text only: resume titles and contents never go to Discord.
@@ -89,17 +84,6 @@ export const Editor = () => {
       });
     }
   }, [id, isNew, navigate]);
-
-  useEffect(() => {
-    if (draft) {
-      pdf(<ResumePreview data={draft} format={pdfFormat} language={language} />)
-        .toBlob()
-        .then((blob) => setPdfUrl(URL.createObjectURL(blob)))
-        .catch((err) =>
-          showError(t("editor.toast.pdfGenerateFailed"), (err as Error).message)
-        );
-    }
-  }, [draft, pdfFormat, language]);
 
   const handleSave = async () => {
     if (draft) {
@@ -140,12 +124,8 @@ export const Editor = () => {
         return;
       }
 
-      const blob = await pdf(
-        <ResumePreview data={draft} format={pdfFormat} language={language} />
-      ).toBlob();
-      const arrayBuffer = await blob.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
-      await writeFile(filePath, uint8Array);
+      const bytes = await generateResumePdf(draft, pdfFormat, language);
+      await writeFile(filePath, bytes);
 
       showSuccess(t("editor.toast.pdfExportSuccess"), filePath);
     } catch (error) {
@@ -156,8 +136,8 @@ export const Editor = () => {
     }
   };
 
-  const [zoomLevel, setZoomLevel] = useState(1); // testing zoom functionality
-  const [numPages, setNumPages] = useState(0);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const numPages = doc?.pages.length ?? 0;
 
   return (
     <div className='flex h-screen'>
@@ -172,31 +152,20 @@ export const Editor = () => {
       {/* PDF Preview */}
       <div className='w-full h-full bg-secondary dark:bg-background text-black overflow-auto'>
         <div className='flex'>
-          {pdfUrl && !isNew && (
+          {doc && !isNew && (
             <div className='py-20 px-8 xl:px-20 mx-auto'>
-              <Document
-                key={pdfUrl}
-                file={pdfUrl}
-                onLoadError={(err) =>
-                  showError(t("editor.toast.docLoadFailed"), (err as Error).message)
-                }
-                onLoadSuccess={({ numPages: n }) => setNumPages(n)}
-              >
-                {Array.from(new Array(numPages), (_, index) => (
-                  <div key={`page_${index + 1}`}>
-                    <Page
-                      pageNumber={index + 1}
-                      width={800 * zoomLevel}
-                      className={`border`}
-                      renderTextLayer={false}
-                      renderAnnotationLayer={false}
-                    />
-                    <div className='text-xs text-center text-gray-500 mb-[4rem]'>
-                      {t("editor.page")} {index + 1} {t("editor.of")} {numPages}
-                    </div>
+              {doc.pages.map((page) => (
+                <div key={`page_${page.index + 1}`}>
+                  <SvgPage
+                    page={page}
+                    width={PAGE_WIDTH * zoomLevel}
+                    className='border'
+                  />
+                  <div className='text-xs text-center text-gray-500 mb-[4rem]'>
+                    {t("editor.page")} {page.index + 1} {t("editor.of")} {numPages}
                   </div>
-                ))}
-              </Document>
+                </div>
+              ))}
             </div>
           )}
 
