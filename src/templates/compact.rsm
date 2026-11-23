@@ -1,11 +1,13 @@
 \template[id=compact, name=Compact, version=1]
+\option[accent, type=color, default=#888888, label="Rule colour"]
+\option[headings, type=color, default=#414141, label="Heading colour"]
 
 \page{margin: 40; font-family: @font; font-size: 11; color: #414141}
 
 \style[name]{font-size: 18; font-weight: bold; text-transform: uppercase; margin-bottom: 2}
 \style[contact]{font-size: 9; color: #1f2937; margin-bottom: 2}
-\style[hr]{margin-top: 8; border-bottom: 1 #888888}
-\style[heading]{font-size: 14; font-weight: bold; text-transform: uppercase;
+\style[hr]{margin-top: 8; border-bottom: 1 @accent}
+\style[heading]{font-size: 14; font-weight: bold; color: @headings; text-transform: uppercase;
   margin-top: 10; margin-bottom: 4; keep: with-next}
 \style[entry]{margin-bottom: 6}
 \style[bold]{font-weight: bold}
@@ -20,7 +22,7 @@
 }
 
 \section[education]{
-  \p[heading]{\label{education}}
+  \p[heading]{\sectiontitle}
   \entries[entry]{
     \p[bold]{\join[sep=" — "]{\v{degree}}{\v{school}}}
     \p[sub]{\join[sep=" · "]{\v{location}}{\range[sep=" - "]{date}}}
@@ -30,7 +32,7 @@
 }
 
 \section[experience]{
-  \p[heading]{\label{experience}}
+  \p[heading]{\sectiontitle}
   \entries[entry]{
     \p[bold]{\join[sep=" — "]{\v{jobTitle}}{\v{company}}}
     \p[sub]{\join[sep=" · "]{\v{location}}{\range[sep=" - "]{date}}}
@@ -40,7 +42,7 @@
 }
 
 \section[projects]{
-  \p[heading]{\label{projects}}
+  \p[heading]{\sectiontitle}
   \entries[entry]{
     \p[bold]{\v{name}\if{link}{ — \span[link]{\v{link}}}}
     \p[sub]{\v{date.from}}
@@ -50,7 +52,7 @@
 }
 
 \section[awards]{
-  \p[heading]{\label{awards}}
+  \p[heading]{\sectiontitle}
   \entries[entry]{
     \p[bold]{\join[sep=" — "]{\v{title}}{\v{organizer}}}
     \p[sub]{\join[sep=" · "]{\v{location}}{\v{date.from}}}
@@ -59,8 +61,18 @@
 }
 
 \section[skills]{
-  \p[heading]{\label{skills}}
+  \p[heading]{\sectiontitle}
   \entries{
     \p[sub]{\span[bold]{\v{category}: }\list[sep=", "]{items}}
+  }
+}
+
+\section[*]{
+  \p[heading]{\sectiontitle}
+  \entries[entry]{
+    \p[bold]{\join[sep=" — "]{\v{title}}{\v{subtitle}}}
+    \p[sub]{\join[sep=" · "]{\v{location}}{\range[sep=" - "]{date}}}
+    \if{description}{\p[sub]{\v{description}}}
+    \each{items}{\p[sub]{• \v{.}}}
   }
 }

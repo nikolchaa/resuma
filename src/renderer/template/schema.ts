@@ -16,6 +16,10 @@ export const SECTION_KINDS = [
 ] as const;
 export type SectionKind = (typeof SECTION_KINDS)[number];
 
+/** What `\section[...]` may target: a built-in kind, or `*` for custom sections. */
+export type TemplateSectionKind = SectionKind | "*";
+export const TEMPLATE_SECTION_KINDS: readonly TemplateSectionKind[] = [...SECTION_KINDS, "*"];
+
 export const PERSONAL_FIELDS: Record<string, FieldKind> = {
   fullName: "text",
   email: "email",
@@ -26,7 +30,17 @@ export const PERSONAL_FIELDS: Record<string, FieldKind> = {
   github: "url",
 };
 
-export const ENTRY_FIELDS: Record<SectionKind, Record<string, FieldKind>> = {
+export const ENTRY_FIELDS: Record<TemplateSectionKind, Record<string, FieldKind>> = {
+  "*": {
+    title: "text",
+    subtitle: "text",
+    location: "text",
+    date: "date",
+    "date.from": "text",
+    "date.to": "text",
+    description: "text",
+    items: "list",
+  },
   education: {
     school: "text",
     degree: "text",

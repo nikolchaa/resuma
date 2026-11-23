@@ -44,6 +44,7 @@ export function renderResume(data: ResumeData, { format, language, fonts }: Rend
     content: data.content,
     language,
     font: data.font,
+    options: data.templateOptions,
   });
   const { pages, fontKeys } = layoutDocument({ boxes, page: PAPER[format], margin, fonts });
 

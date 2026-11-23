@@ -1,11 +1,13 @@
 \template[id=professional, name=Professional, version=1]
+\option[accent, type=color, default=#d1d5db, label="Rule colour"]
+\option[headings, type=color, default=#1f2937, label="Heading colour"]
 
 \page{margin: 40; font-family: @font; font-size: 11; color: #1f2937}
 
 \style[name]{font-size: 20; font-weight: bold; text-transform: uppercase; margin-bottom: 4}
 \style[contact]{font-size: 10; color: #3f434c; margin-bottom: 4}
 \style[heading]{font-size: 12; font-weight: bold; text-transform: uppercase;
-  margin-top: 12; margin-bottom: 6; padding-bottom: 2; border-bottom: 1 #d1d5db; keep: with-next}
+  margin-top: 12; margin-bottom: 6; padding-bottom: 2; border-bottom: 1 @accent; color: @headings; keep: with-next}
 \style[strong]{font-weight: bold}
 \style[small]{font-size: 9; color: #3f434c}
 \style[text]{font-size: 10; margin-bottom: 2}
@@ -18,7 +20,7 @@
 }
 
 \section[education]{
-  \p[heading]{\label{education}}
+  \p[heading]{\sectiontitle}
   \entries[entry]{
     \row{\p[strong]{\v{degree}}}{\p[strong]{\v{school}}}
     \p[small]{\join[sep=" | "]{\v{location}}{\range[sep=" – "]{date}}}
@@ -28,7 +30,7 @@
 }
 
 \section[experience]{
-  \p[heading]{\label{experience}}
+  \p[heading]{\sectiontitle}
   \entries[entry]{
     \row{\p[strong]{\v{jobTitle}}}{\p[strong]{\v{company}}}
     \p[small]{\join[sep=" | "]{\v{location}}{\range[sep=" – "]{date}}}
@@ -38,7 +40,7 @@
 }
 
 \section[projects]{
-  \p[heading]{\label{projects}}
+  \p[heading]{\sectiontitle}
   \entries[entry]{
     \p[strong]{\v{name}}
     \p[small]{\join[sep=" | "]{\v{date.from}}{\v[nolink]{link}}}
@@ -48,7 +50,7 @@
 }
 
 \section[awards]{
-  \p[heading]{\label{awards}}
+  \p[heading]{\sectiontitle}
   \entries[entry]{
     \row{\p[strong]{\v{title}}}{\p[strong]{\join[sep=" | "]{\v{organizer}}{\v{location}}}}
     \p[small]{\v{date.from}}
@@ -57,9 +59,19 @@
 }
 
 \section[skills]{
-  \p[heading]{\label{skills}}
+  \p[heading]{\sectiontitle}
   \entries[entry]{
     \p[strong]{\v{category}}
     \p[small]{\list[sep=", "]{items}}
+  }
+}
+
+\section[*]{
+  \p[heading]{\sectiontitle}
+  \entries[entry]{
+    \row{\p[strong]{\v{title}}}{\p[strong]{\v{subtitle}}}
+    \p[small]{\join[sep=" | "]{\v{location}}{\range[sep=" – "]{date}}}
+    \if{description}{\p[text]{\v{description}}}
+    \if{items}{\p[text]{\lines[prefix="• "]{items}}}
   }
 }

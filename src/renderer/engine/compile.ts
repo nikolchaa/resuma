@@ -4,7 +4,7 @@
  * Pure and synchronous. Field values, labels, conditions and loops are all
  * resolved here; layout only sees styled paragraphs, stacks, rows and rules.
  */
-import type { ResumeContent } from "@/lib/resumesStore";
+import type { ResumeContent, SectionKey } from "@/lib/resumesStore";
 import { AppLanguage, t } from "@/lib/i18n";
 import type { BlockNode, InlineNode, Template } from "../template/template";
 import {
@@ -13,7 +13,9 @@ import {
   LABELS,
   PERSONAL_FIELDS,
   RESUME_FONTS,
+  SECTION_KINDS,
   SectionKind,
+  TemplateSectionKind,
 } from "../template/schema";
 import {
   BoxStyle,
@@ -203,6 +205,9 @@ export function compileDocument(input: CompileInput): CompiledDocument {
         case "label":
           out.push(run(label(n.key), style));
           break;
+        case "sectiontitle":
+          if (currentSection?.title) out.push(run(currentSection.title, style));
+          break;
         case "range": {
           const from = asText(getPath(scope.obj, `${n.field}.from`));
           const to = asText(getPath(scope.obj, `${n.field}.to`));
@@ -300,11 +305,10 @@ export function compileDocument(input: CompileInput): CompiledDocument {
           const ts = inherit(style, s);
           const section = scope.fields === null && currentSection ? currentSection : null;
           if (!section) break;
-          const entries = (content[section] ?? []) as unknown[];
-          entries.forEach((entry, i) => {
+          section.entries.forEach((entry, i) => {
             const entryScope: Scope = {
               obj: (entry && typeof entry === "object" ? entry : {}) as Record<string, unknown>,
-              fields: ENTRY_FIELDS[section],
+              fields: ENTRY_FIELDS[section.kind],
             };
             const children = blocks(n.body, ts, entryScope, `${suffix}#${i}`);
             if (children.length) {
@@ -326,7 +330,7 @@ export function compileDocument(input: CompileInput): CompiledDocument {
     return out;
   };
 
-  let currentSection: SectionKind | null = null;
+  let currentSection: { kind: TemplateSectionKind; entries: unknown[]; title: string } | null = null;
   const boxes: Box[] = [];
 
   const header = blocks(
@@ -337,16 +341,84 @@ export function compileDocument(input: CompileInput): CompiledDocument {
   );
   if (header.length) boxes.push({ kind: "stack", id: "h", spacing: EMPTY_SPACING, children: header });
 
-  for (const section of template.sections) {
-    const entries = content[section.kind];
-    if (!Array.isArray(entries) || entries.length === 0) continue;
-    currentSection = section.kind;
-    const children = blocks(section.body, baseText, { obj: null, fields: null }, "");
+  const bodies = new Map(template.sections.map((s) => [s.kind, s.body]));
+  const customBody = bodies.get("*") ?? fallbackCustomBody(template);
+  const titles = content.layout?.titles ?? {};
+
+  for (const key of sectionOrder(template, content)) {
+    const custom = key.startsWith("custom:")
+      ? (content.custom ?? []).find((c) => `custom:${c.id}` === key)
+      : undefined;
+    const kind: TemplateSectionKind = custom ? "*" : (key as SectionKind);
+    const body = custom ? customBody : bodies.get(kind);
+    const entries = (custom ? custom.entries : content[key as SectionKind]) as unknown[] | undefined;
+    if (!body || !Array.isArray(entries) || entries.length === 0) continue;
+
+    const override = titles[key]?.trim();
+    const title = override || (custom ? custom.title.trim() : label(key));
+    currentSection = { kind, entries, title };
+    // Custom sections share template nodes, so their ids get the section key.
+    const children = blocks(body, baseText, { obj: null, fields: null }, custom ? `@${custom.id}` : "");
     currentSection = null;
     if (children.length) {
-      boxes.push({ kind: "stack", id: `s.${section.kind}`, spacing: EMPTY_SPACING, children });
+      boxes.push({ kind: "stack", id: `s.${key}`, spacing: EMPTY_SPACING, children });
     }
   }
 
   return { boxes, margin: pageStyle.margin ?? [40, 40, 40, 40] };
+}
+
+/**
+ * The order sections render in: the user's `layout.order` first, then any
+ * remaining sections in the template's order, then custom sections. Hidden
+ * sections are dropped.
+ */
+export function sectionOrder(template: Template, content: ResumeContent): SectionKey[] {
+  const builtins = template.sections
+    .map((s) => s.kind)
+    .filter((k): k is SectionKind => k !== "*");
+  // Built-ins the template doesn't style still exist; keep them in a stable spot.
+  for (const k of SECTION_KINDS) if (!builtins.includes(k)) builtins.push(k);
+  const customs = (content.custom ?? []).map((c) => `custom:${c.id}` as SectionKey);
+  const all: SectionKey[] = [...builtins, ...customs];
+  const known = new Set(all);
+  const preferred = (content.layout?.order ?? []).filter((k) => known.has(k));
+  const ordered = [...new Set([...preferred, ...all])];
+  const hidden = new Set(content.layout?.hidden ?? []);
+  return ordered.filter((k) => !hidden.has(k));
+}
+
+/** A plain custom-section body for templates without `\section[*]`, reusing their usual style names. */
+function fallbackCustomBody(template: Template): BlockNode[] {
+  const pick = (...names: string[]) => names.filter((n) => template.styles[n]).slice(0, 1);
+  const v = (field: string): InlineNode => ({ t: "v", field, link: false });
+  return [
+    { t: "p", id: "s.*.0", classes: pick("heading"), body: [{ t: "sectiontitle" }] },
+    {
+      t: "entries",
+      id: "s.*.1",
+      classes: pick("entry"),
+      body: [
+        {
+          t: "p",
+          id: "s.*.1.0",
+          classes: pick("strong", "title", "bold"),
+          body: [{ t: "join", sep: " — ", args: [[v("title")], [v("subtitle")]] }],
+        },
+        {
+          t: "p",
+          id: "s.*.1.1",
+          classes: pick("small", "subtitle", "sub", "meta"),
+          body: [{ t: "join", sep: " | ", args: [[v("location")], [{ t: "range", field: "date", sep: " – " }]] }],
+        },
+        { t: "p", id: "s.*.1.2", classes: pick("text", "desc", "body", "sub"), body: [v("description")] },
+        {
+          t: "p",
+          id: "s.*.1.3",
+          classes: pick("text", "desc", "body", "sub"),
+          body: [{ t: "lines", field: "items", prefix: "• " }],
+        },
+      ],
+    },
+  ];
 }

@@ -1,5 +1,6 @@
 \template[id=modern, name=Modern, version=1]
 \option[accent, type=color, default=#00d9cb, label="Accent colour"]
+\option[headings, type=color, default=#222222, label="Heading colour"]
 
 \page{margin: 40; font-family: @font; font-size: 11; color: #414141}
 
@@ -9,7 +10,7 @@
 \style[location]{font-size: 8; font-weight: bold; color: @accent; text-transform: uppercase;
   text-align: center; margin-bottom: 3}
 \style[contact]{font-size: 8; color: #999999; text-align: center; margin-bottom: 6}
-\style[heading]{font-size: 14; font-weight: bold; color: #222222; text-transform: uppercase;
+\style[heading]{font-size: 14; font-weight: bold; color: @headings; text-transform: uppercase;
   margin-top: 10; margin-bottom: 4; padding-bottom: 2; border-bottom: 1 @accent; keep: with-next}
 \style[entry]{margin-bottom: 6}
 \style[title]{font-size: 10; font-weight: bold; color: #333333}
@@ -24,7 +25,7 @@
 }
 
 \section[education]{
-  \p[heading]{\label{education}}
+  \p[heading]{\sectiontitle}
   \entries[entry]{
     \p[title]{\v{school}}
     \p[subtitle]{\join[sep=" — "]{\v{degree}}{\v{location}}}
@@ -35,7 +36,7 @@
 }
 
 \section[experience]{
-  \p[heading]{\label{experience}}
+  \p[heading]{\sectiontitle}
   \entries[entry]{
     \p[title]{\v{jobTitle}}
     \p[subtitle]{\join[sep=" — "]{\v{company}}{\v{location}}}
@@ -46,7 +47,7 @@
 }
 
 \section[projects]{
-  \p[heading]{\label{projects}}
+  \p[heading]{\sectiontitle}
   \entries[entry]{
     \p[title]{\v{name}}
     \p[subtitle]{\join[sep=" — "]{\v{date.from}}{\v[nolink]{link}}}
@@ -56,7 +57,7 @@
 }
 
 \section[awards]{
-  \p[heading]{\label{awards}}
+  \p[heading]{\sectiontitle}
   \entries[entry]{
     \p[title]{\v{title}}
     \p[subtitle]{\join[sep=" — "]{\v{organizer}}{\v{location}}}
@@ -66,9 +67,20 @@
 }
 
 \section[skills]{
-  \p[heading]{\label{skills}}
+  \p[heading]{\sectiontitle}
   \entries[entry]{
     \p[title]{\v{category}}
     \p[desc]{\list[sep=", "]{items}}
+  }
+}
+
+\section[*]{
+  \p[heading]{\sectiontitle}
+  \entries[entry]{
+    \p[title]{\v{title}}
+    \p[subtitle]{\join[sep=" — "]{\v{subtitle}}{\v{location}}}
+    \p[date]{\range[sep=" - "]{date}}
+    \if{description}{\p[desc]{\v{description}}}
+    \if{items}{\p[desc]{\lines[prefix="• "]{items}}}
   }
 }

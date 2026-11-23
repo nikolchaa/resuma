@@ -135,6 +135,76 @@ describe("renderResume", () => {
     expect(idsA.filter((id) => !idsB.has(id))).toEqual([]);
   });
 
+  const headingOrder = (doc: RenderedDocument) =>
+    lineTexts(doc).filter((l) => /^[A-ZĐŠČĆŽ ]{4,}$/.test(l) && l !== "JANE MARIE DOE");
+
+  it("follows the user's section order, hidden sections and renamed titles", () => {
+    const data = sampleResume();
+    data.content.layout = {
+      order: ["skills", "experience"],
+      hidden: ["awards"],
+      titles: { skills: "Toolbox", experience: "  " },
+    };
+    const doc = renderResume(data, { format: "A4", language: "en", fonts });
+    expect(headingOrder(doc)).toEqual(["TOOLBOX", "EXPERIENCE", "EDUCATION", "PROJECTS"]);
+  });
+
+  it.each(["professional", "modern", "compact"])("%s renders custom sections", (theme) => {
+    const data = { ...sampleResume(), theme };
+    data.content.custom = [
+      {
+        id: "langs",
+        title: "Languages",
+        entries: [
+          { title: "Serbian", subtitle: "Native", location: "", date: { from: "" }, description: "", items: [] },
+          { title: "German", subtitle: "B2", location: "Goethe", date: { from: "2019", to: "2020" }, description: "Certificate.", items: ["Reading", "Writing"] },
+        ],
+      },
+      { id: "empty", title: "Nothing", entries: [] },
+    ];
+    data.content.layout = { order: ["custom:langs"] };
+    const doc = renderResume(data, { format: "A4", language: "en", fonts });
+    const lines = lineTexts(doc);
+    expect(headingOrder(doc)[0]).toBe("LANGUAGES");
+    expect(headingOrder(doc)).not.toContain("NOTHING");
+    expect(lines.join("\n")).toMatch(/German/);
+    expect(lines.join("\n")).toMatch(/2019 . 2020/);
+    expect(lines.join("\n")).toMatch(/• Writing/);
+    // ids are unique even though custom sections share template nodes
+    const ids = doc.pages.flatMap((p) => p.items.map((i) => i.id));
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("renders custom sections with a fallback when the template has no \\section[*]", async () => {
+    const { compileTemplate } = await import("../template/template");
+    const { compileDocument } = await import("./compile");
+    const { template } = compileTemplate(
+      "\\template[id=t, name=T]\n\\style[heading]{font-weight: bold}\n\\section[skills]{\\p[heading]{\\sectiontitle}}"
+    );
+    const data = sampleResume();
+    data.content.custom = [
+      { id: "x", title: "Volunteering", entries: [{ title: "Mentor", subtitle: "Code Club", location: "", date: { from: "" }, description: "", items: [] }] },
+    ];
+    const { boxes } = compileDocument({ template: template!, content: data.content, language: "en" });
+    const text = JSON.stringify(boxes);
+    expect(text).toContain("Volunteering");
+    expect(text).toContain("Mentor");
+  });
+
+  it("applies template option overrides and ignores invalid ones", () => {
+    const base = renderResume({ ...sampleResume(), theme: "modern" }, { format: "A4", language: "en", fonts });
+    const tinted = renderResume(
+      { ...sampleResume(), theme: "modern", templateOptions: { accent: "#ff0000", headings: "not-a-colour" } },
+      { format: "A4", language: "en", fonts }
+    );
+    const rects = (d: RenderedDocument) => d.pages[0].items.filter((i) => i.type === "rect").map((i) => (i as { color: string }).color);
+    expect(new Set(rects(base))).toEqual(new Set(["#00d9cb"]));
+    expect(new Set(rects(tinted))).toEqual(new Set(["#ff0000"]));
+    const heading = (d: RenderedDocument) =>
+      d.pages[0].items.find((i) => i.type === "text" && i.text === "EXPERIENCE") as { color: string };
+    expect(heading(tinted).color).toBe(heading(base).color);
+  });
+
   it("tolerates missing and malformed fields from old files", () => {
     const data = sampleResume();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

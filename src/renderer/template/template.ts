@@ -19,8 +19,8 @@ import {
   LABELS,
   OptionType,
   PERSONAL_FIELDS,
-  SECTION_KINDS,
-  SectionKind,
+  TEMPLATE_SECTION_KINDS,
+  TemplateSectionKind,
 } from "./schema";
 import {
   Declarations,
@@ -37,6 +37,7 @@ export type InlineNode =
   | { t: "text"; value: string }
   | { t: "v"; field: string; link: boolean; part?: "first" | "rest" }
   | { t: "label"; key: string }
+  | { t: "sectiontitle" }
   | { t: "range"; field: string; sep: string }
   | { t: "join"; sep: string; args: InlineNode[][] }
   | { t: "list"; field: string; sep: string }
@@ -70,7 +71,7 @@ export type Template = {
   page: Declarations;
   styles: Record<string, Declarations>;
   header: BlockNode[];
-  sections: { kind: SectionKind; body: BlockNode[] }[];
+  sections: { kind: TemplateSectionKind; body: BlockNode[] }[];
 };
 
 export type TemplateResult = { template: Template | null; diagnostics: Diagnostic[] };
@@ -82,14 +83,14 @@ export const BUILTIN_OPTIONS: TemplateOption[] = [
 
 type Scope =
   | { kind: "personal" }
-  | { kind: "section"; section: SectionKind }
-  | { kind: "entry"; section: SectionKind }
+  | { kind: "section"; section: TemplateSectionKind }
+  | { kind: "entry"; section: TemplateSectionKind }
   | { kind: "none" };
 
 type Ctx = { scope: Scope; inEach: boolean };
 
 const BLOCK_COMMANDS = new Set(["p", "block", "row", "hr", "entries", "if", "each"]);
-const INLINE_COMMANDS = new Set(["v", "label", "range", "join", "list", "lines", "span", "if", "each"]);
+const INLINE_COMMANDS = new Set(["v", "label", "range", "join", "list", "lines", "span", "if", "each", "sectiontitle"]);
 
 export function compileTemplate(source: string): TemplateResult {
   const { nodes, diagnostics } = parseRsm(source);
@@ -225,6 +226,16 @@ export function compileTemplate(source: string): TemplateResult {
               link: !flags.includes("nolink"),
               part: flags.includes("first") ? "first" : flags.includes("rest") ? "rest" : undefined,
             });
+          }
+          break;
+        }
+        case "sectiontitle": {
+          expectGroups(cmd, 0, 0);
+          rejectOptions(cmd, []);
+          if (ctx.scope.kind !== "section" && ctx.scope.kind !== "entry") {
+            diag(cmd.pos, "`\\sectiontitle` can only be used inside a `\\section`.");
+          } else {
+            out.push({ t: "sectiontitle" });
           }
           break;
         }
@@ -551,8 +562,8 @@ export function compileTemplate(source: string): TemplateResult {
       case "section": {
         expectGroups(cmd, 1, 1);
         const kind = flagOptions(cmd)[0]?.key;
-        if (!kind || !(SECTION_KINDS as readonly string[]).includes(kind)) {
-          diag(cmd.pos, `\`\\section\` needs a kind: ${SECTION_KINDS.join(", ")}.`);
+        if (!kind || !(TEMPLATE_SECTION_KINDS as readonly string[]).includes(kind)) {
+          diag(cmd.pos, `\`\\section\` needs a kind: ${TEMPLATE_SECTION_KINDS.join(", ")} (* = custom sections).`);
           break;
         }
         if (seenSections.has(kind)) {
@@ -561,8 +572,8 @@ export function compileTemplate(source: string): TemplateResult {
         }
         seenSections.add(kind);
         template.sections.push({
-          kind: kind as SectionKind,
-          body: blocks(cmd.groups[0] ?? [], { scope: { kind: "section", section: kind as SectionKind }, inEach: false }, `s.${kind}`),
+          kind: kind as TemplateSectionKind,
+          body: blocks(cmd.groups[0] ?? [], { scope: { kind: "section", section: kind as TemplateSectionKind }, inEach: false }, `s.${kind}`),
         });
         break;
       }

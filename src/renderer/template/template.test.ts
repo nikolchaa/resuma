@@ -10,8 +10,9 @@ describe("compileTemplate", () => {
     expect(diagnostics).toEqual([]);
     expect(template?.id).toBe(id);
     expect(template?.sections.map((s) => s.kind).sort()).toEqual(
-      ["awards", "education", "experience", "projects", "skills"]
+      ["*", "awards", "education", "experience", "projects", "skills"]
     );
+    expect(template?.options.map((o) => o.name)).toEqual(["font", "accent", "headings"]);
   });
 
   it.each(Object.keys(BUILTIN_TEMPLATES))("built-in template %s is valid with CRLF line endings", (id) => {
@@ -80,6 +81,16 @@ describe("compileTemplate", () => {
     const messages = diagnostics.map((d) => d.message).join("\n");
     expect(messages).toMatch(/must be inside a paragraph/);
     expect(messages).toMatch(/`\\row` is a block/);
+  });
+
+  it("checks custom-section fields and \\sectiontitle placement", () => {
+    const ok = compileTemplate(wrap("\\section[*]{\\p{\\sectiontitle}\\entries{\\p{\\v{subtitle} \\lines{items}}}}"));
+    expect(ok.diagnostics).toEqual([]);
+    const bad = compileTemplate(wrap("\\header{\\p{\\sectiontitle}}\\section[*]{\\entries{\\p{\\v{jobTitle}}}}"));
+    expect(bad.diagnostics.map((d) => d.message)).toEqual([
+      expect.stringMatching(/`\\sectiontitle` can only be used inside a `\\section`/),
+      expect.stringMatching(/Unknown field `jobTitle`/),
+    ]);
   });
 
   it("only allows `.` inside \\each", () => {
