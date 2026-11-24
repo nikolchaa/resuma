@@ -97,7 +97,8 @@ ${previous}
 
 /** Pulls the .rsm source out of a model reply (code block, reasoning tags, chatter). */
 export function extractSource(reply: string): string {
-  const text = reply.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+  // Windows console output can arrive as "\r\r\n"; normalise line endings first.
+  const text = reply.replace(/\r+\n/g, "\n").replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
   const fenced = [...text.matchAll(/```[a-zA-Z]*[ \t]*\r?\n([\s\S]*?)```/g)].map((m) => m[1]);
   if (fenced.length) return fenced.sort((a, b) => b.length - a.length)[0].replace(/\s+$/, "") + "\n";
   // No code block: start at the first command.

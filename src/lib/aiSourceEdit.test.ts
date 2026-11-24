@@ -26,6 +26,7 @@ describe("extractSource", () => {
     expect(extractSource("<think>\\fake{x}</think>\n```rsm\n\\p{a}\n```")).toBe("\\p{a}\n");
     expect(extractSource("Here:\n```\n\\p{b}\n```")).toBe("\\p{b}\n");
     expect(extractSource("Okay so \\personal{}")).toBe("\\personal{}\n");
+    expect(extractSource("```rsm\r\r\n\\skills{}\r\r\n```")).toBe("\\skills{}\n");
   });
 });
 
