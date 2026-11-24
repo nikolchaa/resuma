@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { getActivity, onActivity } from "@/lib/mcp/activity";
 import { Copy, Eye, EyeOff, RefreshCw } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { ask } from "@tauri-apps/plugin-dialog";
@@ -58,6 +59,7 @@ export const ExternalAppsSettings = () => {
   const [showToken, setShowToken] = useState(false);
   const [port, setPort] = useState(String(DEFAULT_MCP_PORT));
   const [resumes, setResumes] = useState<ResumeData[]>([]);
+  const activity = useSyncExternalStore(onActivity, getActivity);
 
   useEffect(() => {
     getMcpSettings().then((s) => {
@@ -188,6 +190,34 @@ export const ExternalAppsSettings = () => {
                   </pre>
                 </div>
               ))}
+          </div>
+
+          <Separator />
+
+          <div className='flex flex-col gap-2'>
+            <Label>
+              {t("mcp.activity")} <InfoTip text={t("mcp.activity.description")} />
+            </Label>
+            {activity.length === 0 ? (
+              <p className='text-sm text-muted-foreground'>{t("mcp.activity.none")}</p>
+            ) : (
+              <ul className='flex max-h-48 flex-col divide-y overflow-y-auto rounded-md border text-sm'>
+                {[...activity].reverse().slice(0, 15).map((a, i) => {
+                  const title = a.target ? resumes.find((r) => r.id === a.target)?.title : undefined;
+                  return (
+                    <li key={`${a.at}-${i}`} className='flex items-center gap-3 px-3 py-1.5'>
+                      <span className='shrink-0 text-xs text-muted-foreground tabular-nums'>
+                        {new Date(a.at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                      </span>
+                      <span className='min-w-0 flex-1 truncate'>
+                        <span className='font-medium'>{a.client}</span> · {t(`mcp.activity.tool.${a.tool}`, a.tool)}
+                        {a.target && <span className='text-muted-foreground'> · {title || a.target}</span>}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
 
           <Separator />
