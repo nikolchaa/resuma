@@ -95,6 +95,12 @@ export const LABELS: Record<string, string> = {
   relevantCoursework: "template.label.relevantCoursework",
   tech: "template.label.tech",
   present: "common.present",
+  email: "field.email",
+  phone: "field.phone",
+  location: "field.location",
+  website: "field.website",
+  linkedin: "field.linkedin",
+  github: "field.github",
 };
 
 /** Families a template may use; keys are the names written in templates. */

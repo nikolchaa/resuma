@@ -7,7 +7,7 @@
 import type { ResumeContent, SectionKey } from "@/lib/resumesStore";
 import { orderedSections } from "@/lib/sectionLayout";
 import { AppLanguage, t } from "@/lib/i18n";
-import type { BlockNode, InlineNode, Template } from "../template/template";
+import type { BlockNode, InlineNode, Template, TemplateColumns } from "../template/template";
 import {
   ENTRY_FIELDS,
   FieldKind,
@@ -37,9 +37,25 @@ export type CompileInput = {
   options?: Record<string, string>;
 };
 
+export type ColumnFrame = {
+  background?: string;
+  paddingLeft: number;
+  paddingRight: number;
+};
+
+export type CompiledColumns = {
+  /** Fractions of the content width minus the gap. */
+  widths: [number, number];
+  gap: number;
+  frames: [ColumnFrame, ColumnFrame];
+  boxes: [Box[], Box[]];
+};
+
 export type CompiledDocument = {
+  /** Single-column body, or the full-width header above the columns. */
   boxes: Box[];
   margin: [number, number, number, number];
+  columns?: CompiledColumns;
 };
 
 type Scope = {
@@ -159,6 +175,8 @@ export function compileDocument(input: CompileInput): CompiledDocument {
     marginBottom: s.marginBottom ?? 0,
     paddingTop: s.paddingTop ?? 0,
     paddingBottom: s.paddingBottom ?? 0,
+    ...(s.paddingLeft ? { paddingLeft: s.paddingLeft } : {}),
+    ...(s.paddingRight ? { paddingRight: s.paddingRight } : {}),
     border: s.borderBottom ?? null,
     keep: s.keep,
   });
@@ -331,41 +349,85 @@ export function compileDocument(input: CompileInput): CompiledDocument {
   };
 
   let currentSection: { kind: TemplateSectionKind; entries: unknown[]; title: string } | null = null;
-  const boxes: Box[] = [];
+  const personalScope: Scope = { obj: (content.personal ?? {}) as Record<string, unknown>, fields: PERSONAL_FIELDS };
 
-  const header = blocks(
-    template.header,
-    baseText,
-    { obj: (content.personal ?? {}) as Record<string, unknown>, fields: PERSONAL_FIELDS },
-    ""
-  );
-  if (header.length) boxes.push({ kind: "stack", id: "h", spacing: EMPTY_SPACING, children: header });
+  const headerBox = (nodes: BlockNode[], style: TextStyle, id: string): Box[] => {
+    const children = blocks(nodes, style, personalScope, "");
+    return children.length ? [{ kind: "stack", id, spacing: EMPTY_SPACING, children }] : [];
+  };
 
   const bodies = new Map(template.sections.map((s) => [s.kind, s.body]));
   const customBody = bodies.get("*") ?? fallbackCustomBody(template);
   const titles = content.layout?.titles ?? {};
 
-  for (const key of sectionOrder(template, content)) {
-    const custom = key.startsWith("custom:")
-      ? (content.custom ?? []).find((c) => `custom:${c.id}` === key)
-      : undefined;
-    const kind: TemplateSectionKind = custom ? "*" : (key as SectionKind);
-    const body = custom ? customBody : bodies.get(kind);
-    const entries = (custom ? custom.entries : content[key as SectionKind]) as unknown[] | undefined;
-    if (!body || !Array.isArray(entries) || entries.length === 0) continue;
+  /** Section boxes in the user's order, for the sections `include` accepts. */
+  const sectionBoxes = (style: TextStyle, include: (kind: TemplateSectionKind) => boolean): Box[] => {
+    const out: Box[] = [];
+    for (const key of sectionOrder(template, content)) {
+      const custom = key.startsWith("custom:")
+        ? (content.custom ?? []).find((c) => `custom:${c.id}` === key)
+        : undefined;
+      const kind: TemplateSectionKind = custom ? "*" : (key as SectionKind);
+      if (!include(kind)) continue;
+      const body = custom ? customBody : bodies.get(kind);
+      const entries = (custom ? custom.entries : content[key as SectionKind]) as unknown[] | undefined;
+      if (!body || !Array.isArray(entries) || entries.length === 0) continue;
 
-    const override = titles[key]?.trim();
-    const title = override || (custom ? custom.title.trim() : label(key));
-    currentSection = { kind, entries, title };
-    // Custom sections share template nodes, so their ids get the section key.
-    const children = blocks(body, baseText, { obj: null, fields: null }, custom ? `@${custom.id}` : "");
-    currentSection = null;
-    if (children.length) {
-      boxes.push({ kind: "stack", id: `s.${key}`, spacing: EMPTY_SPACING, children });
+      const override = titles[key]?.trim();
+      const title = override || (custom ? custom.title.trim() : label(key));
+      currentSection = { kind, entries, title };
+      // Custom sections share template nodes, so their ids get the section key.
+      const children = blocks(body, style, { obj: null, fields: null }, custom ? `@${custom.id}` : "");
+      currentSection = null;
+      if (children.length) {
+        out.push({ kind: "stack", id: `s.${key}`, spacing: EMPTY_SPACING, children });
+      }
     }
+    return out;
+  };
+
+  const margin = pageStyle.margin ?? [40, 40, 40, 40];
+  const header = headerBox(template.header, baseText, "h");
+  const cols = template.columns;
+  if (!cols) {
+    return { boxes: [...header, ...sectionBoxes(baseText, () => true)], margin };
   }
 
-  return { boxes, margin: pageStyle.margin ?? [40, 40, 40, 40] };
+  const columnOf = (kind: TemplateSectionKind) => placementOf(cols, kind);
+
+  const column = (col: 0 | 1) => {
+    const s = merged(cols.classes[col]);
+    const style = inherit(baseText, s);
+    const frame: ColumnFrame = {
+      background: s.background,
+      paddingLeft: s.paddingLeft ?? 0,
+      paddingRight: s.paddingRight ?? 0,
+    };
+    const boxes = [
+      ...headerBox(cols.header[col], style, col === 0 ? "hL" : "hR"),
+      ...sectionBoxes(style, (kind) => columnOf(kind) === col),
+    ];
+    return { frame, boxes };
+  };
+  const left = column(0);
+  const right = column(1);
+
+  return {
+    boxes: header,
+    margin,
+    columns: { widths: cols.widths, gap: cols.gap, frames: [left.frame, right.frame], boxes: [left.boxes, right.boxes] },
+  };
+}
+
+/** The column (0 = left, 1 = right) a section renders in, or null for single-column templates. */
+export function sectionColumn(template: Template, key: SectionKey): 0 | 1 | null {
+  if (!template.columns) return null;
+  return placementOf(template.columns, key.startsWith("custom:") ? "*" : (key as SectionKind));
+}
+
+/** Custom sections without their own `\section[*]` go to the wider column. */
+function placementOf(cols: TemplateColumns, kind: TemplateSectionKind): 0 | 1 {
+  return cols.placement[kind] ?? (cols.widths[0] > cols.widths[1] ? 0 : 1);
 }
 
 /**

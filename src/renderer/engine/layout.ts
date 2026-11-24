@@ -8,6 +8,7 @@
  */
 import { FontSet, LoadedFont } from "./fonts";
 import type { Box, DisplayItem, LaidOutPage, PageSize, Run, TextStyle } from "./types";
+import type { CompiledColumns } from "./compile";
 
 type Draw = DisplayItem; // y is relative to the flow item's top
 
@@ -22,9 +23,11 @@ export type LayoutInput = {
   page: PageSize;
   margin: [number, number, number, number];
   fonts: FontSet;
+  /** Two columns below `boxes` (which then hold only the full-width header). */
+  columns?: CompiledColumns;
 };
 
-export function layoutDocument({ boxes, page, margin, fonts }: LayoutInput): {
+export function layoutDocument({ boxes, page, margin, fonts, columns }: LayoutInput): {
   pages: LaidOutPage[];
   fontKeys: string[];
 } {
@@ -222,13 +225,16 @@ export function layoutDocument({ boxes, page, margin, fonts }: LayoutInput): {
 
   const flatten = (box: Box, x: number, width: number): Flow[] => {
     const sp = box.spacing;
+    // Horizontal padding insets the content; a bottom border still spans the box.
+    const ix = x + (sp.paddingLeft ?? 0);
+    const iw = Math.max(20, width - (sp.paddingLeft ?? 0) - (sp.paddingRight ?? 0));
     const inner: Flow[] =
       box.kind === "para"
-        ? paraLines(box, x, width)
+        ? paraLines(box, ix, iw)
         : box.kind === "stack"
-        ? box.children.flatMap((c) => flatten(c, x, width))
+        ? box.children.flatMap((c) => flatten(c, ix, iw))
         : box.kind === "row"
-        ? [rowLine(box, x, width)]
+        ? [rowLine(box, ix, iw)]
         : [];
 
     const flows: Flow[] = [];
@@ -295,7 +301,51 @@ export function layoutDocument({ boxes, page, margin, fonts }: LayoutInput): {
   const top = mt;
   const bottom = page.height - mb;
   const flows = boxes.flatMap((b) => flatten(b, ml, contentWidth));
-  const pageItems = paginate(flows, top, top, bottom);
+  const main = paginate(flows, top, top, bottom);
+  const pageItems = columns ? layoutColumns(columns, main) : main.pages;
+
+  function layoutColumns(cols: CompiledColumns, header: Paginated): DisplayItem[][] {
+    const avail = Math.max(40, contentWidth - cols.gap);
+    const w0 = avail * cols.widths[0];
+    const geometry = [
+      { x: ml, w: w0 },
+      { x: ml + w0 + cols.gap, w: avail - w0 },
+    ];
+    // Columns start below the full-width header, on the page where it ends.
+    const offset = Math.max(0, header.pages.length - 1);
+    const firstTop = header.pages.length ? header.endY : top;
+
+    const columnPages = ([0, 1] as const).map((c) => {
+      const { x, w } = geometry[c];
+      const f = cols.frames[c];
+      const ix = x + f.paddingLeft;
+      const iw = Math.max(20, w - f.paddingLeft - f.paddingRight);
+      return paginate(cols.boxes[c].flatMap((b) => flatten(b, ix, iw)), firstTop, top, bottom).pages;
+    });
+
+    const count = Math.max(1, header.pages.length, offset + columnPages[0].length, offset + columnPages[1].length);
+    const out: DisplayItem[][] = [];
+    for (let p = 0; p < count; p++) {
+      const items: DisplayItem[] = [];
+      // Backgrounds first so text paints on top; they run to the outer page
+      // edge and the full page height (below the header on its page).
+      if (p >= offset) {
+        ([0, 1] as const).forEach((c) => {
+          const color = cols.frames[c].background;
+          if (!color) return;
+          const y = p === offset && header.pages.length ? header.endY : 0;
+          const { x, w } = geometry[c];
+          const left = c === 0 ? 0 : x;
+          const right = c === 0 ? x + w : page.width;
+          items.push({ type: "rect", id: `cols/bg${c}`, x: left, y, w: right - left, h: page.height - y, color });
+        });
+      }
+      items.push(...(header.pages[p] ?? []));
+      for (const c of [0, 1] as const) items.push(...(columnPages[c][p - offset] ?? []));
+      out.push(items);
+    }
+    return out;
+  }
 
   const pages: LaidOutPage[] = pageItems.map((items, index) => ({
     index,
@@ -308,12 +358,18 @@ export function layoutDocument({ boxes, page, margin, fonts }: LayoutInput): {
   return { pages, fontKeys: [...usedFonts] };
 }
 
+type Paginated = {
+  /** Items per page; no trailing empty page. */
+  pages: DisplayItem[][];
+  /** Where the content ends on its last page (`firstTop` when there is none). */
+  endY: number;
+};
+
 /**
  * Places flows on pages, honouring keep-with-next. The first page starts at
  * `firstTop` (below a full-width header, say), later pages at `top`.
- * Returns the items of each page; trailing empty pages are not included.
  */
-function paginate(flows: Flow[], firstTop: number, top: number, bottom: number): DisplayItem[][] {
+function paginate(flows: Flow[], firstTop: number, top: number, bottom: number): Paginated {
   const bodyHeight = bottom - top;
   const pages: DisplayItem[][] = [];
   let items: DisplayItem[] = [];
@@ -353,6 +409,7 @@ function paginate(flows: Flow[], firstTop: number, top: number, bottom: number):
     y += f.h;
     atTop = false;
   }
+  const endY = y;
   if (items.length) newPage();
-  return pages;
+  return { pages, endY };
 }

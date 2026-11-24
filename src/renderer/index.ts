@@ -62,14 +62,14 @@ export function resolveTemplate(data: Pick<ResumeData, "theme" | "templateSource
 export function renderResume(data: ResumeData, { format, language, fonts }: RenderOptions): RenderedDocument {
   const { template } = resolveTemplate(data);
 
-  const { boxes, margin } = compileDocument({
+  const { boxes, margin, columns } = compileDocument({
     template,
     content: data.content,
     language,
     font: data.font,
     options: data.templateOptions,
   });
-  const { pages, fontKeys } = layoutDocument({ boxes, page: PAPER[format], margin, fonts });
+  const { pages, fontKeys } = layoutDocument({ boxes, page: PAPER[format], margin, fonts, columns });
 
   return {
     pages,

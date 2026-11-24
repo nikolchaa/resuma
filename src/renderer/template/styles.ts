@@ -18,6 +18,10 @@ export type BoxStyle = {
   marginBottom?: number;
   paddingTop?: number;
   paddingBottom?: number;
+  paddingLeft?: number;
+  paddingRight?: number;
+  /** Column background (only used on `\cols` column styles). */
+  background?: string;
   borderBottom?: { width: number; color: string } | null;
   keep?: "together" | "with-next";
   /** page only: top right bottom left */
@@ -80,6 +84,9 @@ export const PROPERTIES: Record<string, (raw: string) => Parsed<Partial<BoxStyle
   "margin-bottom": (r) => map(parseNumber(r, 0, 120), (marginBottom) => ({ marginBottom })),
   "padding-top": (r) => map(parseNumber(r, 0, 120), (paddingTop) => ({ paddingTop })),
   "padding-bottom": (r) => map(parseNumber(r, 0, 120), (paddingBottom) => ({ paddingBottom })),
+  "padding-left": (r) => map(parseNumber(r, 0, 120), (paddingLeft) => ({ paddingLeft })),
+  "padding-right": (r) => map(parseNumber(r, 0, 120), (paddingRight) => ({ paddingRight })),
+  background: (r) => map(parseColor(r), (background) => ({ background })),
   "border-bottom": (r) => {
     const v = r.trim();
     if (v === "none") return ok({ borderBottom: null });

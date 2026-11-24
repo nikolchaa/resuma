@@ -63,6 +63,19 @@ export type TemplateOption = {
   choices?: string[];
 };
 
+/** Two-column layout from `\cols`: index 0 is the left column, 1 the right. */
+export type TemplateColumns = {
+  /** Column widths as fractions of the content width minus the gap; they sum to 1. */
+  widths: [number, number];
+  gap: number;
+  /** Style classes applied to each column (text styles, padding, background). */
+  classes: [string[], string[]];
+  /** Personal-details blocks at the top of each column. */
+  header: [BlockNode[], BlockNode[]];
+  /** Which column each section kind renders in. */
+  placement: Partial<Record<TemplateSectionKind, 0 | 1>>;
+};
+
 export type Template = {
   id: string;
   name: string;
@@ -70,9 +83,14 @@ export type Template = {
   options: TemplateOption[];
   page: Declarations;
   styles: Record<string, Declarations>;
+  /** Full-width header (above the columns when there are any). */
   header: BlockNode[];
   sections: { kind: TemplateSectionKind; body: BlockNode[] }[];
+  columns?: TemplateColumns;
 };
+
+/** Style properties that only make sense on a whole column. */
+const COLUMN_ONLY_PROPERTIES = ["background"];
 
 export type TemplateResult = { template: Template | null; diagnostics: Diagnostic[] };
 
@@ -478,10 +496,106 @@ export function compileTemplate(source: string): TemplateResult {
     return valid;
   };
 
-  // ---- top level ------------------------------------------------------
+  // ---- header and sections ---------------------------------------------
 
   let sawTemplate = false;
   const seenSections = new Set<string>();
+
+  const headerBlocks = (cmd: RsmCommand, idPrefix: string): BlockNode[] => {
+    expectGroups(cmd, 1, 1);
+    rejectOptions(cmd, []);
+    return blocks(cmd.groups[0] ?? [], { scope: { kind: "personal" }, inEach: false }, idPrefix);
+  };
+
+  /** Adds a `\section`; returns its kind, or null when it was rejected. */
+  const addSection = (cmd: RsmCommand): TemplateSectionKind | null => {
+    expectGroups(cmd, 1, 1);
+    const kind = flagOptions(cmd)[0]?.key;
+    if (!kind || !(TEMPLATE_SECTION_KINDS as readonly string[]).includes(kind)) {
+      diag(cmd.pos, `\`\\section\` needs a kind: ${TEMPLATE_SECTION_KINDS.join(", ")} (* = custom sections).`);
+      return null;
+    }
+    if (seenSections.has(kind)) {
+      diag(cmd.pos, `Section \`${kind}\` is defined twice.`);
+      return null;
+    }
+    seenSections.add(kind);
+    template.sections.push({
+      kind: kind as TemplateSectionKind,
+      body: blocks(cmd.groups[0] ?? [], { scope: { kind: "section", section: kind as TemplateSectionKind }, inEach: false }, `s.${kind}`),
+    });
+    return kind as TemplateSectionKind;
+  };
+
+  const columnClasses: string[] = [];
+  let sectionOutsideCols: RsmCommand | null = null;
+
+  const addColumns = (cmd: RsmCommand) => {
+    if (template.columns) {
+      diag(cmd.pos, "Only one `\\cols` is allowed in a template.");
+      return;
+    }
+    expectGroups(cmd, 2, 2);
+    rejectOptions(cmd, ["widths", "gap", "left", "right"]);
+
+    let widths: [number, number] = [0.5, 0.5];
+    const rawWidths = optionValue(cmd, "widths");
+    if (rawWidths !== undefined) {
+      const parts = rawWidths.split(",").map((s) => Number(s.trim()));
+      if (parts.length !== 2 || parts.some((p) => !Number.isFinite(p) || p <= 0)) {
+        diag(cmd.pos, '`\\cols` needs `widths="<left>,<right>"` with two positive numbers, e.g. `widths="32,68"`.');
+      } else {
+        const total = parts[0] + parts[1];
+        // Keep both columns usable: each gets at least 15% of the width.
+        const left = Math.min(0.85, Math.max(0.15, parts[0] / total));
+        widths = [left, 1 - left];
+      }
+    }
+
+    let gap = 20;
+    const rawGap = optionValue(cmd, "gap");
+    if (rawGap !== undefined) {
+      if (!/^\d+(\.\d+)?$/.test(rawGap.trim())) diag(cmd.pos, `\`gap\` must be a number of points, got \`${rawGap}\`.`);
+      else gap = Math.min(72, Number(rawGap));
+    }
+
+    const classFor = (side: "left" | "right"): string[] => {
+      const v = optionValue(cmd, side);
+      if (v === undefined) return [];
+      const classes = v.split(/\s+/).filter(Boolean);
+      classes.forEach((name) => usedClasses.push({ name, line: cmd.pos.line, col: cmd.pos.col }));
+      columnClasses.push(...classes);
+      return classes;
+    };
+
+    const columns: TemplateColumns = {
+      widths,
+      gap,
+      classes: [classFor("left"), classFor("right")],
+      header: [[], []],
+      placement: {},
+    };
+
+    ([0, 1] as const).forEach((col) => {
+      for (const n of cmd.groups[col] ?? []) {
+        if (n.type === "text") {
+          if (n.value.trim()) diag(n.pos, "Text isn't allowed directly inside `\\cols`; put it in a `\\header` or `\\section`.");
+          continue;
+        }
+        if (n.name === "header") {
+          columns.header[col].push(...headerBlocks(n, col === 0 ? "hL" : "hR"));
+        } else if (n.name === "section") {
+          const kind = addSection(n);
+          if (kind) columns.placement[kind] = col;
+        } else {
+          diag(n.pos, `\`\\${n.name}\` isn't allowed inside \`\\cols\`. A column holds \\header and \\section blocks.`);
+        }
+      }
+    });
+    template.columns = columns;
+  };
+
+  // ---- top level ------------------------------------------------------
 
   for (const n of nodes) {
     if (n.type === "text") {
@@ -554,41 +668,50 @@ export function compileTemplate(source: string): TemplateResult {
         break;
       }
       case "header": {
-        expectGroups(cmd, 1, 1);
-        rejectOptions(cmd, []);
-        template.header.push(...blocks(cmd.groups[0] ?? [], { scope: { kind: "personal" }, inEach: false }, "h"));
+        if (template.columns) {
+          diag(cmd.pos, "A full-width `\\header` must come before `\\cols`; put it inside a column to place it there.");
+          break;
+        }
+        template.header.push(...headerBlocks(cmd, "h"));
         break;
       }
       case "section": {
-        expectGroups(cmd, 1, 1);
-        const kind = flagOptions(cmd)[0]?.key;
-        if (!kind || !(TEMPLATE_SECTION_KINDS as readonly string[]).includes(kind)) {
-          diag(cmd.pos, `\`\\section\` needs a kind: ${TEMPLATE_SECTION_KINDS.join(", ")} (* = custom sections).`);
-          break;
-        }
-        if (seenSections.has(kind)) {
-          diag(cmd.pos, `Section \`${kind}\` is defined twice.`);
-          break;
-        }
-        seenSections.add(kind);
-        template.sections.push({
-          kind: kind as TemplateSectionKind,
-          body: blocks(cmd.groups[0] ?? [], { scope: { kind: "section", section: kind as TemplateSectionKind }, inEach: false }, `s.${kind}`),
-        });
+        sectionOutsideCols ??= cmd;
+        addSection(cmd);
+        break;
+      }
+      case "cols": {
+        addColumns(cmd);
         break;
       }
       default:
         diag(
           cmd.pos,
-          `\`\\${cmd.name}\` isn't allowed at the top level. Use \\template, \\option, \\page, \\style, \\header or \\section.`
+          `\`\\${cmd.name}\` isn't allowed at the top level. Use \\template, \\option, \\page, \\style, \\header, \\section or \\cols.`
         );
     }
   }
 
   if (!sawTemplate) diag({ line: 1, col: 1 }, "A template must start with `\\template[id=…, name=…]`.");
 
+  if (template.columns && sectionOutsideCols) {
+    diag(sectionOutsideCols.pos, "With `\\cols`, every `\\section` goes inside one of the two columns.");
+  }
+
   for (const c of usedClasses) {
     if (!template.styles[c.name]) diag(c, `Unknown style \`${c.name}\` — define it with \`\\style[${c.name}]{...}\`.`);
+  }
+
+  // Column-only properties on a block or paragraph style would do nothing.
+  const warned = new Set<string>();
+  for (const c of usedClasses) {
+    if (columnClasses.includes(c.name) || warned.has(c.name)) continue;
+    warned.add(c.name);
+    for (const d of template.styles[c.name] ?? []) {
+      if (COLUMN_ONLY_PROPERTIES.includes(d.prop)) {
+        diag(d, `\`${d.prop}\` only works on a column style (\`\\cols[left=…]\` or \`right=…\`); it's ignored on \`${c.name}\`.`, "warning");
+      }
+    }
   }
 
   const hasErrors = diagnostics.some((d) => d.severity === "error");

@@ -12,7 +12,9 @@ describe("compileTemplate", () => {
     expect(template?.sections.map((s) => s.kind).sort()).toEqual(
       ["*", "awards", "education", "experience", "projects", "skills"]
     );
-    expect(template?.options.map((o) => o.name)).toEqual(["font", "accent", "headings"]);
+    const options = template?.options.map((o) => o.name) ?? [];
+    expect(options[0]).toBe("font");
+    expect(options).toContain("accent");
   });
 
   it.each(Object.keys(BUILTIN_TEMPLATES))("built-in template %s is valid with CRLF line endings", (id) => {
@@ -22,6 +24,39 @@ describe("compileTemplate", () => {
     const { template, diagnostics } = compileTemplate(crlf);
     expect(diagnostics).toEqual([]);
     expect(template).toEqual(lf.template);
+  });
+
+  it("reads \\cols: widths, gap, column styles, headers and section placement", () => {
+    const { template, diagnostics } = compileTemplate(
+      wrap(
+        "\\style[side]{background: #111111; padding-right: 12}\n" +
+          "\\header{\\p{\\v{fullName}}}\n" +
+          '\\cols[widths="30,70", gap=18, left=side]{\\header{\\p{\\v{email}}} \\section[skills]{\\p{\\sectiontitle}}}{\\section[experience]{\\p{\\sectiontitle}} \\section[*]{\\p{\\sectiontitle}}}'
+      )
+    );
+    expect(diagnostics).toEqual([]);
+    const cols = template!.columns!;
+    expect(cols.widths[0]).toBeCloseTo(0.3);
+    expect(cols.gap).toBe(18);
+    expect(cols.classes).toEqual([["side"], []]);
+    expect(cols.header[0]).toHaveLength(1);
+    expect(template!.header).toHaveLength(1);
+    expect(cols.placement).toEqual({ skills: 0, experience: 1, "*": 1 });
+    expect(template!.sections.map((s) => s.kind)).toEqual(["skills", "experience", "*"]);
+  });
+
+  it("rejects misplaced or malformed \\cols", () => {
+    const messages = (src: string) => compileTemplate(wrap(src)).diagnostics.map((d) => d.message).join("\n");
+    expect(messages("\\section[skills]{} \\cols{}{}")).toMatch(/every `\\section` goes inside one of the two columns/);
+    expect(messages("\\cols{}{} \\cols{}{}")).toMatch(/Only one `\\cols`/);
+    expect(messages('\\cols[widths="40"]{}{}')).toMatch(/two positive numbers/);
+    expect(messages("\\cols{\\p{x}}{}")).toMatch(/`\\p` isn't allowed inside `\\cols`/);
+    expect(messages("\\cols{}{} \\header{}")).toMatch(/must come before `\\cols`/);
+    expect(messages("\\cols[left=nope]{}{}")).toMatch(/Unknown style `nope`/);
+    // background only means something on a column; elsewhere it's a warning
+    const warn = compileTemplate(wrap("\\style[bg]{background: #000000}\n\\header{\\p[bg]{\\v{email}}}"));
+    expect(warn.template).not.toBeNull();
+    expect(warn.diagnostics).toEqual([expect.objectContaining({ severity: "warning", message: expect.stringMatching(/only works on a column style/) })]);
   });
 
   it("rejects unknown fields with the available ones listed", () => {

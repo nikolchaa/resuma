@@ -18,6 +18,9 @@ export type Spacing = {
   marginBottom: number;
   paddingTop: number;
   paddingBottom: number;
+  /** Horizontal insets; optional so existing boxes stay unchanged. */
+  paddingLeft?: number;
+  paddingRight?: number;
   border: { width: number; color: string } | null;
   keep?: "together" | "with-next";
 };
