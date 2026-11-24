@@ -40,6 +40,34 @@ describe("runSourceEdit", () => {
     expect(model.prompts[0]).toContain("\\jobTitle{Software Engineer}");
   });
 
+  it("never sends personal details and puts the originals back", async () => {
+    const model = scripted(
+      (() => {
+        // The model even invents a personal block; it must be ignored.
+        const sent = source.replace(/^\\personal\{[\s\S]*?\n\}\n\n/, "");
+        return fence("\\personal{\\fullName{Someone Else}\\email{x@y.z}}\n" + sent.replace("Acme", "Acme Inc"));
+      })()
+    );
+    const r = await runSourceEdit({ target: "content", instruction: "x", source, call: model.call });
+    for (const secret of ["Jane Marie Doe", "jane@doe.dev", "+381 60 123 4567", "linkedin.com/in/janedoe", "\\personal"]) {
+      expect(model.prompts[0]).not.toContain(secret);
+    }
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.text).toContain("\\fullName{Jane Marie Doe}");
+      expect(r.text).not.toContain("Someone Else");
+      expect(r.text).toContain("Acme Inc");
+    }
+  });
+
+  it("treats a partial answer (missing sections) as an error and retries", async () => {
+    const onlyExperience = (s: string) => s.match(/\\experience\{[\s\S]*?\n\}\n/)![0];
+    const model = scripted(fence(onlyExperience(source).replace("Acme", "Acme Inc")), fence(source.replace("Acme", "Acme Inc")));
+    const r = await runSourceEdit({ target: "content", instruction: "x", source, call: model.call });
+    expect(r).toMatchObject({ ok: true, attempts: 2 });
+    expect(model.prompts[1]).toMatch(/left out \\education\{\.\.\.\}/);
+  });
+
   it("retries once with the diagnostics, then succeeds", async () => {
     const broken = source.replace("\\company{Acme}", "\\employer{Acme}");
     const fixed = source.replace("Acme", "Acme Corp");
@@ -75,6 +103,14 @@ describe("runSourceEdit", () => {
     expect(model.prompts[0]).toContain("Style properties:");
     expect(model.prompts[1]).toMatch(/Unknown style `title`/);
   });
+
+  it("warns when a template edit drops sections", async () => {
+    const tpl = BUILTIN_TEMPLATES.professional;
+    const withoutAwards = tpl.replace(/\\section\[awards\]\{[\s\S]*?\r?\n\}\r?\n/, "");
+    expect(withoutAwards).not.toBe(tpl);
+    const r = await runSourceEdit({ target: "template", instruction: "x", source: tpl, call: scripted(fence(withoutAwards)).call });
+    expect(r).toMatchObject({ ok: true, warnings: [{ kind: "sectionsDropped", values: ["awards"] }] });
+  });
 });
 
 describe("contentWarnings", () => {
@@ -90,6 +126,13 @@ describe("contentWarnings", () => {
       { kind: "newNames", values: ["Google"] },
       { kind: "personalChanged", fields: ["email"] },
     ]);
+  });
+});
+
+describe("contentWarnings on numbers", () => {
+  it("flags numbers in free text that weren't in the original", () => {
+    const edited = source.replace("cut invoice time by 40%", "cut invoice time by 70%").replace("2,000 customers", "5,000 customers");
+    expect(contentWarnings(source, edited)).toEqual([{ kind: "newNumbers", values: ["5,000", "70%"] }]);
   });
 });
 

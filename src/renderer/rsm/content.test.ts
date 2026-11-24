@@ -83,6 +83,22 @@ describe("content .rsm", () => {
     expect(content?.experience).toEqual([]);
   });
 
+  it("keeps fields outside the schema when merging parsed content", async () => {
+    const { mergeParsedContent } = await import("./content");
+    const current = normalizeResume(sampleResume())!.content;
+    (current.personal as Record<string, unknown>).socials = ["x"];
+    (current.experience[0] as Record<string, unknown>).internalId = 7;
+    current.layout = { hidden: ["awards"] };
+    const parsed = parseContent(printContent(current).replace("\\phone{+381 60 123 4567}\n", "")).content!;
+    const merged = mergeParsedContent(current, parsed);
+    expect((merged.personal as Record<string, unknown>).socials).toEqual(["x"]);
+    expect((merged.experience[0] as Record<string, unknown>).internalId).toBe(7);
+    expect(merged.personal.phone).toBeUndefined(); // removing a schema field in the text removes it
+    expect(merged.layout).toEqual({ hidden: ["awards"] });
+    const noLayout = parseContent(printContent({ ...current, layout: undefined })).content!;
+    expect("layout" in mergeParsedContent(current, noLayout)).toBe(false);
+  });
+
   it("reports mistakes with positions", () => {
     const { content, diagnostics } = parseContent(`\\personal{
   \\fullname{Ana}

@@ -100,7 +100,7 @@ export function escapeText(s: string): string {
 
 const quote = (s: string) => `"${s.replace(/["\\]/g, (c) => "\\" + c)}"`;
 
-export function printContent(content: ResumeContent): string {
+export function printContent(content: ResumeContent, opts: { omitPersonal?: boolean } = {}): string {
   const out: string[] = [];
   const line = (depth: number, s: string) => out.push("  ".repeat(depth) + s);
 
@@ -130,13 +130,15 @@ export function printContent(content: ResumeContent): string {
     }
   };
 
-  line(0, "\\personal{");
-  fields((content.personal ?? {}) as Record<string, unknown>, PERSONAL, 1);
-  line(0, "}");
+  if (!opts.omitPersonal) {
+    line(0, "\\personal{");
+    fields((content.personal ?? {}) as Record<string, unknown>, PERSONAL, 1);
+    line(0, "}");
+  }
 
   for (const key of SECTION_ORDER) {
     const entries = (content[key] ?? []) as unknown as Record<string, unknown>[];
-    out.push("");
+    if (out.length) out.push("");
     if (!entries.length) {
       line(0, `\\${key}{}`);
       continue;
@@ -188,6 +190,38 @@ export function printContent(content: ResumeContent): string {
   }
 
   return out.join("\n") + "\n";
+}
+
+/**
+ * Applies parsed content over the current content. Schema fields come from
+ * `parsed`; fields outside the schema (e.g. an old `personal.socials`) are
+ * kept from `current` — on personal details, and on entries by position.
+ */
+export function mergeParsedContent(current: ResumeContent, parsed: ResumeContent): ResumeContent {
+  const unknown = (obj: unknown, specs: FieldSpec[]) => {
+    if (!obj || typeof obj !== "object") return {};
+    const known = new Set(specs.map((s) => s.name));
+    return Object.fromEntries(Object.entries(obj).filter(([k]) => !known.has(k)));
+  };
+  const merged: Record<string, unknown> = { ...current, ...parsed };
+  for (const k of ["layout", "custom"] as const) if (!(k in parsed)) delete merged[k];
+  merged.personal = { ...unknown(current.personal, PERSONAL), ...parsed.personal };
+  for (const key of SECTION_ORDER) {
+    const before = (current[key] ?? []) as unknown[];
+    merged[key] = (parsed[key] as unknown[]).map((e, i) => ({ ...unknown(before[i], SECTIONS[key]), ...(e as object) }));
+  }
+  return merged as unknown as ResumeContent;
+}
+
+/** Top-level blocks of a content source: section names and `custom:<id>`. */
+export function topLevelBlocks(source: string): string[] {
+  return parseRsm(source).nodes.flatMap((n) =>
+    n.type !== "command"
+      ? []
+      : n.name === "custom"
+      ? [`custom:${n.options.find((o) => o.key === "id")?.value ?? ""}`]
+      : [n.name]
+  );
 }
 
 // ---- parsing --------------------------------------------------------------

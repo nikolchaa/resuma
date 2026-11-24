@@ -7,7 +7,7 @@
  * Nothing is applied here: the caller shows a diff and the user accepts.
  */
 import type { Diagnostic } from "@/renderer/rsm/parse";
-import { parseContent } from "@/renderer/rsm/content";
+import { parseContent, printContent, topLevelBlocks } from "@/renderer/rsm/content";
 import { compileTemplate } from "@/renderer/template/template";
 import { ENTRY_FIELDS, LABELS, PERSONAL_FIELDS, SECTION_KINDS } from "@/renderer/template/schema";
 import { PAGE_PROPERTIES, PROPERTIES } from "@/renderer/template/styles";
@@ -20,17 +20,25 @@ export type EditWarning =
   | { kind: "added"; section: string; count: number }
   | { kind: "newDates"; values: string[] }
   | { kind: "newNames"; values: string[] }
-  | { kind: "personalChanged"; fields: string[] };
+  | { kind: "newNumbers"; values: string[] }
+  | { kind: "personalChanged"; fields: string[] }
+  | { kind: "sectionsDropped"; values: string[] };
 
 export type EditResult =
-  | { ok: true; text: string; attempts: number; warnings: EditWarning[] }
+  | {
+      ok: true;
+      /** The source the edit applies to, as sent (canonical for content). */
+      before: string;
+      text: string;
+      attempts: number;
+      warnings: EditWarning[];
+    }
   | { ok: false; reason: "invalid" | "unchanged" | "empty"; diagnostics: Diagnostic[]; output: string; attempts: number };
 
 const CONTENT_GUIDE = `Resuma Markup content format:
-- Top level, in this order: \\personal{...}, \\education{...}, \\experience{...}, \\projects{...}, \\skills{...}, \\awards{...}, then optional \\custom[id="..."]{\\title{...} \\entry{...}...} and \\layout{...}.
+- Top level, in this order: \\education{...}, \\experience{...}, \\projects{...}, \\skills{...}, \\awards{...}, then optional \\custom[id="..."]{\\title{...} \\entry{...}...} and \\layout{...}. The personal details block is left out on purpose; do not add one.
 - A section holds \\entry{...} blocks. Each field is \\name{plain text}.
 - Lists are \\field{\\item{...}\\item{...}}. Dates are \\date{\\from{...}\\to{...}}; an empty \\to{} means "present".
-- Personal fields: ${Object.keys({ fullName: 1, email: 1, location: 1, phone: 1, website: 1, linkedin: 1, github: 1 }).join(", ")}.
 - Entry fields: education (school, degree, location, gpa, date, courses); experience (jobTitle, company, location, description, date, notes); projects (name, link, date, description, technologies); skills (category, items); awards (title, organizer, date, description, location); custom entries (title, subtitle, location, date, description, items).
 - \\layout{\\order{\\item{skills}...} \\hidden{\\item{awards}} \\titles{\\title[section="skills"]{New title}}} arranges sections; custom section keys are custom:<id>.
 - Only \\, { and } are special characters; write \\\\, \\{ and \\} to use them literally. % at the start of a line starts a comment. Do not use any other LaTeX commands.`;
@@ -97,10 +105,22 @@ export function extractSource(reply: string): string {
   return (first >= 0 ? text.slice(first) : text).replace(/\s+$/, "") + "\n";
 }
 
-const validate = (target: EditTarget, source: string): Diagnostic[] =>
-  (target === "content" ? parseContent(source) : compileTemplate(source)).diagnostics.filter(
-    (d) => d.severity === "error"
-  );
+const errorsOf = (diagnostics: Diagnostic[]) => diagnostics.filter((d) => d.severity === "error");
+
+/** Errors in a reply, including whole blocks the model left out (a partial answer). */
+function validate(target: EditTarget, sent: string, reply: string): Diagnostic[] {
+  if (target === "template") return errorsOf(compileTemplate(reply).diagnostics);
+  const errors = errorsOf(parseContent(reply).diagnostics);
+  if (errors.length) return errors;
+  const present = new Set(topLevelBlocks(reply));
+  const missing = topLevelBlocks(sent).filter((b) => !present.has(b));
+  return missing.map((b) => ({
+    severity: "error" as const,
+    line: 1,
+    col: 1,
+    message: `Your answer left out \\${b.startsWith("custom:") ? `custom[id="${b.slice(7)}"]` : b}{...}. Return the complete document, including the parts you did not change.`,
+  }));
+}
 
 const normalise = (s: string) => s.replace(/\r\n/g, "\n").trim();
 
@@ -113,23 +133,52 @@ export async function runSourceEdit(opts: {
   maxAttempts?: number;
 }): Promise<EditResult> {
   const { target, instruction, source, jobDesc, call, maxAttempts = 2 } = opts;
-  let prompt = buildPrompt(target, instruction, source, jobDesc);
+
+  // Content edits never send personal details (name, email, phone, links):
+  // they are left out of the prompt and put back from the original.
+  let sent = source;
+  let personal: ResumeContent["personal"] | null = null;
+  if (target === "content") {
+    const original = parseContent(source).content;
+    if (!original) {
+      return { ok: false, reason: "invalid", diagnostics: errorsOf(parseContent(source).diagnostics), output: "", attempts: 0 };
+    }
+    personal = original.personal;
+    sent = printContent(original, { omitPersonal: true });
+  }
+  const before = target === "content" ? printContent(parseContent(source).content!) : source;
+
+  let prompt = buildPrompt(target, instruction, sent, jobDesc);
   let output = "";
   let diagnostics: Diagnostic[] = [];
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     output = extractSource(await call(prompt));
     if (!output.trim()) return { ok: false, reason: "empty", diagnostics: [], output, attempts: attempt };
-    diagnostics = validate(target, output);
+    diagnostics = validate(target, sent, output);
     if (!diagnostics.length) {
-      if (normalise(output) === normalise(source)) {
+      let text = output;
+      if (target === "content") {
+        const reply = parseContent(output).content!;
+        text = printContent({ ...reply, personal: personal! });
+      }
+      if (normalise(text) === normalise(before)) {
         return { ok: false, reason: "unchanged", diagnostics: [], output, attempts: attempt };
       }
-      const warnings = target === "content" ? contentWarnings(source, output) : [];
-      return { ok: true, text: output, attempts: attempt, warnings };
+      const warnings = target === "content" ? contentWarnings(before, text) : templateWarnings(before, text);
+      return { ok: true, before, text, attempts: attempt, warnings };
     }
     prompt = retryPrompt(output, diagnostics);
   }
   return { ok: false, reason: "invalid", diagnostics, output, attempts: maxAttempts };
+}
+
+/** Template edits: flag sections the new template no longer renders. */
+export function templateWarnings(before: string, after: string): EditWarning[] {
+  const kinds = (s: string) => new Set(compileTemplate(s).template?.sections.map((x) => x.kind) ?? []);
+  const a = kinds(before);
+  const b = kinds(after);
+  const dropped = [...a].filter((k) => !b.has(k)).map((k) => (k === "*" ? "custom sections" : k));
+  return dropped.length ? [{ kind: "sectionsDropped", values: dropped }] : [];
 }
 
 // ---- checks for content edits --------------------------------------------
@@ -184,6 +233,13 @@ export function contentWarnings(beforeSource: string, afterSource: string): Edit
   const oldNames = collect(before, namesOf);
   const newNames = [...collect(after, namesOf)].filter((n) => !oldNames.has(n));
   if (newNames.length) warnings.push({ kind: "newNames", values: newNames });
+
+  // Numbers in free text ("40%" → "70%", "2,000 customers") that weren't there before.
+  const numbers = (s: string) => new Set(s.match(/\d+(?:[.,]\d+)*%?/g) ?? []);
+  const oldNumbers = numbers(beforeSource);
+  const inNewDates = new Set(newDates.flatMap((d) => [...numbers(d)]));
+  const newNumbers = [...numbers(afterSource)].filter((n) => !oldNumbers.has(n) && !inNewDates.has(n));
+  if (newNumbers.length) warnings.push({ kind: "newNumbers", values: newNumbers });
 
   const p1 = before.personal as Record<string, unknown>;
   const p2 = after.personal as Record<string, unknown>;
