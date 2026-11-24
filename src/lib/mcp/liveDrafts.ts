@@ -4,6 +4,7 @@
  * file, and changes land in the editor's history as one undo step.
  */
 import type { ResumeData } from "@/lib/resumesStore";
+import { windowSingleton } from "@/lib/singleton";
 
 export type LiveDraft = {
   get: () => ResumeData | null;
@@ -11,8 +12,8 @@ export type LiveDraft = {
   update: (next: ResumeData) => void;
 };
 
-const open = new Map<string, LiveDraft>();
-const listeners = new Set<() => void>();
+const open = windowSingleton("liveDrafts", () => new Map<string, LiveDraft>());
+const listeners = windowSingleton("liveDraftListeners", () => new Set<() => void>());
 
 export function registerLiveDraft(id: string, draft: LiveDraft): () => void {
   open.set(id, draft);

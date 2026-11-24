@@ -3,6 +3,7 @@
  * Changes apply at once: the bridge (McpBridge) listens and restarts.
  */
 import { getSection, updateSection } from "@/lib/store";
+import { windowSingleton } from "@/lib/singleton";
 
 export type McpSettings = {
   enabled: boolean;
@@ -29,7 +30,7 @@ export async function getMcpSettings(): Promise<McpSettings> {
   };
 }
 
-const settingsListeners = new Set<(s: McpSettings) => void>();
+const settingsListeners = windowSingleton("mcpSettingsListeners", () => new Set<(s: McpSettings) => void>());
 
 export async function updateMcpSettings(patch: Partial<McpSettings>): Promise<McpSettings> {
   const next = { ...DEFAULTS, ...(await getMcpSettings()), ...patch };
@@ -52,16 +53,16 @@ export type McpState =
   | { state: "running"; port: number }
   | { state: "error"; message: string };
 
-let current: McpState = { state: "off" };
-const statusListeners = new Set<(s: McpState) => void>();
+const status = windowSingleton("mcpState", () => ({ current: { state: "off" } as McpState }));
+const statusListeners = windowSingleton("mcpStateListeners", () => new Set<(s: McpState) => void>());
 
 export function setMcpState(next: McpState) {
-  current = next;
+  status.current = next;
   statusListeners.forEach((l) => l(next));
 }
 
 export function getMcpState(): McpState {
-  return current;
+  return status.current;
 }
 
 export function onMcpState(listener: (s: McpState) => void): () => void {

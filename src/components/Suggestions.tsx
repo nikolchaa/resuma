@@ -9,19 +9,20 @@ import type { Proposal } from "@/lib/mcp/proposals";
 import { getMcpState, onMcpState } from "@/lib/mcp/settings";
 import { showError, showSuccess } from "@/lib/toastUtils";
 import { DiffView, fill, WarningList } from "./ChangeReview";
+import { windowSingleton } from "@/lib/singleton";
 
 // ---- shared state -------------------------------------------------------------
 
-let panelOpen = false;
-const panelListeners = new Set<() => void>();
+const panel = windowSingleton("suggestionsPanel", () => ({ open: false, listeners: new Set<() => void>() }));
+const panelListeners = panel.listeners;
 
 export function openSuggestions() {
-  panelOpen = true;
+  panel.open = true;
   panelListeners.forEach((l) => l());
 }
 
 function closeSuggestions() {
-  panelOpen = false;
+  panel.open = false;
   panelListeners.forEach((l) => l());
 }
 
@@ -136,7 +137,7 @@ const ProposalCard = ({ p }: { p: Proposal }) => {
 export const Suggestions = () => {
   const { t } = useLanguage();
   const proposals = useProposals();
-  const open = useSyncExternalStore(subscribePanel, () => panelOpen);
+  const open = useSyncExternalStore(subscribePanel, () => panel.open);
   const running = useMcpRunning();
   const pending = proposals.filter((p) => p.status === "pending").length;
 

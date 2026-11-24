@@ -19,6 +19,7 @@ import { generateResumeThumbnail } from "@/renderer/browser/useRenderedResume";
 import { getLiveDraft } from "./liveDrafts";
 import { ProposalStore } from "./proposals";
 import { getMcpSettings } from "./settings";
+import { windowSingleton } from "@/lib/singleton";
 
 async function renderOptions() {
   const [fonts, app] = await Promise.all([loadFonts(), getSection<SettingsType["app"]>("app")]);
@@ -49,7 +50,7 @@ export async function sharesPersonal(id: string): Promise<boolean> {
   return (await getMcpSettings()).sharePersonal.includes(id);
 }
 
-export const appProposals = new ProposalStore({
+export const appProposals = windowSingleton("proposals", () => new ProposalStore({
   loadResume: currentResume,
   writeResume: async (id, next) => {
     const live = getLiveDraft(id);
@@ -72,6 +73,6 @@ export const appProposals = new ProposalStore({
   autoApply: async () => (await getMcpSettings()).autoApply,
   now: () => new Date().toISOString(),
   newId: () => crypto.randomUUID(),
-});
+}));
 
 export { listResumes, listLibraryTemplates };
