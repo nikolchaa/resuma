@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAiEnabled } from "@/hooks/useAiEnabled";
-import { EditResult, EditTarget, EditWarning, runSourceEdit } from "@/lib/aiSourceEdit";
+import { EditResult, EditTarget, runSourceEdit } from "@/lib/aiSourceEdit";
 import { runPrompt } from "@/lib/llmUtils";
-import { lineDiff, withContext } from "@/lib/lineDiff";
 import type { RenderIssue } from "@/renderer/check";
+import { DiffView, WarningList } from "@/components/ChangeReview";
 
 type Props = {
   target: EditTarget;
@@ -20,9 +20,6 @@ type Props = {
   /** Applies the accepted source (one undo step). */
   onAccept: (text: string) => void;
 };
-
-const fill = (s: string, vars: Record<string, string | number>) =>
-  s.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? String(vars[k]) : m));
 
 export const AiEditPanel = ({ target, source, hasErrors, jobDesc, check, onAccept }: Props) => {
   const { t } = useLanguage();
@@ -49,26 +46,6 @@ export const AiEditPanel = ({ target, source, hasErrors, jobDesc, check, onAccep
       ? [t("ai.edit.suggest.generate1"), t("ai.edit.suggest.generate2")]
       : [t("ai.edit.suggest.template1"), t("ai.edit.suggest.template2")];
 
-  const sectionName = (key: string) =>
-    key === "custom" ? t("editor.sidebar.custom") : t(`template.section.${key}`);
-
-  const issueText = (issue: RenderIssue) => {
-    switch (issue.kind) {
-      case "missingSections":
-        return fill(t("ai.edit.warn.missingSections"), { values: issue.values.map(sectionName).join(", ") });
-      case "offPage":
-        return fill(t("ai.edit.warn.offPage"), { n: issue.count });
-      case "lowContrast":
-        return issue.values.length
-          ? fill(t("ai.edit.warn.lowContrast"), { values: issue.values.map((v) => `“${v}”`).join(", ") })
-          : t("ai.edit.warn.lowContrastAny");
-      case "tinyText":
-        return fill(t("ai.edit.warn.tinyText"), { size: issue.size });
-      case "morePages":
-        return fill(t("ai.edit.warn.morePages"), { before: issue.before, after: issue.after });
-    }
-  };
-
   const run = async () => {
     if (!instruction.trim() || hasErrors || busy) return;
     setBusy(true);
@@ -82,27 +59,6 @@ export const AiEditPanel = ({ target, source, hasErrors, jobDesc, check, onAccep
       setError((e as Error)?.message || String(e));
     } finally {
       setBusy(false);
-    }
-  };
-
-  const warningText = (w: EditWarning) => {
-    switch (w.kind) {
-      case "removed":
-        return fill(t("ai.edit.warn.removed"), { n: w.count, section: w.section });
-      case "added":
-        return fill(t("ai.edit.warn.added"), { n: w.count, section: w.section });
-      case "newDates":
-        return fill(t("ai.edit.warn.newDates"), { values: w.values.join(", ") });
-      case "newNames":
-        return fill(t("ai.edit.warn.newNames"), { values: w.values.join(", ") });
-      case "personalChanged":
-        return fill(t("ai.edit.warn.personalChanged"), { values: w.fields.join(", ") });
-      case "newNumbers":
-        return fill(t("ai.edit.warn.newNumbers"), { values: w.values.join(", ") });
-      case "sectionsDropped":
-        return fill(t("ai.edit.warn.sectionsDropped"), { values: w.values.join(", ") });
-      case "render":
-        return issueText(w.issue);
     }
   };
 
@@ -188,36 +144,8 @@ export const AiEditPanel = ({ target, source, hasErrors, jobDesc, check, onAccep
         <div className='flex flex-col gap-2'>
           <p className='text-sm font-medium'>{t("ai.edit.review")}</p>
           {result.attempts > 1 && <p className='text-xs text-muted-foreground'>{t("ai.edit.attempts")}</p>}
-          {result.warnings.length > 0 && (
-            <ul className='list-disc pl-5 text-sm text-amber-600 dark:text-amber-400'>
-              {result.warnings.map((w, i) => (
-                <li key={i}>{warningText(w)}</li>
-              ))}
-            </ul>
-          )}
-          <div className='max-h-72 overflow-auto rounded-md border font-mono text-xs'>
-            {withContext(lineDiff(result.before, result.text)).map((l, i) =>
-              l.type === "skip" ? (
-                <div key={i} className='bg-muted px-2 py-0.5 text-muted-foreground italic'>
-                  {fill(t("source.diff.skip"), { n: l.count })}
-                </div>
-              ) : (
-                <div
-                  key={i}
-                  className={`whitespace-pre-wrap px-2 ${
-                    l.type === "add"
-                      ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-                      : l.type === "del"
-                      ? "bg-red-500/15 text-red-700 dark:text-red-300 line-through"
-                      : ""
-                  }`}
-                >
-                  {l.type === "add" ? "+ " : l.type === "del" ? "− " : "  "}
-                  {l.text}
-                </div>
-              )
-            )}
-          </div>
+          <WarningList warnings={result.warnings} />
+          <DiffView before={result.before} after={result.text} />
           {stale && <p className='text-sm text-destructive'>{t("ai.edit.stale")}</p>}
           <div className='flex gap-2'>
             <Button

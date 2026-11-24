@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { registerLiveDraft } from "@/lib/mcp/liveDrafts";
+import { openSuggestions, useProposals } from "@/components/Suggestions";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { loadResume, saveResume } from "@/lib/resumesStore";
 import { ResumeData } from "@/lib/resumesStore";
@@ -113,6 +115,24 @@ export const Editor = () => {
     }
   }, [id, isNew, navigate, history.reset]);
 
+  // While open, connected AI apps read this draft (saved or not) and their
+  // applied proposals land here as one undo step.
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  const loaded = !isNew && !!id && !!draft;
+  useEffect(() => {
+    if (!loaded || !id) return;
+    return registerLiveDraft(id, {
+      get: () => draftRef.current,
+      update: (next) => setDraft(() => next, { checkpoint: true }),
+    });
+  }, [loaded, id, setDraft]);
+
+  const proposals = useProposals();
+  const waiting = proposals.filter(
+    (p) => p.status === "pending" && p.target.kind === "resume" && p.target.resumeId === id
+  ).length;
+
   const handleSave = async () => {
     if (draft) {
       const thumbnail = await generateThumbnail(draft);
@@ -192,6 +212,17 @@ export const Editor = () => {
         format={pdfFormat}
         language={language}
       />
+
+      {/* Proposals from connected AI apps waiting for this resume */}
+      {waiting > 0 && (
+        <button
+          className='absolute top-12 z-30 -translate-x-1/2 rounded-full border bg-background px-4 py-1.5 text-sm text-foreground shadow-sm hover:bg-muted'
+          style={{ left: `calc(50vw + ${sidebarWidth} / 2)` }}
+          onClick={openSuggestions}
+        >
+          {(waiting === 1 ? t("suggest.waitingOne") : t("suggest.waitingMany")).replace("{n}", String(waiting))}
+        </button>
+      )}
 
       {/* PDF Preview */}
       <div className='w-full h-full bg-secondary dark:bg-background text-black overflow-auto'>

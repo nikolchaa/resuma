@@ -192,6 +192,15 @@ export const ExternalAppsSettings = () => {
 
           <Separator />
 
+          <div className='flex items-center justify-between gap-4'>
+            <Label htmlFor='mcp-auto-apply'>
+              {t("mcp.autoApply")} <InfoTip text={t("mcp.autoApply.description")} />
+            </Label>
+            <Switch id='mcp-auto-apply' checked={settings.autoApply} onCheckedChange={(on) => update({ autoApply: on })} />
+          </div>
+
+          <Separator />
+
           <div className='flex flex-col gap-3'>
             <Label>
               {t("mcp.personal")} <InfoTip text={t("mcp.personal.description")} />

@@ -17,7 +17,7 @@ export type ProposalWarning = EditWarning | { kind: "replacesTemplate"; name: st
 export type ProposalStatus = "pending" | "applied" | "discarded" | "stale" | "undone";
 
 export type ProposalTarget =
-  | { kind: "resume"; resumeId: string; part: ResumePart }
+  | { kind: "resume"; resumeId: string; part: ResumePart; /** The resume's title when proposed. */ title: string }
   | { kind: "template"; name: string; libraryId: string };
 
 export type Proposal = {
@@ -161,7 +161,7 @@ export class ProposalStore {
       client: input.client,
       summary: input.summary.trim(),
       createdAt: this.io.now(),
-      target: { kind: "resume", resumeId, part },
+      target: { kind: "resume", resumeId, part, title: data.title?.trim() ?? "" },
       source,
       baseRevision: input.baseRevision,
       before,
