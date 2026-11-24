@@ -80,11 +80,22 @@ pub async fn call_llm(prompt: String, llm_settings: Value) -> Result<String, Str
     if build == LlamaBuild::Current {
         args.push("--color".to_string());
         args.push("off".to_string());
+        // Only the reply on stdout. With the prompt echoed, a reply cut short
+        // by the context limit (no </think>) came back as the prompt itself.
+        args.push("--no-display-prompt".to_string());
     }
 
-    if let Some(ctx) = settings.get("ctxSize").and_then(|v| v.as_u64()) {
+    let ctx_size = settings.get("ctxSize").and_then(|v| v.as_u64());
+    if let Some(ctx) = ctx_size {
         args.push("--ctx-size".to_string());
         args.push(ctx.to_string());
+    }
+
+    // Thinking models (Qwen3) can spend the whole context reasoning and never
+    // answer; cap the thinking so the answer still fits.
+    if build == LlamaBuild::Current {
+        args.push("--reasoning-budget".to_string());
+        args.push(reasoning_budget(ctx_size).to_string());
     }
 
     let is_cpu_runtime = runtime.to_lowercase().contains("cpu");
@@ -218,6 +229,12 @@ pub async fn call_llm(prompt: String, llm_settings: Value) -> Result<String, Str
     } else {
         Ok(stdout.trim().to_string())
     }
+}
+
+/// Thinking tokens allowed per request: a quarter of the context (prompt and
+/// answer need the rest), at least 512; 2048 when the context size is unset.
+fn reasoning_budget(ctx_size: Option<u64>) -> u64 {
+    ctx_size.map(|ctx| (ctx / 4).max(512)).unwrap_or(2048)
 }
 
 /// A temporary UTF-8 file holding one prompt; removed when dropped, also on
@@ -437,6 +454,13 @@ mod tests {
         } else {
             name.to_string()
         }
+    }
+
+    #[test]
+    fn caps_thinking_at_a_quarter_of_the_context() {
+        assert_eq!(reasoning_budget(Some(8192)), 2048);
+        assert_eq!(reasoning_budget(Some(1024)), 512);
+        assert_eq!(reasoning_budget(None), 2048);
     }
 
     #[test]
