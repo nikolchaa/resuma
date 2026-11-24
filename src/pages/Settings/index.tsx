@@ -11,6 +11,7 @@ import { AnimatePresence, motion as m } from "motion/react";
 import { BasicSettings } from "./BasicSettings";
 import { ArtificialSettings } from "./ArtificialSettings";
 import { ExternalAppsSettings } from "./ExternalAppsSettings";
+import { DataProtectionSettings } from "./DataProtectionSettings";
 import { PersonalSettings } from "./PersonalSettings";
 import { EducationSettings } from "./EducationSettings";
 import { ExperienceSettings } from "./ExperienceSettings";
@@ -438,6 +439,19 @@ export default function Settings() {
                       setSettings={setSettings}
                       draftSettings={draftSettings}
                     />
+                  </CardContent>
+                </Card>
+                <Card className='mt-8'>
+                  <CardHeader>
+                    <CardTitle className='text-2xl font-semibold'>
+                      {t("vault.heading")}
+                    </CardTitle>
+                    <CardDescription className='text-sm text-muted-foreground'>
+                      {t("vault.description")}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <DataProtectionSettings />
                   </CardContent>
                 </Card>
                 <Card className='mt-8'>
