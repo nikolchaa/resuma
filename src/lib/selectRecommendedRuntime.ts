@@ -4,6 +4,13 @@ export interface RuntimeEntry {
   name: string;
   label: string;
   download: string;
+  /**
+   * More archives extracted into the same folder, e.g. the CUDA build's
+   * cudart/cuBLAS DLLs, which llama.cpp publishes as a separate zip.
+   */
+  extraDownloads?: string[];
+  /** Files that must exist for the install to be usable. */
+  requiredFiles?: string[];
   platform: string;
   backend: string;
   compatibleGpus: {
