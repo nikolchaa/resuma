@@ -790,6 +790,27 @@ mod tests {
     }
 
     #[test]
+    fn reads_and_encrypts_legacy_files_copied_into_an_encrypted_folder() {
+        let dir = folder("legacy-copy");
+        let (v, _) = vault_in(&dir);
+        v.init().unwrap();
+        v.write("resumes/current.resume", "current").unwrap();
+        // Someone copies their old Resuma 1.0.x data folder over this one.
+        fs::write(dir.join(SETTINGS_FILE), r#"{"personal":{"fullName":"Old"}}"#).unwrap();
+        fs::write(dir.join("resumes/old.resume"), r#"{"id":"old"}"#).unwrap();
+        // Readable straight away…
+        assert_eq!(v.read("settings").unwrap().unwrap(), r#"{"personal":{"fullName":"Old"}}"#);
+        let names: Vec<String> = v.list_resumes().unwrap().into_iter().filter(|(_, t)| t.is_ok()).map(|(n, _)| n).collect();
+        assert!(names.contains(&"old.resume".to_string()) && names.contains(&"current.resume".to_string()));
+        // …and encrypted on the next start, with nothing left in plain text.
+        v.init().unwrap();
+        assert!(is_encrypted(&dir.join(SETTINGS_FILE)));
+        assert!(is_encrypted(&dir.join("resumes/old.resume")));
+        assert_eq!(v.read("resumes/old.resume").unwrap().unwrap(), r#"{"id":"old"}"#);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
     fn finishes_an_interrupted_migration() {
         let dir = folder("interrupted");
         fs::write(dir.join("resumes/one.resume"), "one").unwrap();
