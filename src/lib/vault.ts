@@ -25,6 +25,13 @@ export const vaultWrite = (name: string, text: string) => invoke<void>("vault_wr
 export const vaultListResumes = () =>
   invoke<{ name: string; text: string | null; error: string | null }[]>("vault_list_resumes");
 
+/**
+ * True for a file copied out of an encrypted data folder. It can't be
+ * imported as a plain file: it only opens with that folder's key (use the
+ * recovery key, or an encrypted backup, to move data between computers).
+ */
+export const isEncryptedDataFile = (text: string) => text.startsWith("RSMENC1");
+
 export const vaultExportBackup = (path: string, password: string) =>
   invoke<number>("vault_export_backup", { path, password });
 export const vaultImportBackup = (path: string, password: string) =>

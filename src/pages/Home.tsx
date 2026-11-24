@@ -26,6 +26,7 @@ import {
   saveResume,
 } from "@/lib/resumesStore";
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
+import { isEncryptedDataFile } from "@/lib/vault";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { showError, showSuccess, showWarning } from "@/lib/toastUtils";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
@@ -129,7 +130,8 @@ export const Home = () => {
       }
 
       const raw = await readTextFile(selected);
-      // Migrates older files and rejects anything that isn't a resume.
+      if (isEncryptedDataFile(raw)) throw new Error(t("vault.importEncrypted"));
+      // Migrates older (plain, 1.0.x) files and rejects anything that isn't a resume.
       const parsed = normalizeResume(JSON.parse(raw));
       if (!parsed) throw new Error("This file is not a Resuma resume.");
 

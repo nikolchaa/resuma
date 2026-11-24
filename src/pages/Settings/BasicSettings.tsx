@@ -13,6 +13,7 @@ import { useEffect, useState } from "react";
 import { SettingsType } from "@/contexts/OnboardingContext";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
+import { isEncryptedDataFile } from "@/lib/vault";
 import { updateSection } from "@/lib/store";
 import { showError, showSuccess, showWarning } from "@/lib/toastUtils";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -129,6 +130,7 @@ export const BasicSettings = ({
 
       if (typeof selected === "string") {
         const content = await readTextFile(selected);
+        if (isEncryptedDataFile(content)) throw new Error(t("vault.importEncrypted"));
         const parsed = JSON.parse(content);
 
         setDraftSettings((prev) => {
