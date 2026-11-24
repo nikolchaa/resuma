@@ -14,7 +14,7 @@ import {
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { CustomSection, ResumeData, ResumeLayout, SectionKey } from "@/lib/resumesStore";
 import { resolveTemplate } from "@/renderer";
-import { resolveOptionValues, sectionOrder } from "@/renderer/engine/compile";
+import { resolveOptionValues, sectionColumn, sectionOrder } from "@/renderer/engine/compile";
 import { FONT_FAMILIES } from "@/renderer/template/schema";
 import type { TemplateOption } from "@/renderer/template/template";
 import { newCustomSection } from "@/lib/customSections";
@@ -66,11 +66,19 @@ export const DesignEditor = ({ draft, setDraft, onEditCustom }: Props) => {
       return rest;
     });
 
-  const move = (index: number, delta: number) => {
-    const target = index + delta;
-    if (target < 0 || target >= keys.length) return;
+  // Two-column templates list each column's sections separately; moving a
+  // section swaps it with its neighbour in the same column.
+  const groups: { column: 0 | 1 | null; keys: SectionKey[] }[] = template.columns
+    ? ([0, 1] as const).map((column) => ({ column, keys: keys.filter((k) => sectionColumn(template, k) === column) }))
+    : [{ column: null, keys }];
+
+  const move = (group: SectionKey[], index: number, delta: number) => {
+    const neighbour = group[index + delta];
+    if (!neighbour) return;
     const order = [...keys];
-    [order[index], order[target]] = [order[target], order[index]];
+    const a = order.indexOf(group[index]);
+    const b = order.indexOf(neighbour);
+    [order[a], order[b]] = [order[b], order[a]];
     setLayout((l) => ({ ...l, order }));
   };
 
@@ -206,75 +214,84 @@ export const DesignEditor = ({ draft, setDraft, onEditCustom }: Props) => {
           <p className='text-sm text-muted-foreground'>{t("design.sections.description")}</p>
         </div>
 
-        {keys.map((key, i) => {
-          const customSection = key.startsWith("custom:")
-            ? custom.find((s) => `custom:${s.id}` === key)
-            : undefined;
-          const defaultTitle = customSection
-            ? t("design.custom.untitled")
-            : t(`template.section.${key}`);
-          const value = customSection ? customSection.title : layout.titles?.[key] ?? "";
-          const count = customSection
-            ? customSection.entries.length
-            : (content[key as keyof typeof content] as unknown[] | undefined)?.length ?? 0;
-          const isHidden = hidden.has(key);
+        {groups.map((group) => (
+          <div key={group.column ?? "all"} className='flex flex-col gap-3'>
+            {group.column !== null && (
+              <p className='text-xs font-medium uppercase tracking-wide text-muted-foreground'>
+                {t(`design.sections.column.${group.column}`)}
+              </p>
+            )}
+            {group.keys.map((key, i) => {
+              const customSection = key.startsWith("custom:")
+                ? custom.find((s) => `custom:${s.id}` === key)
+                : undefined;
+              const defaultTitle = customSection
+                ? t("design.custom.untitled")
+                : t(`template.section.${key}`);
+              const value = customSection ? customSection.title : layout.titles?.[key] ?? "";
+              const count = customSection
+                ? customSection.entries.length
+                : (content[key as keyof typeof content] as unknown[] | undefined)?.length ?? 0;
+              const isHidden = hidden.has(key);
 
-          return (
-            <div
-              key={key}
-              className={`flex flex-col gap-2 rounded-md border p-3 ${isHidden ? "opacity-60" : ""}`}
-            >
-              <div className='flex items-center gap-2'>
-                <Input
-                  className='flex-1'
-                  aria-label={t("design.sections.rename")}
-                  placeholder={defaultTitle}
-                  value={value}
-                  onChange={(e) => rename(key, e.target.value)}
-                />
-                <span className='min-w-6 text-center text-xs text-muted-foreground' title={`${count}`}>
-                  {count}
-                </span>
-                <Button size='icon' variant='ghost' onClick={() => move(i, -1)} disabled={i === 0} aria-label={t("common.moveUp")}>
-                  <ArrowUp className='h-4 w-4' />
-                </Button>
-                <Button
-                  size='icon'
-                  variant='ghost'
-                  onClick={() => move(i, 1)}
-                  disabled={i === keys.length - 1}
-                  aria-label={t("common.moveDown")}
+              return (
+                <div
+                  key={key}
+                  className={`flex flex-col gap-2 rounded-md border p-3 ${isHidden ? "opacity-60" : ""}`}
                 >
-                  <ArrowDown className='h-4 w-4' />
-                </Button>
-                <Button
-                  size='icon'
-                  variant='ghost'
-                  onClick={() => toggleHidden(key)}
-                  aria-label={isHidden ? t("design.sections.show") : t("design.sections.hide")}
-                  title={isHidden ? t("design.sections.show") : t("design.sections.hide")}
-                >
-                  {isHidden ? <EyeOff className='h-4 w-4' /> : <Eye className='h-4 w-4' />}
-                </Button>
-              </div>
-              {customSection && (
-                <div className='flex gap-2'>
-                  <Button variant='ghost' size='sm' className='text-primary' onClick={onEditCustom}>
-                    <PencilLine className='h-4 w-4 mr-1' /> {t("design.custom.edit")}
-                  </Button>
-                  <Button
-                    variant='ghost'
-                    size='sm'
-                    className='text-destructive'
-                    onClick={() => removeCustom(customSection.id)}
-                  >
-                    <Trash2 className='h-4 w-4 mr-1' /> {t("design.custom.remove")}
-                  </Button>
+                  <div className='flex items-center gap-2'>
+                    <Input
+                      className='flex-1'
+                      aria-label={t("design.sections.rename")}
+                      placeholder={defaultTitle}
+                      value={value}
+                      onChange={(e) => rename(key, e.target.value)}
+                    />
+                    <span className='min-w-6 text-center text-xs text-muted-foreground' title={`${count}`}>
+                      {count}
+                    </span>
+                    <Button size='icon' variant='ghost' onClick={() => move(group.keys, i, -1)} disabled={i === 0} aria-label={t("common.moveUp")}>
+                      <ArrowUp className='h-4 w-4' />
+                    </Button>
+                    <Button
+                      size='icon'
+                      variant='ghost'
+                      onClick={() => move(group.keys, i, 1)}
+                      disabled={i === group.keys.length - 1}
+                      aria-label={t("common.moveDown")}
+                    >
+                      <ArrowDown className='h-4 w-4' />
+                    </Button>
+                    <Button
+                      size='icon'
+                      variant='ghost'
+                      onClick={() => toggleHidden(key)}
+                      aria-label={isHidden ? t("design.sections.show") : t("design.sections.hide")}
+                      title={isHidden ? t("design.sections.show") : t("design.sections.hide")}
+                    >
+                      {isHidden ? <EyeOff className='h-4 w-4' /> : <Eye className='h-4 w-4' />}
+                    </Button>
+                  </div>
+                  {customSection && (
+                    <div className='flex gap-2'>
+                      <Button variant='ghost' size='sm' className='text-primary' onClick={onEditCustom}>
+                        <PencilLine className='h-4 w-4 mr-1' /> {t("design.custom.edit")}
+                      </Button>
+                      <Button
+                        variant='ghost'
+                        size='sm'
+                        className='text-destructive'
+                        onClick={() => removeCustom(customSection.id)}
+                      >
+                        <Trash2 className='h-4 w-4 mr-1' /> {t("design.custom.remove")}
+                      </Button>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          );
-        })}
+              );
+            })}
+          </div>
+        ))}
 
         <Button variant='ghost' className='text-primary self-start' onClick={addCustom}>
           <PlusCircle className='h-4 w-4 mr-1' /> {t("design.custom.add")}
