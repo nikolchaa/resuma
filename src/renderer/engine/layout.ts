@@ -330,13 +330,17 @@ export function layoutDocument({ boxes, page, margin, fonts, columns }: LayoutIn
       // Backgrounds first so text paints on top; they run to the outer page
       // edge and the full page height (below the header on its page).
       if (p >= offset) {
+        // With both columns filled, they meet in the middle of the gap
+        // instead of leaving a white stripe between them.
+        const both = Boolean(cols.frames[0].background && cols.frames[1].background);
+        const middle = geometry[0].x + geometry[0].w + cols.gap / 2;
         ([0, 1] as const).forEach((c) => {
           const color = cols.frames[c].background;
           if (!color) return;
           const y = p === offset && header.pages.length ? header.endY : 0;
           const { x, w } = geometry[c];
-          const left = c === 0 ? 0 : x;
-          const right = c === 0 ? x + w : page.width;
+          const left = c === 0 ? 0 : both ? middle : x;
+          const right = c === 0 ? (both ? middle : x + w) : page.width;
           items.push({ type: "rect", id: `cols/bg${c}`, x: left, y, w: right - left, h: page.height - y, color });
         });
       }

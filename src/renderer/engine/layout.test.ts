@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { renderResume } from "..";
 import { PAPER, RenderedDocument } from "./types";
 import { loadTestFonts, sampleResume } from "../testing/fixtures";
+import { BUILTIN_TEMPLATES } from "@/templates";
 
 const fonts = loadTestFonts();
 
@@ -325,6 +326,17 @@ describe("renderResume", () => {
       const { resolveTemplate } = await import("..");
       const { template } = resolveTemplate({ theme: "sidebar" });
       expect(sectionOrder(template, sidebar.content)).toEqual(["experience", "education", "projects", "skills", "awards"]);
+    });
+
+    it("closes the gap when both columns have a background", () => {
+      const both = BUILTIN_TEMPLATES.sidebar.replace(
+        '\\cols[widths="32,68", gap=22, left=side]',
+        '\\style[mainbg]{background: #f9fafb}\n\\cols[widths="32,68", gap=22, left=side, right=mainbg]'
+      );
+      const doc = renderResume({ ...sidebar, templateSource: both }, { format: "A4", language: "en", fonts });
+      const [bg0, bg1] = doc.pages[0].items.slice(0, 2) as { x: number; w: number }[];
+      expect(bg0.x + bg0.w).toBeCloseTo(bg1.x);
+      expect(bg1.x + bg1.w).toBeCloseTo(PAPER.A4.width);
     });
 
     it("localises the sidebar labels", () => {
