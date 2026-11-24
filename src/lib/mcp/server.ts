@@ -1,8 +1,9 @@
 /**
- * The MCP server other AI apps talk to: what they can see and check.
+ * The MCP server other AI apps talk to.
  *
- * Read-only: tools list and read resumes and templates, validate Resuma
- * Markup and render-check templates. Nothing here changes a resume.
+ * Tools list and read resumes and templates, validate Resuma Markup and
+ * render-check templates. Changes are only ever proposals (proposals.ts):
+ * the user applies or discards them in Resuma.
  *
  * Personal details (name, email, phone, links) are left out of everything a
  * client receives unless the user shared them for that resume; titles are
@@ -11,18 +12,23 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { ResumeData } from "@/lib/resumesStore";
-import { normalizeContent } from "@/lib/resumeMigration";
 import { CONTENT_GUIDE, DESIGN_RULES, TEMPLATE_GUIDE } from "@/lib/aiSourceEdit";
 import type { LibraryTemplate } from "@/lib/templateLibrary";
-import { parseContent, printContent } from "@/renderer/rsm/content";
+import { parseContent } from "@/renderer/rsm/content";
 import { compileTemplate } from "@/renderer/template/template";
 import type { Diagnostic } from "@/renderer/rsm/parse";
 import type { RenderIssue } from "@/renderer/check";
-import { BUILTIN_TEMPLATES, templateSourceFor } from "@/templates";
+import { BUILTIN_TEMPLATES } from "@/templates";
+import type { ProposalStore, ProposalWarning, ProposeResult } from "./proposals";
+import { resumeView, revisionOf } from "./views";
+
+export { revisionOf } from "./views";
 
 export type McpDeps = {
   listResumes: () => Promise<ResumeData[]>;
+  /** The resume as the user sees it: the open editor's draft, else the saved file. */
   loadResume: (id: string) => Promise<ResumeData | null>;
+  proposals: ProposalStore;
   listLibrary: () => Promise<LibraryTemplate[]>;
   /** Renders `template` with the resume (or a sample when none) and reports problems. */
   checkTemplate: (template: string, resume: ResumeData | null) => Promise<{ issues: RenderIssue[]; pages: number }>;
@@ -33,20 +39,49 @@ export type McpDeps = {
 
 const INSTRUCTIONS = `Resuma is a desktop resume builder. Resumes and templates are written in Resuma Markup (.rsm).
 Read resuma://guide/content and resuma://guide/template before writing or checking .rsm.
-This connection can list and read resumes and templates, validate .rsm and render-check templates. It can't change anything.
-Personal details (name, email, phone, links) are hidden unless the user shared them for a resume.`;
+You can list and read resumes and templates, validate .rsm and render-check templates.
+You can't change anything directly: propose_edit and propose_template create proposals the user applies or discards in Resuma (some users let proposals without warnings apply automatically). Read the resume with get_resume first and pass its revision; use get_proposal to see what happened.
+Personal details (name, email, phone, links) are hidden unless the user shared them for a resume; leave \\personal out of content you propose unless you were shown it.`;
 
 const json = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }] });
 const fail = (message: string) => ({ content: [{ type: "text" as const, text: message }], isError: true });
 
-/** Short, stable fingerprint of a text (FNV-1a), so a later change can be detected. */
-export function revisionOf(text: string): string {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < text.length; i++) {
-    h ^= text.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
+/** What a client is told about a proposal. */
+const proposalReport = (r: ProposeResult) =>
+  r.ok
+    ? json({
+        proposal_id: r.proposal.id,
+        status: r.proposal.status,
+        warnings: r.proposal.warnings.map(describeWarning),
+        note:
+          r.proposal.status === "applied"
+            ? "Applied automatically (the user allows changes without warnings to apply)."
+            : "Waiting for the user to apply or discard it in Resuma.",
+      })
+    : { ...json({ proposed: false, reason: r.reason, message: r.message, diagnostics: diagnosticsOf(r.diagnostics ?? []) }), isError: true };
+
+/** Plain-language warnings for clients. */
+function describeWarning(w: ProposalWarning): string {
+  switch (w.kind) {
+    case "removed":
+      return `Removes ${w.count} entr${w.count === 1 ? "y" : "ies"} from ${w.section}.`;
+    case "added":
+      return `Adds ${w.count} entr${w.count === 1 ? "y" : "ies"} to ${w.section}.`;
+    case "newDates":
+      return `Dates that weren't in the resume: ${w.values.join(", ")}.`;
+    case "newNames":
+      return `Names that weren't in the resume: ${w.values.join(", ")}.`;
+    case "newNumbers":
+      return `Numbers that weren't in the resume: ${w.values.join(", ")}.`;
+    case "personalChanged":
+      return `Changes personal details: ${w.fields.join(", ")}.`;
+    case "sectionsDropped":
+      return `The template no longer shows: ${w.values.join(", ")}.`;
+    case "replacesTemplate":
+      return `Replaces the saved template "${w.name}".`;
+    case "render":
+      return `Render check: ${w.issue.kind}.`;
   }
-  return (h >>> 0).toString(16).padStart(8, "0");
 }
 
 /** Personal values to keep out of what clients see (the name word by word). */
@@ -151,15 +186,9 @@ export function createResumaMcpServer(deps: McpDeps): McpServer {
     async ({ id, part }) => {
       const data = await deps.loadResume(id);
       if (!data) return fail(`No resume with id "${id}".`);
-      let text: string;
-      let note = "";
-      if (part === "template") {
-        text = data.templateSource?.trim() ? data.templateSource.replace(/\r\n/g, "\n") : templateSourceFor(data.theme);
-      } else {
-        const shares = await deps.sharesPersonal(id);
-        text = printContent(normalizeContent(data.content), { omitPersonal: !shares });
-        if (!shares) note = "Personal details are hidden by the user's privacy settings.";
-      }
+      const shares = await deps.sharesPersonal(id);
+      const text = resumeView(data, part, shares);
+      const note = part === "content" && !shares ? "Personal details are hidden by the user's privacy settings." : "";
       return {
         content: [
           { type: "text" as const, text },
@@ -246,6 +275,76 @@ export function createResumaMcpServer(deps: McpDeps): McpServer {
       }
       const source = BUILTIN_TEMPLATES[id];
       return source ? { content: [{ type: "text" as const, text: source }] } : fail(`No template "${id}".`);
+    }
+  );
+
+  // ---- proposals: the user decides ------------------------------------------
+
+  const proposing = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false };
+  const clientName = () => server.server.getClientVersion()?.name?.trim() || "An AI app";
+
+  server.registerTool(
+    "propose_edit",
+    {
+      title: "Propose a change to a resume",
+      description:
+        "Proposes new content or a new template for a resume, as the complete Resuma Markup text of that part. The user applies or discards it in Resuma. Pass the revision from get_resume; if the resume changed since, read it again. Content must keep every section that was there; leave out \\personal if you weren't shown it.",
+      inputSchema: {
+        resume_id: z.string(),
+        part: z.enum(["content", "template"]),
+        source: z.string().max(256 * 1024).describe("The complete new text of that part"),
+        base_revision: z.string().describe("The revision get_resume returned"),
+        summary: z.string().max(500).describe("One sentence for the user: what changes and why"),
+      },
+      annotations: proposing,
+    },
+    async ({ resume_id, part, source, base_revision, summary }) =>
+      proposalReport(
+        await deps.proposals.proposeResume({
+          client: clientName(),
+          resumeId: resume_id,
+          part,
+          source,
+          baseRevision: base_revision,
+          summary,
+        })
+      )
+  );
+
+  server.registerTool(
+    "propose_template",
+    {
+      title: "Propose saving a template",
+      description: "Proposes saving a template to the user's library (My templates) under a name. The user applies or discards it in Resuma.",
+      inputSchema: {
+        name: z.string().min(1).max(80),
+        source: z.string().max(256 * 1024).describe("The template, in Resuma Markup"),
+        summary: z.string().max(500).describe("One sentence for the user"),
+      },
+      annotations: proposing,
+    },
+    async ({ name, source, summary }) =>
+      proposalReport(await deps.proposals.proposeTemplate({ client: clientName(), name, source, summary }))
+  );
+
+  server.registerTool(
+    "get_proposal",
+    {
+      title: "Check a proposal",
+      description: "Tells whether a proposal is still pending, was applied, discarded, undone, or went stale (the resume changed before it was applied).",
+      inputSchema: { proposal_id: z.string() },
+      annotations: readOnly,
+    },
+    async ({ proposal_id }) => {
+      const p = deps.proposals.get(proposal_id);
+      if (!p) return fail(`No proposal "${proposal_id}" (proposals last until Resuma is closed).`);
+      return json({
+        proposal_id: p.id,
+        status: p.status,
+        ...(p.autoApplied ? { applied_automatically: true } : {}),
+        ...(p.message ? { message: p.message } : {}),
+        warnings: p.warnings.map(describeWarning),
+      });
     }
   );
 

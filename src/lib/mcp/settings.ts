@@ -9,11 +9,13 @@ export type McpSettings = {
   port: number;
   /** Resume ids whose personal details connected apps may see. */
   sharePersonal: string[];
+  /** Apply proposals that raise no warnings without asking. */
+  autoApply: boolean;
 };
 
 export const DEFAULT_MCP_PORT = 47821;
 
-const DEFAULTS: McpSettings = { enabled: false, port: DEFAULT_MCP_PORT, sharePersonal: [] };
+const DEFAULTS: McpSettings = { enabled: false, port: DEFAULT_MCP_PORT, sharePersonal: [], autoApply: false };
 
 const validPort = (p: unknown): p is number => Number.isInteger(p) && (p as number) >= 1024 && (p as number) <= 65535;
 
@@ -23,6 +25,7 @@ export async function getMcpSettings(): Promise<McpSettings> {
     enabled: raw.enabled === true,
     port: validPort(raw.port) ? raw.port : DEFAULT_MCP_PORT,
     sharePersonal: Array.isArray(raw.sharePersonal) ? raw.sharePersonal.filter((s) => typeof s === "string") : [],
+    autoApply: raw.autoApply === true,
   };
 }
 

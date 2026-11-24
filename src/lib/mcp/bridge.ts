@@ -6,17 +6,9 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getVersion } from "@tauri-apps/api/app";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
-import { listResumes, loadResume } from "@/lib/resumesStore";
-import { listLibraryTemplates } from "@/lib/templateLibrary";
-import { getSection } from "@/lib/store";
-import { normalizeLanguage } from "@/lib/i18n";
-import type { SettingsType } from "@/contexts/OnboardingContext";
-import { renderResume } from "@/renderer";
-import { checkTemplate, probeResume } from "@/renderer/check";
-import { loadFonts } from "@/renderer/browser/loadFonts";
+import { appProposals, checkWithApp, currentResume, listLibraryTemplates, listResumes, sharesPersonal } from "./app";
 import { McpHub } from "./hub";
 import { createResumaMcpServer, McpDeps } from "./server";
-import { getMcpSettings } from "./settings";
 
 /** What the endpoint sends for each message (see `Forward` in mcp.rs). */
 type Forward = { session: string; key: string | null; message: JSONRPCMessage & { method?: string; id?: string | number } };
@@ -25,22 +17,11 @@ async function appDeps(): Promise<McpDeps> {
   const version = await getVersion().catch(() => "unknown");
   return {
     listResumes,
-    loadResume,
+    loadResume: currentResume,
+    proposals: appProposals,
     listLibrary: listLibraryTemplates,
-    checkTemplate: async (template, resume) => {
-      const [fonts, app] = await Promise.all([loadFonts(), getSection<SettingsType["app"]>("app")]);
-      const opts = {
-        fonts,
-        format: app?.paperSize === "US" ? ("LETTER" as const) : ("A4" as const),
-        language: normalizeLanguage(app?.language),
-      };
-      const data = resume ?? probeResume();
-      return {
-        issues: checkTemplate(template, data, opts),
-        pages: renderResume({ ...data, templateSource: template }, opts).pages.length,
-      };
-    },
-    sharesPersonal: async (id) => (await getMcpSettings()).sharePersonal.includes(id),
+    checkTemplate: checkWithApp,
+    sharesPersonal,
     version,
   };
 }

@@ -182,7 +182,7 @@ export function extractSource(reply: string): string {
 const errorsOf = (diagnostics: Diagnostic[]) => diagnostics.filter((d) => d.severity === "error");
 
 /** Errors in a reply, including whole blocks the model left out (a partial answer). */
-function validate(target: EditTarget, sent: string, reply: string): Diagnostic[] {
+export function sourceEditProblems(target: EditTarget, sent: string, reply: string): Diagnostic[] {
   if (target === "template") return errorsOf(compileTemplate(reply).diagnostics);
   const errors = errorsOf(parseContent(reply).diagnostics);
   if (errors.length) return errors;
@@ -270,7 +270,7 @@ export async function runSourceEdit(opts: {
     }
     output = extractSource(reply);
     if (!output.trim()) return { ok: false, reason: "empty", diagnostics: [], output, attempts: attempt };
-    diagnostics = validate(target, sent, output);
+    diagnostics = sourceEditProblems(target, sent, output);
     if (!diagnostics.length) {
       let text = output;
       if (target === "content") {

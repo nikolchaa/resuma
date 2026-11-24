@@ -10,6 +10,7 @@ import { loadTestFonts, sampleResume } from "@/renderer/testing/fixtures";
 import { BUILTIN_TEMPLATES } from "@/templates";
 import { createResumaMcpServer, McpDeps, revisionOf, scrub } from "./server";
 import { McpHub } from "./hub";
+import { memoryStore } from "./testing";
 
 const fonts = loadTestFonts();
 const opts = { format: "A4" as const, language: "en" as const, fonts };
@@ -17,9 +18,10 @@ const opts = { format: "A4" as const, language: "en" as const, fonts };
 const jane = (): ResumeData => normalizeResume({ ...sampleResume(), title: "Jane Doe — Engineer" })!;
 const ocean = BUILTIN_TEMPLATES.modern.replace("default=#00d9cb", "default=#0369a1");
 
-const deps = (shared: string[] = []): McpDeps => ({
+const deps = (shared: string[] = [], store = memoryStore({ shared }).store): McpDeps => ({
   listResumes: async () => [jane(), { ...jane(), id: "lib", title: "Using a library template", templateSource: ocean }],
   loadResume: async (id) => (id === "jane" ? jane() : id === "lib" ? { ...jane(), id: "lib", templateSource: ocean } : null),
+  proposals: store,
   listLibrary: async () => [{ id: "ocean", name: "Ocean", source: ocean }],
   checkTemplate: async (template, resume) => {
     const data = resume ?? probeResume();
@@ -44,13 +46,27 @@ const text = (r: unknown) => ((r as { content: { text: string }[] }).content ?? 
 const personal = Object.values(sampleResume().content.personal).filter((v) => typeof v === "string" && v.length > 1) as string[];
 
 describe("Resuma MCP server", () => {
-  it("offers read-only tools and the format guides", async () => {
+  it("offers read-only tools, proposal tools and the format guides", async () => {
     const client = await connect(deps());
     const tools = (await client.listTools()).tools;
     expect(tools.map((t) => t.name).sort()).toEqual(
-      ["check_template", "get_resume", "get_template", "list_resumes", "list_templates", "validate"].sort()
+      [
+        "check_template",
+        "get_proposal",
+        "get_resume",
+        "get_template",
+        "list_resumes",
+        "list_templates",
+        "propose_edit",
+        "propose_template",
+        "validate",
+      ].sort()
     );
-    for (const t of tools) expect(t.annotations?.readOnlyHint).toBe(true);
+    const proposing = ["propose_edit", "propose_template"];
+    for (const t of tools) {
+      expect(t.annotations?.readOnlyHint).toBe(!proposing.includes(t.name));
+      expect(t.annotations?.destructiveHint ?? false).toBe(false);
+    }
     const resources = (await client.listResources()).resources.map((r) => r.uri);
     expect(resources).toEqual(["resuma://guide/content", "resuma://guide/template"]);
     const guide = await client.readResource({ uri: "resuma://guide/template" });
@@ -127,6 +143,51 @@ describe("Resuma MCP server", () => {
     expect(text(await client.callTool({ name: "get_template", arguments: { id: "library:ocean" } }))).toBe(ocean);
     expect(text(await client.callTool({ name: "get_template", arguments: { id: "compact" } }))).toBe(BUILTIN_TEMPLATES.compact);
     expect((await client.callTool({ name: "get_template", arguments: { id: "nope" } })).isError).toBe(true);
+  });
+});
+
+describe("proposals over MCP", () => {
+  it("turns an edit into a proposal the user decides on, and reports what happened", async () => {
+    const { store, files } = memoryStore();
+    const d = { ...deps([], store), loadResume: async (id: string) => structuredClone(files.get(id) ?? null) };
+    const client = await connect(d);
+    const read = await client.callTool({ name: "get_resume", arguments: { id: "jane", part: "content" } });
+    const [source, meta] = (read.content as { text: string }[]).map((c) => c.text);
+    const { revision } = JSON.parse(meta);
+
+    const proposed = JSON.parse(
+      text(
+        await client.callTool({
+          name: "propose_edit",
+          arguments: { resume_id: "jane", part: "content", source: source.replace("Acme", "Initech"), base_revision: revision, summary: "Rename employer" },
+        })
+      )
+    );
+    expect(proposed).toMatchObject({ status: "pending", warnings: ["Names that weren't in the resume: Initech."] });
+    expect(store.get(proposed.proposal_id)).toMatchObject({ client: "test", summary: "Rename employer" });
+    expect(files.get("jane")!.content.experience[0].company).toBe("Acme");
+
+    await store.apply(proposed.proposal_id);
+    const status = JSON.parse(text(await client.callTool({ name: "get_proposal", arguments: { proposal_id: proposed.proposal_id } })));
+    expect(status).toMatchObject({ status: "applied" });
+
+    // The old revision is stale now.
+    const stale = await client.callTool({
+      name: "propose_edit",
+      arguments: { resume_id: "jane", part: "content", source, base_revision: revision, summary: "" },
+    });
+    expect(stale.isError).toBe(true);
+    expect(JSON.parse(text(stale))).toMatchObject({ proposed: false, reason: "stale" });
+  });
+
+  it("proposes saving a template", async () => {
+    const { store, library } = memoryStore();
+    const client = await connect(deps([], store));
+    const r = JSON.parse(text(await client.callTool({ name: "propose_template", arguments: { name: "Ocean", source: ocean, summary: "Blue Modern" } })));
+    expect(r.status).toBe("pending");
+    expect(library.size).toBe(0);
+    const bad = await client.callTool({ name: "propose_template", arguments: { name: "Bad", source: "\\template[id=x]\n\\p{", summary: "" } });
+    expect(bad.isError).toBe(true);
   });
 });
 
