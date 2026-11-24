@@ -56,11 +56,26 @@ const CONTENT_GUIDE = `Resuma Markup content format:
 const TEMPLATE_GUIDE = `Resuma Markup template format (declarative; no scripting):
 - Start with \\template[id=..., name=..., version=1]. Optional \\option[name, type=color|size|font|choice, default=..., label="..."] values are used in styles as @name; a choice option also needs choices="a|b|c" including its default. @font is built in (the font the user picks): use it, never declare an option called font.
 - Write one command per line and indent nested blocks like the example, so every { has its matching }.
-- \\page{margin: 40; font-family: @font; font-size: 11; color: #1f2937} sets page styles. \\style[name]{property: value; ...} defines a style class.
+- \\page{margin: 40; font-family: @font; font-size: 11; color: #1f2937} sets page styles. \\style[heading]{font-size: 12; font-weight: bold} defines a style class called heading (the name goes alone in the brackets); use it as \\p[heading]{...}.
 - Style properties: ${Object.keys(PROPERTIES).join(", ")}. Page properties: ${Object.keys(PAGE_PROPERTIES).join(", ")}. Numbers are points, colours are hex, fonts are Figtree, Inter or "Space Grotesk", font-weight is normal or bold, border-bottom is "<width> <colour>", keep is together or with-next.
 - \\header{...} renders personal fields: ${Object.keys(PERSONAL_FIELDS).join(", ")}.
 - \\section[kind]{...} for kind in ${SECTION_KINDS.join(", ")}, or * for custom sections. Inside, \\entries[style]{...} repeats per entry.
-- Two columns: \\cols[widths="32,68", gap=20, left=styleName, right=styleName]{left column}{right column}. Each column holds \\header{...} and \\section[...]{...} blocks; with \\cols every \\section must be inside a column, and only a \\header written before \\cols spans the full width. A column style may set background (fills the column to the page edge and full page height), color, font properties, padding-left and padding-right; background works only on column styles.
+- Two columns: \\cols[widths="32,68", gap=20, left=styleName, right=styleName]{left column}{right column}. Each column holds \\header{...} and \\section[...]{...} blocks; with \\cols every \\section must be inside a column, and only a \\header written before \\cols spans the full width. A column style may set background (fills the column to the page edge and full page height), color, font properties, padding-left and padding-right; background works only on column styles. Lay it out like this:
+\\cols[widths="32,68", gap=20, left=side]{
+  \\header{
+    \\p[contact]{\\v{email}}
+  }
+  \\section[skills]{
+    \\p[sideheading]{\\sectiontitle}
+    \\entries[entry]{
+      \\p{\\list[sep=", "]{items}}
+    }
+  }
+}{
+  \\section[experience]{
+    ...
+  }
+}
 - Entry fields: ${Object.entries(ENTRY_FIELDS)
   .map(([k, f]) => `${k === "*" ? "custom" : k} (${Object.keys(f).join(", ")})`)
   .join("; ")}.

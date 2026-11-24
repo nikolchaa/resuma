@@ -386,7 +386,13 @@ export function compileDocument(input: CompileInput): CompiledDocument {
     return out;
   };
 
-  const margin = pageStyle.margin ?? [40, 40, 40, 40];
+  const [mt, mr, mb, ml] = pageStyle.margin ?? [40, 40, 40, 40];
+  const margin: [number, number, number, number] = [
+    pageStyle.marginTop ?? mt,
+    pageStyle.marginRight ?? mr,
+    pageStyle.marginBottom ?? mb,
+    pageStyle.marginLeft ?? ml,
+  ];
   const header = headerBox(template.header, baseText, "h");
   const cols = template.columns;
   if (!cols) {

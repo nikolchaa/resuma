@@ -26,6 +26,9 @@ export type BoxStyle = {
   keep?: "together" | "with-next";
   /** page only: top right bottom left */
   margin?: [number, number, number, number];
+  /** page only: single sides, overriding `margin` */
+  marginLeft?: number;
+  marginRight?: number;
 };
 
 /** Raw declarations, still possibly containing `@option` references. */
@@ -99,19 +102,30 @@ export const PROPERTIES: Record<string, (raw: string) => Parsed<Partial<BoxStyle
     return ok({ borderBottom: { width: w.value, color: c.value } });
   },
   keep: (r) => map(parseKeyword(r, ["together", "with-next"] as const), (keep) => ({ keep })),
+  // CSS shorthands. Blocks have no horizontal margins, so `margin` sets top and bottom only.
+  margin: (r) => map(parseSides(r, "margin", 120), ([t, , b]) => ({ marginTop: t, marginBottom: b })),
+  padding: (r) =>
+    map(parseSides(r, "padding", 120), ([t, rr, b, l]) => ({ paddingTop: t, paddingRight: rr, paddingBottom: b, paddingLeft: l })),
 };
+
+/** CSS-style 1–4 side values: `t`, `t rl`, `t rl b`, `t r b l`. */
+function parseSides(raw: string, prop: string, max: number): Parsed<[number, number, number, number]> {
+  const parts = raw.trim().split(/\s+/).map((p) => parseNumber(p, 0, max));
+  const bad = parts.find((p) => !p.ok);
+  if (bad && !bad.ok) return bad;
+  const n = parts.map((p) => (p as { ok: true; value: number }).value);
+  if (n.length < 1 || n.length > 4) return fail(`${prop} takes 1 to 4 numbers`);
+  const [t, rr = t, b = t, l = rr] = n;
+  return ok([t, rr, b, l]);
+}
 
 /** Page-only properties (`\page{...}`). */
 export const PAGE_PROPERTIES: Record<string, (raw: string) => Parsed<Partial<BoxStyle>>> = {
-  margin: (r) => {
-    const parts = r.trim().split(/\s+/).map((p) => parseNumber(p, 0, 144));
-    const bad = parts.find((p) => !p.ok);
-    if (bad && !bad.ok) return bad;
-    const n = parts.map((p) => (p as { ok: true; value: number }).value);
-    if (n.length < 1 || n.length > 4) return fail("margin takes 1 to 4 numbers");
-    const [t, rr = t, b = t, l = rr] = n;
-    return ok({ margin: [t, rr, b, l] });
-  },
+  margin: (r) => map(parseSides(r, "margin", 144), (margin) => ({ margin })),
+  "margin-top": (r) => map(parseNumber(r, 0, 144), (marginTop) => ({ marginTop })),
+  "margin-right": (r) => map(parseNumber(r, 0, 144), (marginRight) => ({ marginRight })),
+  "margin-bottom": (r) => map(parseNumber(r, 0, 144), (marginBottom) => ({ marginBottom })),
+  "margin-left": (r) => map(parseNumber(r, 0, 144), (marginLeft) => ({ marginLeft })),
   "font-family": PROPERTIES["font-family"],
   "font-size": PROPERTIES["font-size"],
   "font-weight": PROPERTIES["font-weight"],

@@ -663,7 +663,8 @@ export function compileTemplate(source: string): TemplateResult {
       }
       case "style": {
         expectGroups(cmd, 1, 1);
-        const name = flagOptions(cmd)[0]?.key;
+        // `\style[name=heading]` is a common slip for `\style[heading]`; accept it.
+        const name = flagOptions(cmd)[0]?.key ?? (cmd.options[0]?.key === "name" ? optionValue(cmd, "name") : undefined);
         if (!name || cmd.options.length !== 1) {
           diag(cmd.pos, "`\\style` needs exactly one name, e.g. `\\style[heading]{font-size: 12}`.");
           break;

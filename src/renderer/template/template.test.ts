@@ -59,6 +59,28 @@ describe("compileTemplate", () => {
     expect(warn.diagnostics).toEqual([expect.objectContaining({ severity: "warning", message: expect.stringMatching(/only works on a column style/) })]);
   });
 
+  it("accepts CSS margin and padding shorthands, and single page margins", async () => {
+    const { compileDocument } = await import("../engine/compile");
+    const { sampleResume } = await import("../testing/sample");
+    const { template, diagnostics } = compileTemplate(
+      "\\template[id=t, name=T]\n\\page{margin: 30; margin-top: 60; margin-left: 20}\n" +
+        "\\style[a]{margin: 4 8 6; padding: 1 2 3 5}\n\\header{\\p[a]{\\v{fullName}}}"
+    );
+    expect(diagnostics).toEqual([]);
+    const doc = compileDocument({ template: template!, content: sampleResume().content, language: "en" });
+    expect(doc.margin).toEqual([60, 30, 30, 20]);
+    const para = (doc.boxes[0] as { children: { spacing: object }[] }).children[0];
+    expect(para.spacing).toMatchObject({ marginTop: 4, marginBottom: 6, paddingTop: 1, paddingRight: 2, paddingBottom: 3, paddingLeft: 5 });
+  });
+
+  it("accepts \\style[name=x] as \\style[x]", () => {
+    const { template, diagnostics } = compileTemplate(
+      "\\template[id=t, name=T]\n\\style[name=big]{font-size: 20}\n\\header{\\p[big]{\\v{fullName}}}"
+    );
+    expect(diagnostics).toEqual([]);
+    expect(template?.styles.big).toHaveLength(1);
+  });
+
   it("ignores a redeclared built-in font option with a warning", () => {
     const { template, diagnostics } = compileTemplate(
       wrap('\\option[font, type=choice, default=Inter, choices="Inter|Figtree"]\n\\header{\\p[s]{\\v{fullName}}}')
