@@ -61,21 +61,32 @@ async fn download_and_extract(
             .join(&format!("{}s", asset_type)) // ← dynamic folder like runtimes, models, etc.
             .join(&asset_name);
 
-        // Re-downloading a runtime (an update, or a repair of an incomplete
-        // install) starts from an empty folder: llama.cpp loads every
-        // ggml-*.dll backend it finds, so leftovers from an older build
-        // would be loaded into the new one.
-        if !no_extract && base_dir.exists() {
-            if let Err(e) = fs::remove_dir_all(&base_dir) {
-                let _ = window.emit(
-                    &format!("download_error:{}", asset_name),
-                    format!("Failed to remove the previous install: {e}"),
-                );
-                return;
+        // Runtime archives download into a staging folder and only replace
+        // the installed runtime once every archive has arrived, so a failed
+        // update or repair leaves the previous install working. Models
+        // download straight into their folder.
+        let download_dir = if no_extract {
+            base_dir.clone()
+        } else {
+            match dirs::data_dir() {
+                Some(dir) => dir.join("com.resuma.app").join("downloads").join(&asset_name),
+                None => {
+                    let _ = window.emit(
+                        &format!("download_error:{}", asset_name),
+                        "Failed to find data directory".to_string(),
+                    );
+                    return;
+                }
             }
-        }
+        };
+        let discard_staging = || {
+            if !no_extract {
+                let _ = fs::remove_dir_all(&download_dir);
+            }
+        };
+        discard_staging();
 
-        if let Err(e) = fs::create_dir_all(&base_dir) {
+        if let Err(e) = fs::create_dir_all(&download_dir) {
             let _ = window.emit(
                 &format!("download_error:{}", asset_name),
                 format!("Failed to create directory: {e}"),
@@ -107,7 +118,7 @@ async fn download_and_extract(
 
         for (index, url) in asset_urls.iter().enumerate() {
             let filename = url.split('/').last().unwrap_or("download.zip");
-            let file_path = base_dir.join(filename);
+            let file_path = download_dir.join(filename);
             last_file_path = Some(file_path.clone());
             downloaded_files.push(file_path.clone());
 
@@ -118,6 +129,7 @@ async fn download_and_extract(
                         &format!("download_error:{}", asset_name),
                         format!("Download failed: {e}"),
                     );
+                    discard_staging();
                     return;
                 }
             };
@@ -133,6 +145,7 @@ async fn download_and_extract(
                         &format!("download_error:{}", asset_name),
                         format!("Failed to create file: {e}"),
                     );
+                    discard_staging();
                     return;
                 }
             };
@@ -145,6 +158,7 @@ async fn download_and_extract(
                                 &format!("download_error:{}", asset_name),
                                 format!("Failed writing file: {e}"),
                             );
+                            discard_staging();
                             return;
                         }
                         downloaded_total += chunk.len() as u64;
@@ -161,6 +175,7 @@ async fn download_and_extract(
                             &format!("download_error:{}", asset_name),
                             format!("Download stream error: {e}"),
                         );
+                        discard_staging();
                         return;
                     }
                 }
@@ -179,8 +194,27 @@ async fn download_and_extract(
         // (the CUDA build plus its cudart/cuBLAS DLLs); models are never
         // extracted, sharded or not.
         if !no_extract && !downloaded_files.is_empty() {
+            // The new build goes into an empty folder: llama.cpp loads every
+            // ggml-*.dll backend it finds, so leftovers from an older build
+            // would be loaded into the new one.
+            let replaced = (if base_dir.exists() {
+                fs::remove_dir_all(&base_dir)
+            } else {
+                Ok(())
+            })
+            .and_then(|_| fs::create_dir_all(&base_dir));
+            if let Err(e) = replaced {
+                discard_staging();
+                let _ = window.emit(
+                    &format!("extract_error:{}", asset_name),
+                    format!("Failed to replace the previous install: {e}"),
+                );
+                return;
+            }
+
             for archive_path in &downloaded_files {
                 if let Err(e) = extract_archive(archive_path, &base_dir) {
+                    discard_staging();
                     let _ = window.emit(
                         &format!("extract_error:{}", asset_name),
                         format!("Extraction failed: {e}"),
@@ -188,6 +222,7 @@ async fn download_and_extract(
                     return;
                 }
             }
+            discard_staging();
             // Lets check_asset_ready tell a current install from one made
             // with an older llama.cpp build.
             if let Some(version) = &version {
