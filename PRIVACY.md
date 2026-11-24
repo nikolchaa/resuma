@@ -25,7 +25,7 @@ We do **not** track usage, collect analytics, or share any data with third parti
 The following data is stored **locally only**:
 
 - Resume files (`.resume`), **encrypted**
-- Your profile and application settings (`settings.enc`), **encrypted**
+- Your profile and application settings (`settings.resuma`), **encrypted**
 - Saved templates (`templates/*.rsm`), which hold designs, not personal data
 - Exported resumes (PDF/TXT)
 - Downloaded local models (e.g., Qwen3 GGUF)

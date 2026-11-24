@@ -29,10 +29,10 @@ use serde_json::Value;
 const MAGIC: &[u8] = b"RSMENC1\n";
 /// Header of a password-protected backup.
 const BACKUP_MAGIC: &[u8] = b"RSMBAK1\n";
-/// The encrypted settings file. A new name, so older Resuma versions never
-/// mistake it for (and overwrite) their plaintext `settings.resuma`.
-const SETTINGS_FILE: &str = "settings.enc";
-const LEGACY_SETTINGS_FILE: &str = "settings.resuma";
+/// The settings file, encrypted in place (it was plain JSON before).
+const SETTINGS_FILE: &str = "settings.resuma";
+/// Where the first encrypted builds kept the settings; moved back on start.
+const INTERIM_SETTINGS_FILE: &str = "settings.enc";
 const RESUMES_DIR: &str = "resumes";
 /// A small known text encrypted with the key, to tell a right key from a wrong one.
 const CHECK_FILE: &str = "vault.check";
@@ -241,7 +241,8 @@ impl Vault {
 
     fn any_encrypted(&self) -> bool {
         self.path(CHECK_FILE).exists()
-            || self.path(SETTINGS_FILE).exists()
+            || is_encrypted(&self.path(SETTINGS_FILE))
+            || self.path(INTERIM_SETTINGS_FILE).exists()
             || self.resume_files().iter().any(|p| is_encrypted(p))
     }
 
@@ -312,13 +313,19 @@ impl Vault {
                 self.write_encrypted(key, Kind::Resume, &p, &plain)?;
             }
         }
-        let legacy = self.path(LEGACY_SETTINGS_FILE);
-        if legacy.exists() {
-            if !self.path(SETTINGS_FILE).exists() {
-                let plain = fs::read(&legacy).map_err(|e| e.to_string())?;
-                self.write_encrypted(key, Kind::Settings, &self.path(SETTINGS_FILE), &plain)?;
-            }
-            fs::remove_file(&legacy).map_err(|e| e.to_string())?;
+        let settings = self.path(SETTINGS_FILE);
+        // Settings the first encrypted builds kept in `settings.enc` move back
+        // to the usual name, once they're known to open with this key.
+        let interim = self.path(INTERIM_SETTINGS_FILE);
+        if interim.exists() {
+            let data = fs::read(&interim).map_err(|e| e.to_string())?;
+            open(key, Kind::Settings, &data)?;
+            fs::rename(&interim, &settings).map_err(|e| format!("Couldn't rename {}: {e}", interim.display()))?;
+        }
+        // Plain JSON from before encryption is encrypted in place.
+        if settings.exists() && !is_encrypted(&settings) {
+            let plain = fs::read(&settings).map_err(|e| e.to_string())?;
+            self.write_encrypted(key, Kind::Settings, &settings, &plain)?;
         }
         // Temp files from an interrupted write may hold plaintext's encrypted
         // twin or a partial write; the originals are intact, so drop them.
@@ -329,6 +336,7 @@ impl Vault {
                 }
             }
         }
+        let _ = fs::remove_file(self.path("settings.resuma.tmp"));
         let _ = fs::remove_file(self.path("settings.enc.tmp"));
         Ok(())
     }
@@ -403,7 +411,7 @@ impl Vault {
             .unwrap_or(0);
         let aside = self.path(&format!("locked-data-{stamp}"));
         fs::create_dir_all(&aside).map_err(|e| e.to_string())?;
-        for name in [CHECK_FILE, SETTINGS_FILE, PENDING_FILE, RESUMES_DIR] {
+        for name in [CHECK_FILE, SETTINGS_FILE, INTERIM_SETTINGS_FILE, PENDING_FILE, RESUMES_DIR] {
             let p = self.path(name);
             if p.exists() {
                 fs::rename(&p, aside.join(name)).map_err(|e| e.to_string())?;
@@ -439,10 +447,12 @@ impl Vault {
         let _g = self.lock.lock().unwrap();
         let (path, kind) = self.locate(name)?;
         if !path.exists() {
-            // Settings from before encryption, if migration hasn't run yet.
-            let legacy = self.path(LEGACY_SETTINGS_FILE);
-            if matches!(kind, Kind::Settings) && legacy.exists() {
-                return fs::read_to_string(legacy).map(Some).map_err(|e| e.to_string());
+            // Settings still under the interim name, if migration hasn't run yet.
+            let interim = self.path(INTERIM_SETTINGS_FILE);
+            if matches!(kind, Kind::Settings) && interim.exists() {
+                let key = self.ready_key()?;
+                let plain = open(&key, kind, &fs::read(&interim).map_err(|e| e.to_string())?)?;
+                return String::from_utf8(plain).map(Some).map_err(|_| "Decrypted file isn't valid text.".into());
             }
             return Ok(None);
         }
@@ -680,16 +690,16 @@ mod tests {
     #[test]
     fn migrates_plaintext_data_and_round_trips() {
         let dir = folder("migrate");
-        fs::write(dir.join(LEGACY_SETTINGS_FILE), r#"{"personal":{"fullName":"Ana"}}"#).unwrap();
+        fs::write(dir.join(SETTINGS_FILE), r#"{"personal":{"fullName":"Ana"}}"#).unwrap();
         fs::write(dir.join("resumes/cv.resume"), r#"{"id":"cv","title":"CV"}"#).unwrap();
         let (v, _) = vault_in(&dir);
         assert_eq!(v.status(), Status::New);
 
         assert_eq!(v.init().unwrap(), Status::Ready { recovery_pending: true });
-        // Nothing readable is left on disk.
-        assert!(!dir.join(LEGACY_SETTINGS_FILE).exists());
+        // Nothing readable is left on disk; the file names stay the same.
         assert!(is_encrypted(&dir.join("resumes/cv.resume")));
         assert!(is_encrypted(&dir.join(SETTINGS_FILE)));
+        assert!(!dir.join(INTERIM_SETTINGS_FILE).exists());
         let raw = fs::read(dir.join("resumes/cv.resume")).unwrap();
         assert!(!String::from_utf8_lossy(&raw).contains("CV"));
 
@@ -758,6 +768,24 @@ mod tests {
         // A key that doesn't open this folder counts as no key.
         *keys.key.lock().unwrap() = Some([9u8; 32]);
         assert_eq!(v.status(), Status::Locked);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn moves_settings_from_the_interim_name_back_to_settings_resuma() {
+        let dir = folder("interim");
+        let (v, _) = vault_in(&dir);
+        v.init().unwrap();
+        v.write("settings", r#"{"app":{"language":"rs"}}"#).unwrap();
+        // What the first encrypted build left: settings under `settings.enc`.
+        fs::rename(dir.join(SETTINGS_FILE), dir.join(INTERIM_SETTINGS_FILE)).unwrap();
+        // Readable before the move…
+        assert_eq!(v.read("settings").unwrap().unwrap(), r#"{"app":{"language":"rs"}}"#);
+        // …and moved back, still encrypted, on the next start.
+        v.init().unwrap();
+        assert!(!dir.join(INTERIM_SETTINGS_FILE).exists());
+        assert!(is_encrypted(&dir.join(SETTINGS_FILE)));
+        assert_eq!(v.read("settings").unwrap().unwrap(), r#"{"app":{"language":"rs"}}"#);
         let _ = fs::remove_dir_all(&dir);
     }
 
