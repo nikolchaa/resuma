@@ -79,6 +79,7 @@ export const RsmEditor = ({ value, onChange, diagnostics, ariaLabel, className }
   const view = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  const external = useRef(false);
 
   useEffect(() => {
     const v = new EditorView({
@@ -93,7 +94,8 @@ export const RsmEditor = ({ value, onChange, diagnostics, ariaLabel, className }
           EditorView.lineWrapping,
           EditorView.contentAttributes.of({ "aria-label": ariaLabel }),
           EditorView.updateListener.of((u) => {
-            if (u.docChanged) onChangeRef.current(u.state.doc.toString());
+            // Only the user's own edits count; syncing from `value` doesn't echo back.
+            if (u.docChanged && !external.current) onChangeRef.current(u.state.doc.toString());
           }),
         ],
       }),
@@ -111,7 +113,12 @@ export const RsmEditor = ({ value, onChange, diagnostics, ariaLabel, className }
   useEffect(() => {
     const v = view.current;
     if (!v || v.state.doc.toString() === value) return;
-    v.dispatch({ changes: { from: 0, to: v.state.doc.length, insert: value } });
+    external.current = true;
+    try {
+      v.dispatch({ changes: { from: 0, to: v.state.doc.length, insert: value } });
+    } finally {
+      external.current = false;
+    }
   }, [value]);
 
   useEffect(() => {
