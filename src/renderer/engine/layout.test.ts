@@ -328,6 +328,29 @@ describe("renderResume", () => {
       expect(sectionOrder(template, sidebar.content)).toEqual(["experience", "education", "projects", "skills", "awards"]);
     });
 
+    it("insets column content by padding-top and padding-bottom on every page", () => {
+      const tops = (src: string) => {
+        const data = { ...sidebar, templateSource: src, content: { ...sidebar.content } };
+        data.content.experience = Array.from({ length: 14 }, (_, i) => ({ ...sidebar.content.experience[0], jobTitle: `Role ${i}` }));
+        const doc = renderResume(data, { format: "A4", language: "en", fonts });
+        return doc.pages.map((p) => {
+          const side = (p.items.filter((i) => i.type === "text") as { x: number; y: number }[]).filter((i) => i.x < 200);
+          const main = (p.items.filter((i) => i.type === "text") as { x: number; y: number }[]).filter((i) => i.x >= 200);
+          return { side: Math.min(...side.map((i) => i.y), Infinity), main: Math.max(...main.map((i) => i.y), -Infinity) };
+        });
+      };
+      const plain = tops(BUILTIN_TEMPLATES.sidebar);
+      const padded = tops(
+        BUILTIN_TEMPLATES.sidebar
+          .replace("\\style[side]{background: @sidebar;", "\\style[side]{padding-top: 20; background: @sidebar;")
+          .replace("\\cols[widths=\"32,68\", gap=22, left=side]", "\\style[mainpad]{padding-bottom: 60}\n\\cols[widths=\"32,68\", gap=22, left=side, right=mainpad]")
+      );
+      expect(padded[0].side - plain[0].side).toBeCloseTo(20);
+      // Bottom padding keeps main-column text further from the page bottom.
+      expect(padded[0].main).toBeLessThanOrEqual(PAPER.A4.height - 36 - 60);
+      expect(padded.length).toBeGreaterThanOrEqual(plain.length);
+    });
+
     it("closes the gap when both columns have a background", () => {
       const both = BUILTIN_TEMPLATES.sidebar.replace(
         '\\cols[widths="32,68", gap=22, left=side]',

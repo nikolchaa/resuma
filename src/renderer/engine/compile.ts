@@ -41,6 +41,9 @@ export type ColumnFrame = {
   background?: string;
   paddingLeft: number;
   paddingRight: number;
+  /** Space inside the column above and below its content, on every page. */
+  paddingTop?: number;
+  paddingBottom?: number;
 };
 
 export type CompiledColumns = {
@@ -408,6 +411,8 @@ export function compileDocument(input: CompileInput): CompiledDocument {
       background: s.background,
       paddingLeft: s.paddingLeft ?? 0,
       paddingRight: s.paddingRight ?? 0,
+      ...(s.paddingTop ? { paddingTop: s.paddingTop } : {}),
+      ...(s.paddingBottom ? { paddingBottom: s.paddingBottom } : {}),
     };
     const boxes = [
       ...headerBox(cols.header[col], style, col === 0 ? "hL" : "hR"),

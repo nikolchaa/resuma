@@ -320,7 +320,10 @@ export function layoutDocument({ boxes, page, margin, fonts, columns }: LayoutIn
       const f = cols.frames[c];
       const ix = x + f.paddingLeft;
       const iw = Math.max(20, w - f.paddingLeft - f.paddingRight);
-      return paginate(cols.boxes[c].flatMap((b) => flatten(b, ix, iw)), firstTop, top, bottom).pages;
+      // Top and bottom padding inset the content on every page.
+      const pt = f.paddingTop ?? 0;
+      const pb = f.paddingBottom ?? 0;
+      return paginate(cols.boxes[c].flatMap((b) => flatten(b, ix, iw)), firstTop + pt, top + pt, bottom - pb).pages;
     });
 
     const count = Math.max(1, header.pages.length, offset + columnPages[0].length, offset + columnPages[1].length);
