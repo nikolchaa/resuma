@@ -174,11 +174,12 @@ export const Suggestions = () => {
       <AnimatePresence>
         {open && (
           <m.aside
-            initial={{ x: 40, opacity: 0 }}
+            initial={{ x: 24, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 40, opacity: 0 }}
+            exit={{ x: 24, opacity: 0 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className='fixed right-0 top-8 bottom-0 z-[55] flex w-[30rem] max-w-full flex-col border-l bg-background shadow-lg'
+            // A floating card, clear of the window bar and every edge.
+            className='fixed top-11 right-3 bottom-3 z-[55] flex w-[30rem] max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-xl border bg-background shadow-2xl'
           >
             <div className='flex items-center justify-between border-b p-4'>
               <div className='flex flex-col'>
