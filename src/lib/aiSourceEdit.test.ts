@@ -168,6 +168,25 @@ describe("runSourceEdit with a render check", () => {
     expect(gen.prompts[0]).toContain("\\cols[widths=");
     expect(gen.prompts[1]).toMatch(/These sections render nothing: awards/);
   });
+
+  it("gives new designs design rules, and a two-column example when columns are asked for", async () => {
+    const run = async (instruction: string) => {
+      const model = scripted(fence(changed));
+      await runSourceEdit({ target: "template", instruction, source: tpl, call: model.call, generate: true });
+      return model.prompts[0];
+    };
+    const cols = await run("Dvije kolone sa bočnom trakom");
+    expect(cols).toContain("Design rules:");
+    expect(cols).toContain("A column with a dark background needs light text");
+    expect(cols).toContain("\\template[id=sidebar");
+    const plain = await run("Minimal and airy");
+    expect(plain).toContain("\\template[id=modern");
+    expect(plain).not.toContain("\\template[id=sidebar");
+    // Edits don't get the design rules.
+    const edit = scripted(fence(changed));
+    await runSourceEdit({ target: "template", instruction: "blue", source: tpl, call: edit.call });
+    expect(edit.prompts[0]).not.toContain("Design rules:");
+  });
 });
 
 describe("contentWarnings", () => {

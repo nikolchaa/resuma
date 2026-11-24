@@ -12,6 +12,7 @@ import { compileTemplate } from "@/renderer/template/template";
 import { ENTRY_FIELDS, LABELS, PERSONAL_FIELDS, SECTION_KINDS } from "@/renderer/template/schema";
 import { PAGE_PROPERTIES, PROPERTIES } from "@/renderer/template/styles";
 import type { RenderIssue } from "@/renderer/check";
+import { BUILTIN_TEMPLATES } from "@/templates";
 import type { ResumeContent } from "./resumesStore";
 
 export type EditTarget = "content" | "template";
@@ -85,8 +86,22 @@ const TEMPLATE_GUIDE = `Resuma Markup template format (declarative; no scripting
 
 const GENERATE_RULES = `- Write a NEW template that follows the description. You may change the layout, styles, options and wording completely; the example template only shows the syntax.
 - Show every section (education, experience, projects, awards, skills, and \\section[*] for custom sections) with the useful fields of each.
-- Give it a new \\template id (lowercase letters, digits, dashes) and a short name.
-- Keep text readable: font sizes of at least 7, and text colours that stand out from their background.`;
+- Give it a new \\template id (lowercase letters, digits, dashes) and a short name.`;
+
+/** Design guidance for new templates; each rule answers a mistake models made in testing. */
+const DESIGN_RULES = `Design rules:
+- Every piece of text must stand out from what is behind it. The page is white, so text on it is dark. A full-width \\header written before \\cols is on the white page too.
+- A column with a dark background needs light text: set a light color on the column style, and every style used inside that column must either set a light color or set no color at all (then it uses the column's). Never reuse a dark-text style inside a dark column; make separate styles for it (for example sideheading and heading).
+- Sizes: name 18 to 26, section headings 10 to 14, body text 9 to 11, small details 8 to 9; nothing below 7.
+- Page margins between 30 and 50. Use at most three colours besides black, white and greys, and make each of them an \\option so the user can change it.`;
+
+/** Asks for a two-column layout, in English or Serbian. */
+const WANTS_COLUMNS = /column|side ?bar|kolon|bo[čc]n/i;
+
+/** The example a new design is shown: a two-column one when columns are asked for. */
+function exampleFor(description: string, current: string): string {
+  return WANTS_COLUMNS.test(description) && !/\\cols\b/.test(current) ? BUILTIN_TEMPLATES.sidebar : current;
+}
 
 function buildGeneratePrompt(description: string, example: string): string {
   return `You design a new resume template written in Resuma Markup.
@@ -97,11 +112,13 @@ Rules:
 - Return the COMPLETE new template in a single \`\`\`rsm code block and nothing else.
 ${GENERATE_RULES}
 
+${DESIGN_RULES}
+
 Description: ${description.trim()}
 
 Example template (for the syntax):
 \`\`\`rsm
-${example}
+${exampleFor(description, example)}
 \`\`\``;
 }
 
