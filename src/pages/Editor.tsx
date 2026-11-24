@@ -234,7 +234,9 @@ export const Editor = () => {
                   <SvgPage
                     page={page}
                     width={PAGE_WIDTH * zoomLevel}
-                    className='border'
+                    // A shadow, not a border: a border draws a line on the
+                    // page itself, visible against full-bleed backgrounds.
+                    className='shadow-md'
                   />
                   <div className='text-xs text-center text-gray-500 mb-[4rem]'>
                     {t("editor.page")} {page.index + 1} {t("editor.of")} {numPages}
