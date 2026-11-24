@@ -12,6 +12,7 @@ use tauri_plugin_prevent_default::Builder as PreventDefaultBuilder;
 use tauri_plugin_prevent_default::PlatformOptions;
 
 mod gguf;
+mod gpu_offload;
 mod huggingface;
 mod llm;
 mod remote;
@@ -30,12 +31,25 @@ async fn download_and_extract(
     asset_urls: Vec<String>,
     no_extract: bool,
     asset_type: String, // e.g., "runtimes", "models", etc.
+    // Build tag recorded after extraction, e.g. "b12675" for runtimes.
+    version: Option<String>,
 ) -> Result<(), String> {
     spawn(async move {
         if asset_urls.is_empty() {
             let _ = window.emit(
                 &format!("download_error:{}", asset_name),
                 "No download URLs provided".to_string(),
+            );
+            return;
+        }
+
+        if asset_name.is_empty()
+            || asset_name.contains(['/', '\\'])
+            || asset_name.contains("..")
+        {
+            let _ = window.emit(
+                &format!("download_error:{}", asset_name),
+                "Invalid asset name".to_string(),
             );
             return;
         }
@@ -47,7 +61,37 @@ async fn download_and_extract(
             .join(&format!("{}s", asset_type)) // ← dynamic folder like runtimes, models, etc.
             .join(&asset_name);
 
-        if let Err(e) = fs::create_dir_all(&base_dir) {
+        // Runtime archives download into a staging folder and only replace
+        // the installed runtime once every archive has arrived, so a failed
+        // update or repair leaves the previous install working. Models
+        // download straight into their folder.
+        let download_dir = if no_extract {
+            base_dir.clone()
+        } else {
+            match dirs::data_dir() {
+                Some(dir) => dir.join("com.resuma.app").join("downloads").join(&asset_name),
+                None => {
+                    let _ = window.emit(
+                        &format!("download_error:{}", asset_name),
+                        "Failed to find data directory".to_string(),
+                    );
+                    return;
+                }
+            }
+        };
+        let discard_staging = || {
+            if !no_extract {
+                let _ = fs::remove_dir_all(&download_dir);
+                // Drop `downloads/` too once nothing else is staged in it;
+                // remove_dir refuses non-empty folders.
+                if let Some(parent) = download_dir.parent() {
+                    let _ = fs::remove_dir(parent);
+                }
+            }
+        };
+        discard_staging();
+
+        if let Err(e) = fs::create_dir_all(&download_dir) {
             let _ = window.emit(
                 &format!("download_error:{}", asset_name),
                 format!("Failed to create directory: {e}"),
@@ -55,18 +99,34 @@ async fn download_and_extract(
             return;
         }
 
-        // Sharded models download several files into one folder; progress is
-        // reported across every known byte so the bar stays meaningful.
-        let mut grand_total: u64 = 0;
+        // Sharded models and multi-archive runtimes download several files
+        // into one folder; progress is reported across every byte. Sizes are
+        // asked for up front so the bar does not jump back when the next
+        // file starts; any unknown size is added once its download begins.
+        let client = Client::new();
+        let mut known_sizes: Vec<Option<u64>> = Vec::with_capacity(asset_urls.len());
+        for url in &asset_urls {
+            let size = match client.head(url).send().await {
+                Ok(res) if res.status().is_success() => res
+                    .headers()
+                    .get(reqwest::header::CONTENT_LENGTH)
+                    .and_then(|v| v.to_str().ok())
+                    .and_then(|v| v.parse::<u64>().ok()),
+                _ => None,
+            };
+            known_sizes.push(size);
+        }
+        let mut grand_total: u64 = known_sizes.iter().flatten().sum();
         let mut downloaded_total: u64 = 0;
         let mut last_file_path: Option<PathBuf> = None;
+        let mut downloaded_files: Vec<PathBuf> = Vec::new();
 
-        for url in &asset_urls {
+        for (index, url) in asset_urls.iter().enumerate() {
             let filename = url.split('/').last().unwrap_or("download.zip");
-            let file_path = base_dir.join(filename);
+            let file_path = download_dir.join(filename);
             last_file_path = Some(file_path.clone());
+            downloaded_files.push(file_path.clone());
 
-            let client = Client::new();
             let response = match client.get(url).send().await {
                 Ok(res) => res,
                 Err(e) => {
@@ -74,11 +134,14 @@ async fn download_and_extract(
                         &format!("download_error:{}", asset_name),
                         format!("Download failed: {e}"),
                     );
+                    discard_staging();
                     return;
                 }
             };
 
-            grand_total += response.content_length().unwrap_or(0);
+            if known_sizes[index].is_none() {
+                grand_total += response.content_length().unwrap_or(0);
+            }
             let mut stream = response.bytes_stream();
             let mut file = match File::create(&file_path) {
                 Ok(f) => f,
@@ -87,6 +150,7 @@ async fn download_and_extract(
                         &format!("download_error:{}", asset_name),
                         format!("Failed to create file: {e}"),
                     );
+                    discard_staging();
                     return;
                 }
             };
@@ -99,6 +163,7 @@ async fn download_and_extract(
                                 &format!("download_error:{}", asset_name),
                                 format!("Failed writing file: {e}"),
                             );
+                            discard_staging();
                             return;
                         }
                         downloaded_total += chunk.len() as u64;
@@ -115,6 +180,7 @@ async fn download_and_extract(
                             &format!("download_error:{}", asset_name),
                             format!("Download stream error: {e}"),
                         );
+                        discard_staging();
                         return;
                     }
                 }
@@ -129,15 +195,49 @@ async fn download_and_extract(
                 .unwrap_or_default(),
         );
 
-        // A multi-part model has several zip-less files; extraction only ever
-        // makes sense for the single-file runtime archives.
-        if !no_extract && asset_urls.len() == 1 && last_file_path.is_some() {
-            if let Err(e) = extract_zip(&last_file_path.unwrap(), &base_dir) {
+        // Runtimes may come as several archives extracted into one folder
+        // (the CUDA build plus its cudart/cuBLAS DLLs); models are never
+        // extracted, sharded or not.
+        if !no_extract && !downloaded_files.is_empty() {
+            // The new build goes into an empty folder: llama.cpp loads every
+            // ggml-*.dll backend it finds, so leftovers from an older build
+            // would be loaded into the new one.
+            let replaced = (if base_dir.exists() {
+                fs::remove_dir_all(&base_dir)
+            } else {
+                Ok(())
+            })
+            .and_then(|_| fs::create_dir_all(&base_dir));
+            if let Err(e) = replaced {
+                discard_staging();
                 let _ = window.emit(
                     &format!("extract_error:{}", asset_name),
-                    format!("Extraction failed: {e}"),
+                    format!("Failed to replace the previous install: {e}"),
                 );
                 return;
+            }
+
+            for archive_path in &downloaded_files {
+                if let Err(e) = extract_archive(archive_path, &base_dir) {
+                    discard_staging();
+                    let _ = window.emit(
+                        &format!("extract_error:{}", asset_name),
+                        format!("Extraction failed: {e}"),
+                    );
+                    return;
+                }
+            }
+            discard_staging();
+            // Lets check_asset_ready tell a current install from one made
+            // with an older llama.cpp build.
+            if let Some(version) = &version {
+                if let Err(e) = fs::write(base_dir.join(VERSION_MARKER), version) {
+                    let _ = window.emit(
+                        &format!("extract_error:{}", asset_name),
+                        format!("Failed to record the runtime version: {e}"),
+                    );
+                    return;
+                }
             }
             let _ = window.emit(
                 &format!("extract_complete:{}", asset_name),
@@ -146,6 +246,37 @@ async fn download_and_extract(
         }
     });
 
+    Ok(())
+}
+
+/// File in a runtime folder holding the llama.cpp build it was extracted
+/// from (e.g. "b12675").
+const VERSION_MARKER: &str = "resuma-runtime-version.txt";
+
+/// Extracts a .zip or .tar.gz into `extract_to` and deletes the archive.
+/// Any other file is left where it is.
+fn extract_archive(archive_path: &PathBuf, extract_to: &PathBuf) -> io::Result<()> {
+    let name = archive_path
+        .file_name()
+        .map(|n| n.to_string_lossy().to_lowercase())
+        .unwrap_or_default();
+
+    if name.ends_with(".zip") {
+        extract_zip(archive_path, extract_to)
+    } else if name.ends_with(".tar.gz") || name.ends_with(".tgz") {
+        extract_tar_gz(archive_path, extract_to)
+    } else {
+        Ok(())
+    }
+}
+
+fn extract_tar_gz(archive_path: &PathBuf, extract_to: &PathBuf) -> io::Result<()> {
+    let file = File::open(archive_path)?;
+    let mut archive = tar::Archive::new(flate2::read::GzDecoder::new(file));
+    // `unpack` refuses entries that would land outside `extract_to` and
+    // keeps the executable bits and .so symlinks of the Linux/macOS builds.
+    archive.unpack(extract_to)?;
+    fs::remove_file(archive_path)?;
     Ok(())
 }
 
@@ -179,15 +310,35 @@ fn extract_zip(zip_path: &PathBuf, extract_to: &PathBuf) -> io::Result<()> {
     Ok(())
 }
 
+/// True when the asset folder exists and holds every `required_files` entry
+/// (e.g. the CUDA runtime's cudart DLLs, which ship in a separate archive
+/// that older app versions never downloaded).
 #[tauri::command]
-async fn check_asset_ready(asset_type: String, asset_name: String) -> Result<bool, String> {
+async fn check_asset_ready(
+    asset_type: String,
+    asset_name: String,
+    required_files: Option<Vec<String>>,
+    version: Option<String>,
+) -> Result<bool, String> {
     let base_dir = dirs::data_dir()
         .ok_or_else(|| "Failed to find data directory".to_string())?
         .join("com.resuma.app")
         .join(asset_type)
         .join(asset_name);
 
-    Ok(base_dir.exists())
+    let version_matches = match version {
+        Some(expected) => fs::read_to_string(base_dir.join(VERSION_MARKER))
+            .map(|found| found.trim() == expected)
+            .unwrap_or(false),
+        None => true,
+    };
+
+    Ok(base_dir.exists()
+        && version_matches
+        && required_files
+            .unwrap_or_default()
+            .iter()
+            .all(|file| base_dir.join(file).is_file()))
 }
 
 /// Total bytes on disk for one downloaded asset folder, following
@@ -282,4 +433,37 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn extracts_tar_gz_runtimes_and_removes_the_archive() {
+        let dir = std::env::temp_dir().join(format!("resuma-tar-test-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let archive = dir.join("llama-b12675-bin-ubuntu-x64.tar.gz");
+
+        {
+            let file = File::create(&archive).unwrap();
+            let gz = flate2::write::GzEncoder::new(file, flate2::Compression::fast());
+            let mut builder = tar::Builder::new(gz);
+            let data = b"#!/bin/sh\n";
+            let mut header = tar::Header::new_gnu();
+            header.set_size(data.len() as u64);
+            header.set_mode(0o755);
+            header.set_cksum();
+            builder
+                .append_data(&mut header, "llama-b12675/llama-completion", &data[..])
+                .unwrap();
+            builder.into_inner().unwrap().finish().unwrap();
+        }
+
+        extract_archive(&archive, &dir).unwrap();
+        assert!(dir.join("llama-b12675").join("llama-completion").is_file());
+        assert!(!archive.exists());
+        let _ = fs::remove_dir_all(&dir);
+    }
 }

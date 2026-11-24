@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api/core";
 import { SystemInfo } from "@/contexts/SystemContext";
 import runtimes from "@/data/runtimes.json";
 import {
@@ -12,10 +13,19 @@ interface CompatibleGpu {
   status: CompatibilityStatus;
 }
 
-interface RuntimeEntry {
+export interface RuntimeEntry {
   name: string;
   label: string;
   download: string;
+  /** llama.cpp build tag; installs from another build read as out of date. */
+  version?: string;
+  /**
+   * More archives extracted into the same folder, e.g. the CUDA build's
+   * cudart/cuBLAS DLLs, which llama.cpp publishes as a separate zip.
+   */
+  extraDownloads?: string[];
+  /** Files that must exist for the install to be usable. */
+  requiredFiles?: string[];
   platform: string;
   backend: string;
   compatibleGpus: CompatibleGpu[];
@@ -154,4 +164,35 @@ export function getRuntimes(system: SystemInfo): {
 
     return { runtime: rt, status };
   });
+}
+
+/** Every archive a runtime install needs, main build first. */
+export function runtimeDownloadUrls(rt: {
+  download: string;
+  extraDownloads?: string[];
+}): string[] {
+  return [rt.download, ...(rt.extraDownloads ?? [])].filter(Boolean);
+}
+
+/**
+ * Whether a downloaded runtime folder is complete and current. Installs from
+ * another llama.cpp build, or missing a required file (the CUDA runtime
+ * without its cudart DLLs), read as not installed, so Download replaces
+ * them in place.
+ */
+export async function isRuntimeInstalled(rt: {
+  name: string;
+  version?: string;
+  requiredFiles?: string[];
+}): Promise<boolean> {
+  try {
+    return await invoke<boolean>("check_asset_ready", {
+      assetType: "runtimes",
+      assetName: rt.name,
+      requiredFiles: rt.requiredFiles ?? [],
+      version: rt.version ?? null,
+    });
+  } catch {
+    return false;
+  }
 }

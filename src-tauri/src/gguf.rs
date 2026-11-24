@@ -211,39 +211,7 @@ pub fn extract_layer_count<R: Read>(inner: R) -> u32 {
 }
 
 fn parse_layer_info<R: Read>(inner: R) -> Result<LayerInfo, String> {
-    let mut reader = Reader::new(inner);
-
-    let mut magic = [0u8; 4];
-    reader.inner.read_exact(&mut magic).map_err(|e| e.to_string())?;
-    if &magic != b"GGUF" {
-        return Err("Bad GGUF magic".to_string());
-    }
-
-    let version = reader.read_scalar_u32()?;
-    if !(1..=3).contains(&version) {
-        return Err(format!("Unsupported GGUF version {version}"));
-    }
-    let v1_counts = version == 1;
-
-    let tensor_count = if v1_counts {
-        reader.read_scalar_u32()? as u64
-    } else {
-        reader.read_scalar_u64()?
-    };
-    // Corrupt tensor counts would send the walk nowhere useful regardless -
-    // every real model stays far below this.
-    if tensor_count > 100_000 {
-        return Err(format!("Implausible tensor count {tensor_count}"));
-    }
-
-    let kv_count = if v1_counts {
-        reader.read_scalar_u32()? as u64
-    } else {
-        reader.read_scalar_u64()?
-    };
-    if kv_count > 10_000 {
-        return Err(format!("Implausible kv count {kv_count}"));
-    }
+    let (mut reader, v1_counts, kv_count) = open_kv_section(inner)?;
 
     let mut info = LayerInfo::default();
 
@@ -288,6 +256,166 @@ fn parse_layer_info<R: Read>(inner: R) -> Result<LayerInfo, String> {
     }
 
     Ok(info)
+}
+
+/// Dimensions that decide how much memory llama.cpp needs for a model,
+/// used to plan GPU offload. Zero means the key was absent.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct ModelShape {
+    pub block_count: u32,
+    pub embedding_length: u32,
+    pub head_count: u32,
+    pub head_count_kv: u32,
+    pub key_length: u32,
+    pub value_length: u32,
+}
+
+fn is_int_type(value_type: ValueType) -> bool {
+    matches!(
+        value_type,
+        ValueType::U8
+            | ValueType::I8
+            | ValueType::U16
+            | ValueType::I16
+            | ValueType::U32
+            | ValueType::I32
+            | ValueType::U64
+            | ValueType::I64
+    )
+}
+
+/// Reads an integer KV that some architectures store per layer as an array
+/// (e.g. `head_count_kv`); arrays yield their largest element, which keeps
+/// memory estimates on the safe side. Non-integer values are skipped.
+fn decode_int_or_array_max<R: Read>(
+    reader: &mut Reader<R>,
+    value_type: ValueType,
+    v1_counts: bool,
+) -> Result<Option<u32>, String> {
+    if value_type == ValueType::Arr {
+        let elem = parse_value_type(reader.read_scalar_u32()?)?;
+        let count = if v1_counts {
+            reader.read_scalar_u32()? as u64
+        } else {
+            reader.read_scalar_u64()?
+        };
+        if !is_int_type(elem) {
+            for _ in 0..count {
+                skip_value(reader, elem, v1_counts, 1)?;
+            }
+            return Ok(None);
+        }
+        let mut max: Option<u32> = None;
+        for _ in 0..count {
+            if let Some(value) = decode_block_count(reader, elem)? {
+                max = Some(max.map_or(value, |m| m.max(value)));
+            }
+        }
+        return Ok(max);
+    }
+
+    if is_int_type(value_type) {
+        return decode_block_count(reader, value_type);
+    }
+
+    skip_value(reader, value_type, v1_counts, 0)?;
+    Ok(None)
+}
+
+fn parse_model_shape<R: Read>(inner: R) -> Result<ModelShape, String> {
+    let (mut reader, v1_counts, kv_count) = open_kv_section(inner)?;
+    let mut shape = ModelShape::default();
+
+    for index in 0..kv_count {
+        let key = read_string(&mut reader, v1_counts)
+            .map_err(|e| format!("kv[{index}] key: {e}"))?;
+        let value_type = parse_value_type(reader.read_scalar_u32()?)
+            .map_err(|e| format!("kv[{index}]: {e}"))?;
+
+        // `general.*` never carries these; `<arch>.` prefixes the rest.
+        let slot = if key.starts_with("general.") {
+            None
+        } else if key.ends_with(".block_count") {
+            Some(&mut shape.block_count)
+        } else if key.ends_with(".embedding_length") {
+            Some(&mut shape.embedding_length)
+        } else if key.ends_with(".attention.head_count") {
+            Some(&mut shape.head_count)
+        } else if key.ends_with(".attention.head_count_kv") {
+            Some(&mut shape.head_count_kv)
+        } else if key.ends_with(".attention.key_length") {
+            Some(&mut shape.key_length)
+        } else if key.ends_with(".attention.value_length") {
+            Some(&mut shape.value_length)
+        } else {
+            None
+        };
+
+        match slot {
+            // Only the first occurrence counts (vision/audio towers in
+            // multimodal files come with their own prefixed copies).
+            Some(slot) if *slot == 0 => {
+                if let Some(value) = decode_int_or_array_max(&mut reader, value_type, v1_counts)
+                    .map_err(|e| format!("kv[{index}] '{key}' value: {e}"))?
+                {
+                    *slot = value;
+                }
+            }
+            _ => skip_value(&mut reader, value_type, v1_counts, 0)
+                .map_err(|e| format!("kv[{index}] '{key}' value: {e}"))?,
+        }
+    }
+
+    Ok(shape)
+}
+
+/// Memory-relevant dimensions of a GGUF file; zeroed when unreadable.
+pub fn read_model_shape(path: &Path) -> ModelShape {
+    match File::open(path) {
+        Ok(file) => parse_model_shape(BufReader::with_capacity(256 * 1024, file))
+            .unwrap_or_default(),
+        Err(_) => ModelShape::default(),
+    }
+}
+
+/// Validates the GGUF header and leaves the reader at the first KV pair.
+/// Returns the reader, whether counts are v1-sized (u32), and the KV count.
+fn open_kv_section<R: Read>(inner: R) -> Result<(Reader<R>, bool, u64), String> {
+    let mut reader = Reader::new(inner);
+
+    let mut magic = [0u8; 4];
+    reader.inner.read_exact(&mut magic).map_err(|e| e.to_string())?;
+    if &magic != b"GGUF" {
+        return Err("Bad GGUF magic".to_string());
+    }
+
+    let version = reader.read_scalar_u32()?;
+    if !(1..=3).contains(&version) {
+        return Err(format!("Unsupported GGUF version {version}"));
+    }
+    let v1_counts = version == 1;
+
+    let tensor_count = if v1_counts {
+        reader.read_scalar_u32()? as u64
+    } else {
+        reader.read_scalar_u64()?
+    };
+    // Corrupt tensor counts would send the walk nowhere useful regardless -
+    // every real model stays far below this.
+    if tensor_count > 100_000 {
+        return Err(format!("Implausible tensor count {tensor_count}"));
+    }
+
+    let kv_count = if v1_counts {
+        reader.read_scalar_u32()? as u64
+    } else {
+        reader.read_scalar_u64()?
+    };
+    if kv_count > 10_000 {
+        return Err(format!("Implausible kv count {kv_count}"));
+    }
+
+    Ok((reader, v1_counts, kv_count))
 }
 
 fn extract_layer_info_from_file(path: &Path) -> LayerInfo {
@@ -505,5 +633,63 @@ mod tests {
         buf.extend_from_slice(&4u32.to_le_bytes());
         buf.extend_from_slice(&1u32.to_le_bytes());
         assert_eq!(extract_layer_count(Cursor::new(buf)), 7);
+    }
+
+    fn put_u32_kv(buf: &mut Vec<u8>, key: &str, value: u32) {
+        put_string(buf, key);
+        buf.extend_from_slice(&4u32.to_le_bytes()); // UINT32
+        buf.extend_from_slice(&value.to_le_bytes());
+    }
+
+    #[test]
+    fn reads_model_shape_for_kv_cache_estimates() {
+        let mut buf = header(3, 0, 8);
+        put_string(&mut buf, "general.architecture");
+        buf.extend_from_slice(&8u32.to_le_bytes());
+        put_string(&mut buf, "qwen3");
+        put_u32_kv(&mut buf, "general.block_count", 999); // never the arch key
+        put_u32_kv(&mut buf, "qwen3.block_count", 36);
+        put_u32_kv(&mut buf, "qwen3.embedding_length", 4096);
+        put_u32_kv(&mut buf, "qwen3.attention.head_count", 32);
+        put_u32_kv(&mut buf, "qwen3.attention.head_count_kv", 8);
+        put_u32_kv(&mut buf, "qwen3.attention.key_length", 128);
+        put_u32_kv(&mut buf, "qwen3.attention.value_length", 128);
+
+        let shape = parse_model_shape(Cursor::new(buf)).unwrap();
+        assert_eq!(
+            shape,
+            ModelShape {
+                block_count: 36,
+                embedding_length: 4096,
+                head_count: 32,
+                head_count_kv: 8,
+                key_length: 128,
+                value_length: 128,
+            }
+        );
+    }
+
+    #[test]
+    fn per_layer_head_count_kv_arrays_use_their_maximum() {
+        let mut buf = header(3, 0, 3);
+        put_string(&mut buf, "hybrid.attention.head_count_kv");
+        buf.extend_from_slice(&9u32.to_le_bytes()); // ARRAY
+        buf.extend_from_slice(&4u32.to_le_bytes()); // elem UINT32
+        buf.extend_from_slice(&3u64.to_le_bytes());
+        for v in [0u32, 8, 4] {
+            buf.extend_from_slice(&v.to_le_bytes());
+        }
+        // A float array under a wanted key is skipped without desyncing.
+        put_string(&mut buf, "hybrid.attention.key_length");
+        buf.extend_from_slice(&9u32.to_le_bytes());
+        buf.extend_from_slice(&6u32.to_le_bytes()); // elem FLOAT32
+        buf.extend_from_slice(&1u64.to_le_bytes());
+        buf.extend_from_slice(&1.5f32.to_le_bytes());
+        put_u32_kv(&mut buf, "hybrid.block_count", 12);
+
+        let shape = parse_model_shape(Cursor::new(buf)).unwrap();
+        assert_eq!(shape.head_count_kv, 8);
+        assert_eq!(shape.key_length, 0);
+        assert_eq!(shape.block_count, 12);
     }
 }

@@ -1,7 +1,9 @@
 use std::process::Command;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use serde_json::Value;
 use dirs_next::data_dir;
+
+use crate::gpu_offload;
 
 #[cfg(unix)]
 use std::fs;
@@ -35,21 +37,13 @@ pub async fn call_llm(prompt: String, llm_settings: Value) -> Result<String, Str
         )
     })?;
 
-    #[cfg(target_os = "windows")]
-    let runtime_path = app_data
-        .join("runtimes")
-        .join(runtime)
-        .join("llama-cli.exe");
-
-    #[cfg(any(target_os = "linux", target_os = "macos"))]
-    let runtime_path = app_data
-        .join("runtimes")
-        .join(runtime)
-        .join("build/bin/llama-cli");
-
-    if !runtime_path.exists() {
-        return Err(format!("Runtime not found at {:?}", runtime_path));
-    }
+    let runtime_dir = runtimes_root(&app_data).join(runtime);
+    let (runtime_path, build) = find_runtime_binary(&runtime_dir).ok_or_else(|| {
+        format!(
+            "Runtime not found in {:?}",
+            runtime_dir.to_string_lossy()
+        )
+    })?;
 
     // 🛠 Ensure binary is executable
     #[cfg(unix)]
@@ -61,7 +55,7 @@ pub async fn call_llm(prompt: String, llm_settings: Value) -> Result<String, Str
         }
     }
 
-    // The prompt goes to llama-cli as a UTF-8 file, not as a command-line
+    // The prompt goes to llama.cpp as a UTF-8 file, not as a command-line
     // argument: on Windows, arguments pass through the ANSI code page, which
     // turns Cyrillic, "—", "•" etc. into "?", and the command line is capped
     // at 32K characters, which a full resume prompt can approach.
@@ -75,11 +69,18 @@ pub async fn call_llm(prompt: String, llm_settings: Value) -> Result<String, Str
         "--jinja".to_string(),
         "-st".to_string(),
         "--simple-io".to_string(),
-        // Pass the prompt through verbatim. By default llama-cli turns "\n",
+        // Pass the prompt through verbatim. By default llama.cpp turns "\n",
         // "\t", "\\" etc. into control characters, which mangles JSON escapes
         // and every Resuma Markup command (\to, \notes, \template, \v …).
         "--no-escape".to_string(),
     ];
+
+    // Current builds may colour the echoed prompt with ANSI codes, which
+    // would end up in the returned text when no </think> marker is found.
+    if build == LlamaBuild::Current {
+        args.push("--color".to_string());
+        args.push("off".to_string());
+    }
 
     if let Some(ctx) = settings.get("ctxSize").and_then(|v| v.as_u64()) {
         args.push("--ctx-size".to_string());
@@ -87,50 +88,119 @@ pub async fn call_llm(prompt: String, llm_settings: Value) -> Result<String, Str
     }
 
     let is_cpu_runtime = runtime.to_lowercase().contains("cpu");
+    // Index of the `--gpu-layers` value when "auto" picked it, so a failed
+    // load can be retried on the CPU.
+    let mut auto_layers_arg: Option<usize> = None;
 
     if !is_cpu_runtime {
-        if settings.get("flashAttn").and_then(|v| v.as_bool()) == Some(true) {
-            args.push("--flash-attn".to_string());
+        let flash_attn = settings.get("flashAttn").and_then(|v| v.as_bool()) == Some(true);
+        match build {
+            LlamaBuild::Legacy => {
+                if flash_attn {
+                    args.push("--flash-attn".to_string());
+                }
+            }
+            // Current builds take a value and default to "auto"; the switch
+            // keeps meaning on/off as it did with the legacy default (off).
+            LlamaBuild::Current => {
+                args.push("--flash-attn".to_string());
+                args.push(if flash_attn { "on" } else { "off" }.to_string());
+            }
         }
 
-        // gpu_layers may be -1 ("auto" - llama.cpp offloads everything that
-        // fits), 0 (CPU-only execution), or an explicit layer count.
+        // gpu_layers may be -1 ("Auto offload", see gpu_offload.rs), 0
+        // (CPU-only execution), or an explicit layer count.
         if let Some(gpu) = settings
             .get("gpuLayers")
             .and_then(|v| v.as_i64())
             .filter(|gpu| *gpu >= -1)
         {
+            let layers = if gpu == -1 {
+                let ctx = settings.get("ctxSize").and_then(|v| v.as_u64());
+                let self_fitting = build == LlamaBuild::Current;
+                match gpu_offload::resolve_auto(
+                    runtime,
+                    &runtime_path,
+                    &model_dir,
+                    &model_path,
+                    ctx,
+                    self_fitting,
+                )? {
+                    gpu_offload::AutoLayers::Count(count) => {
+                        auto_layers_arg = Some(args.len() + 1);
+                        count.to_string()
+                    }
+                    gpu_offload::AutoLayers::Fit => {
+                        eprintln!("[llm] auto offload: --gpu-layers auto (llama.cpp fits layers to free memory)");
+                        auto_layers_arg = Some(args.len() + 1);
+                        "auto".to_string()
+                    }
+                    gpu_offload::AutoLayers::LlamaDefault => "-1".to_string(),
+                }
+            } else {
+                gpu.to_string()
+            };
             args.push("--gpu-layers".to_string());
-            args.push(gpu.to_string());
+            args.push(layers);
         }
     }
 
-    if settings.get("mlock").and_then(|v| v.as_bool()) == Some(true) {
-        args.push("--mlock".to_string());
+    let mlock = settings.get("mlock").and_then(|v| v.as_bool()) == Some(true);
+    let no_mmap = settings.get("noMmap").and_then(|v| v.as_bool()) == Some(true);
+
+    match build {
+        LlamaBuild::Legacy => {
+            if mlock {
+                args.push("--mlock".to_string());
+            }
+            if no_mmap {
+                args.push("--no-mmap".to_string());
+            }
+        }
+        // --mlock and --no-mmap were folded into --load-mode, and the old
+        // flags are now rejected as invalid arguments.
+        LlamaBuild::Current => {
+            let mode = match (mlock, no_mmap) {
+                (true, false) => Some("mmap+mlock"),
+                (true, true) => Some("mlock"),
+                (false, true) => Some("none"),
+                (false, false) => None,
+            };
+            if let Some(mode) = mode {
+                args.push("--load-mode".to_string());
+                args.push(mode.to_string());
+            }
+        }
     }
 
-    if settings.get("noMmap").and_then(|v| v.as_bool()) == Some(true) {
-        args.push("--no-mmap".to_string());
-    }
-
-    #[cfg(target_os = "windows")]
-    let output = Command::new(runtime_path)
+    let mut output = llama_command(&runtime_path)
         .args(&args)
-        .creation_flags(0x08000000) // CREATE_NO_WINDOW
         .output()
         .map_err(|e| format!("Failed to execute process: {}", e))?;
 
-    #[cfg(not(target_os = "windows"))]
-    let output = {
-        let lib_dir = runtime_path.parent()
-            .ok_or("Could not determine runtime lib path")?;
+    // Auto offload is an estimate; if the GPU still ran out of memory, the
+    // request must not fail where a CPU run would have worked.
+    if let Some(index) = auto_layers_arg {
+        if !output.status.success() && args[index] != "0" {
+            eprintln!(
+                "[llm] run with {} GPU layers failed, retrying on the CPU",
+                args[index]
+            );
+            args[index] = "0".to_string();
+            output = llama_command(&runtime_path)
+                .args(&args)
+                .output()
+                .map_err(|e| format!("Failed to execute process: {}", e))?;
+        }
+    }
 
-        Command::new(&runtime_path)
-            .env("LD_LIBRARY_PATH", lib_dir)
-            .args(&args)
-            .output()
-            .map_err(|e| format!("Failed to execute process: {}", e))?
-    };
+    // Surfaces where the weights went ("offloaded 37/37 layers to GPU").
+    if let Some(line) = String::from_utf8_lossy(&output.stderr)
+        .lines()
+        .find(|line| line.contains("offloaded"))
+    {
+        eprintln!("[llm] {}", line.trim());
+    }
 
     drop(prompt_file);
 
@@ -179,6 +249,86 @@ impl Drop for PromptFile {
     }
 }
 
+/// Which generation of llama.cpp a runtime folder holds; their command
+/// lines differ.
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum LlamaBuild {
+    /// b5588 and similar, as downloaded by earlier app versions: one-shot
+    /// `llama-cli`, `--gpu-layers -1` means 0 layers, `--mlock`/`--no-mmap`.
+    Legacy,
+    /// The pinned current build (b12675): the one-shot tool is
+    /// `llama-completion` (`llama-cli` became an interactive chat), layers
+    /// default to `auto` with `--fit`, and loading is set by `--load-mode`.
+    Current,
+}
+
+/// Finds the one-shot binary in a runtime folder. Windows archives are flat;
+/// Linux/macOS archives have used `build/bin/` and a top-level
+/// `llama-<tag>/` folder, so a couple of levels are searched.
+fn find_runtime_binary(runtime_dir: &Path) -> Option<(PathBuf, LlamaBuild)> {
+    let exe = |name: &str| {
+        if cfg!(target_os = "windows") {
+            format!("{name}.exe")
+        } else {
+            name.to_string()
+        }
+    };
+
+    let mut dirs = vec![runtime_dir.to_path_buf()];
+    let mut nested = vec![runtime_dir.to_path_buf()];
+    if let Ok(entries) = std::fs::read_dir(runtime_dir) {
+        let mut subdirs: Vec<PathBuf> = entries
+            .filter_map(|e| e.ok())
+            .map(|e| e.path())
+            .filter(|p| p.is_dir())
+            .collect();
+        subdirs.sort();
+        dirs.extend(subdirs.iter().cloned());
+        nested.extend(subdirs);
+    }
+    for base in nested {
+        dirs.push(base.join("bin"));
+        dirs.push(base.join("build").join("bin"));
+    }
+
+    for (name, build) in [
+        ("llama-completion", LlamaBuild::Current),
+        ("llama-cli", LlamaBuild::Legacy),
+    ] {
+        let file = exe(name);
+        if let Some(path) = dirs.iter().map(|d| d.join(&file)).find(|p| p.is_file()) {
+            return Some((path, build));
+        }
+    }
+    None
+}
+
+/// A `llama-cli` invocation with the runtime's own libraries on the search
+/// path and, on Windows, no console window.
+pub(crate) fn llama_command(runtime_path: &Path) -> Command {
+    let mut command = Command::new(runtime_path);
+
+    #[cfg(target_os = "windows")]
+    command.creation_flags(0x08000000); // CREATE_NO_WINDOW
+
+    #[cfg(not(target_os = "windows"))]
+    if let Some(lib_dir) = runtime_path.parent() {
+        command.env("LD_LIBRARY_PATH", lib_dir);
+    }
+
+    command
+}
+
+/// `<app data>/runtimes`; tests may point at runtimes outside the app's
+/// folder with `RESUMA_TEST_RUNTIMES_DIR`.
+fn runtimes_root(app_data: &Path) -> PathBuf {
+    #[cfg(test)]
+    if let Ok(dir) = std::env::var("RESUMA_TEST_RUNTIMES_DIR") {
+        return PathBuf::from(dir);
+    }
+    app_data.join("runtimes")
+}
+
 fn get_app_data_path() -> Result<PathBuf, String> {
     data_dir()
         .map(|base| base.join("com.resuma.app"))
@@ -215,5 +365,109 @@ pub fn extract_think_to_end(text: &str) -> Option<String> {
         Some(content.trim().to_string())
     } else {
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// One real request against an installed runtime and model, with the
+    /// app's own argument building. Run with:
+    /// `RESUMA_TEST_RUNTIME=llama-vulkan-win RESUMA_TEST_MODEL=<model id>
+    /// cargo test real_local_request -- --ignored --nocapture`
+    /// and look for "[llm] auto offload" and "offloaded N/M layers".
+    #[test]
+    #[ignore]
+    fn real_local_request() {
+        let runtime = std::env::var("RESUMA_TEST_RUNTIME").expect("RESUMA_TEST_RUNTIME");
+        let model = std::env::var("RESUMA_TEST_MODEL").expect("RESUMA_TEST_MODEL");
+        let gpu_layers: i64 = std::env::var("RESUMA_TEST_GPU_LAYERS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(-1);
+        let ctx_size: u64 = std::env::var("RESUMA_TEST_CTX")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(8192);
+
+        let settings = serde_json::json!({
+            "provider": "local",
+            "runtime": runtime,
+            "model": model,
+            "settings": {
+                "ctxSize": ctx_size,
+                "gpuLayers": gpu_layers,
+                // What Settings defaults to on an 8 GB+ GPU, plus flash
+                // attention, so every build-specific flag is exercised.
+                "flashAttn": true,
+                "mlock": true,
+                "noMmap": false,
+            },
+        });
+
+        let started = std::time::Instant::now();
+        let result = tauri::async_runtime::block_on(call_llm(
+            "Reply with the single word: ready /no_think".to_string(),
+            settings,
+        ));
+        eprintln!("took {:?}: {:?}", started.elapsed(), result);
+        result.expect("request failed");
+    }
+
+    fn scratch_dir(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "resuma-llm-test-{}-{}",
+            name,
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    fn touch(path: &Path) {
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, b"").unwrap();
+    }
+
+    fn exe(name: &str) -> String {
+        if cfg!(target_os = "windows") {
+            format!("{name}.exe")
+        } else {
+            name.to_string()
+        }
+    }
+
+    #[test]
+    fn prefers_llama_completion_over_the_new_interactive_cli() {
+        let dir = scratch_dir("flat");
+        touch(&dir.join(exe("llama-cli")));
+        touch(&dir.join(exe("llama-completion")));
+        let (path, build) = find_runtime_binary(&dir).unwrap();
+        assert_eq!(path, dir.join(exe("llama-completion")));
+        assert_eq!(build, LlamaBuild::Current);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn legacy_installs_keep_llama_cli_in_build_bin() {
+        let dir = scratch_dir("legacy");
+        touch(&dir.join("build").join("bin").join(exe("llama-cli")));
+        let (path, build) = find_runtime_binary(&dir).unwrap();
+        assert_eq!(path, dir.join("build").join("bin").join(exe("llama-cli")));
+        assert_eq!(build, LlamaBuild::Legacy);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn finds_binaries_under_a_top_level_release_folder() {
+        let dir = scratch_dir("nested");
+        touch(&dir.join("llama-b12675").join(exe("llama-completion")));
+        let (path, build) = find_runtime_binary(&dir).unwrap();
+        assert_eq!(path, dir.join("llama-b12675").join(exe("llama-completion")));
+        assert_eq!(build, LlamaBuild::Current);
+        assert!(find_runtime_binary(&dir.join("missing")).is_none());
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

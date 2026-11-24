@@ -12,7 +12,11 @@ import { RotateCcw, Info, Download, Check, Trash2, X } from "lucide-react";
 import { SettingsType } from "@/contexts/OnboardingContext";
 import { useSystem } from "@/contexts/SystemContext";
 import { CardDescription, CardTitle } from "@/components/ui/card";
-import { getRuntimes } from "@/lib/resolveRuntime";
+import {
+  getRuntimes,
+  isRuntimeInstalled,
+  runtimeDownloadUrls,
+} from "@/lib/resolveRuntime";
 import { Badge } from "@/components/ui/badge";
 import { DownloadState } from "@/types/download";
 import { DownloadStatusMap } from "@/types/downloadStatus";
@@ -65,6 +69,8 @@ export const ArtificialSettings = ({
     {},
   );
   const [deletingRuntime, setDeletingRuntime] = useState<string | null>(null);
+  /** Downloaded runtimes missing a required file; shown as needing a re-download. */
+  const [incompleteRuntimes, setIncompleteRuntimes] = useState<string[]>([]);
   const [availableRuntimes, setAvailableRuntimes] = useState<RuntimeEntry[]>(
     [],
   );
@@ -77,7 +83,7 @@ export const ArtificialSettings = ({
   // clamps to the real count at load time.
   const knownLayers = layerCounts[llm.model];
   const maxGpuLayers = knownLayers && knownLayers > 0 ? knownLayers : 999;
-  /** "-1" is the llama.cpp sentinel for "offload everything that fits". */
+  /** "-1" means Auto offload; the backend sizes it from free GPU memory. */
   const autoLayers = settings.gpuLayers === -1;
   const isCpuRuntime =
     getRuntimes(system).find((r) => r.runtime.name === llm.runtime)?.runtime
@@ -149,22 +155,43 @@ export const ArtificialSettings = ({
       );
     }
 
+    // A folder alone is not enough: an install can come from an older
+    // llama.cpp build (pre-b12675 command line) or predate a required part
+    // (the CUDA runtime without its cudart DLLs). Incomplete installs stay
+    // downloadable so Download repairs them in place.
+    const known = getRuntimes(system).map((entry) => entry.runtime);
+    const incomplete = new Set<string>();
+    await Promise.all(
+      known
+        .filter(
+          (rt) =>
+            runtimeFolders.includes(rt.name) &&
+            (!!rt.version || !!rt.requiredFiles?.length),
+        )
+        .map(async (rt) => {
+          if (!(await isRuntimeInstalled(rt))) incomplete.add(rt.name);
+        }),
+    );
+    const installed = runtimeFolders.filter((name) => !incomplete.has(name));
+
     // Update status map
     const runtimeReadyMap: DownloadStatusMap = {};
-    runtimeFolders.forEach((name) => {
+    installed.forEach((name) => {
       runtimeReadyMap[name] = { state: "ready", progress: 100 };
     });
 
-    setDownloadStatusMap((prev) => ({
-      ...runtimeReadyMap,
-      ...prev,
-    }));
+    setDownloadStatusMap((prev) => {
+      const next = { ...runtimeReadyMap, ...prev };
+      for (const name of incomplete) {
+        if (next[name]?.state === "ready") delete next[name];
+      }
+      return next;
+    });
+    setIncompleteRuntimes([...incomplete]);
 
-    const runtimes = getRuntimes(system)
-      .filter((entry) => runtimeFolders.includes(entry.runtime.name))
-      .map((entry) => entry.runtime);
-
-    setAvailableRuntimes(runtimes);
+    // Outdated installs still run (the backend speaks both command lines), so
+    // they stay selectable; only the badge and Download button change.
+    setAvailableRuntimes(known.filter((rt) => runtimeFolders.includes(rt.name)));
   }, [system, t]);
 
   useEffect(() => {
@@ -206,8 +233,9 @@ export const ArtificialSettings = ({
 
   const handleDownloadClick = async (
     assetName: string,
-    assetUrl: string,
+    assetUrls: string[],
     assetType: "runtime" | "model",
+    version?: string,
   ) => {
     if (!assetName) return;
 
@@ -222,9 +250,10 @@ export const ArtificialSettings = ({
     try {
       await invoke("download_and_extract", {
         assetName,
-        assetUrls: [assetUrl],
+        assetUrls,
         noExtract: assetType === "model",
         assetType,
+        version: version ?? null,
       });
     } catch (err) {
       showError(
@@ -428,7 +457,7 @@ export const ArtificialSettings = ({
             <Label className='w-1/3'>
               {t("ai.autoGpuLayers")}{" "}
               {renderParamTooltip(
-                "gpu_layers=-1",
+                "gpu_layers=auto",
                 t("ai.autoGpuLayers.tooltip"),
               )}
             </Label>
@@ -439,7 +468,7 @@ export const ArtificialSettings = ({
                 updateSettings("llm", {
                   settings: {
                     ...settings,
-                    // "Auto" is spelled exactly how llama.cpp understands it.
+                    // Stored as -1; the backend resolves it to a layer count per request.
                     gpuLayers: checked
                       ? -1
                       : Math.min(Math.max(0, settings.gpuLayers), maxGpuLayers),
@@ -568,6 +597,13 @@ export const ArtificialSettings = ({
                       </>
                     )}
                   </Badge>
+                  {incompleteRuntimes.includes(entry.runtime.name) &&
+                    downloadStatusMap[entry.runtime.name]?.state !==
+                      "ready" && (
+                      <Badge variant='destructive' className='w-fit'>
+                        {t("ai.runtime.incomplete")}
+                      </Badge>
+                    )}
                 </div>
 
                 <div className='flex gap-2'>
@@ -598,8 +634,9 @@ export const ArtificialSettings = ({
                       onClick={() =>
                         handleDownloadClick(
                           entry.runtime.name,
-                          entry.runtime.download,
+                          runtimeDownloadUrls(entry.runtime),
                           "runtime",
+                          entry.runtime.version,
                         )
                       }
                     >

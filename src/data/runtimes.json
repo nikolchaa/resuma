@@ -1,8 +1,9 @@
 [
   {
     "name": "llama-hip",
-    "label": "AMD HIP",
-    "download": "https://github.com/ggml-org/llama.cpp/releases/download/b5588/llama-b5588-bin-win-hip-radeon-x64.zip",
+    "label": "AMD HIP (ROCm)",
+    "version": "b12675",
+    "download": "https://github.com/ggml-org/llama.cpp/releases/download/b12675/llama-b12675-bin-win-rocm-10.0-x64.zip",
     "platform": "windows",
     "backend": "hip",
     "compatibleGpus": [
@@ -52,7 +53,12 @@
   {
     "name": "llama-cuda",
     "label": "NVIDIA CUDA",
-    "download": "https://github.com/ggml-org/llama.cpp/releases/download/b5588/llama-b5588-bin-win-cuda-12.4-x64.zip",
+    "version": "b12675",
+    "download": "https://github.com/ggml-org/llama.cpp/releases/download/b12675/llama-b12675-bin-win-cuda-12.4-x64.zip",
+    "extraDownloads": [
+      "https://github.com/ggml-org/llama.cpp/releases/download/b12675/cudart-llama-bin-win-cuda-12.4-x64.zip"
+    ],
+    "requiredFiles": ["cudart64_12.dll", "cublas64_12.dll", "cublasLt64_12.dll"],
     "platform": "windows",
     "backend": "cuda",
     "compatibleGpus": [
@@ -62,7 +68,8 @@
   {
     "name": "llama-vulkan-win",
     "label": "Vulkan Windows",
-    "download": "https://github.com/ggml-org/llama.cpp/releases/download/b5588/llama-b5588-bin-win-vulkan-x64.zip",
+    "version": "b12675",
+    "download": "https://github.com/ggml-org/llama.cpp/releases/download/b12675/llama-b12675-bin-win-vulkan-x64.zip",
     "platform": "windows",
     "backend": "vulkan",
     "compatibleGpus": [
@@ -74,7 +81,8 @@
   {
     "name": "llama-vulkan-linux",
     "label": "Vulkan Linux",
-    "download": "https://github.com/ggml-org/llama.cpp/releases/download/b5588/llama-b5588-bin-ubuntu-vulkan-x64.zip",
+    "version": "b12675",
+    "download": "https://github.com/ggml-org/llama.cpp/releases/download/b12675/llama-b12675-bin-ubuntu-vulkan-x64.tar.gz",
     "platform": "linux",
     "backend": "vulkan",
     "compatibleGpus": [
@@ -86,7 +94,8 @@
   {
     "name": "llama-cpu-win",
     "label": "CPU Windows",
-    "download": "https://github.com/ggml-org/llama.cpp/releases/download/b5588/llama-b5588-bin-win-cpu-x64.zip",
+    "version": "b12675",
+    "download": "https://github.com/ggml-org/llama.cpp/releases/download/b12675/llama-b12675-bin-win-cpu-x64.zip",
     "platform": "windows",
     "backend": "cpu",
     "compatibleGpus": []
@@ -94,7 +103,8 @@
   {
     "name": "llama-cpu-linux",
     "label": "CPU Linux",
-    "download": "https://github.com/ggml-org/llama.cpp/releases/download/b5588/llama-b5588-bin-ubuntu-x64.zip",
+    "version": "b12675",
+    "download": "https://github.com/ggml-org/llama.cpp/releases/download/b12675/llama-b12675-bin-ubuntu-x64.tar.gz",
     "platform": "linux",
     "backend": "cpu",
     "compatibleGpus": []
@@ -102,7 +112,8 @@
   {
     "name": "llama-metal",
     "label": "Metal",
-    "download": "https://github.com/ggml-org/llama.cpp/releases/download/b5588/llama-b5588-bin-macos-arm64.zip",
+    "version": "b12675",
+    "download": "https://github.com/ggml-org/llama.cpp/releases/download/b12675/llama-b12675-bin-macos-arm64.tar.gz",
     "platform": "macos",
     "backend": "cpu",
     "compatibleGpus": []

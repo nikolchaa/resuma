@@ -33,7 +33,11 @@ import {
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAdaptiveSettings, LLMSettings } from "@/lib/defaultSettings";
-import { getRuntimes } from "@/lib/resolveRuntime";
+import {
+  getRuntimes,
+  isRuntimeInstalled,
+  runtimeDownloadUrls,
+} from "@/lib/resolveRuntime";
 import {
   RuntimeEntry,
   selectRecommendedRuntime,
@@ -159,7 +163,7 @@ const Artificial = () => {
     const checkRuntimeExistence = async () => {
       if (!runtime?.name) return;
 
-      const assetExists = await checkAssetReady("runtimes", runtime.name);
+      const assetExists = await isRuntimeInstalled(runtime);
 
       if (assetExists) {
         setDownloadStatusMap((prev) => ({
@@ -204,7 +208,8 @@ const Artificial = () => {
   const handleDownloadClick = async (
     assetName: string,
     assetUrls: string[],
-    assetType: "runtime" | "model"
+    assetType: "runtime" | "model",
+    version?: string
   ) => {
     if (!assetName) return;
 
@@ -222,6 +227,7 @@ const Artificial = () => {
         assetUrls,
         noExtract: assetType === "model",
         assetType,
+        version: version ?? null,
       });
     } catch (error) {
       showError(`${t("ai.downloadErrorPrefix")} ${assetName}`, (error as Error).message);
@@ -394,8 +400,9 @@ const Artificial = () => {
                 if (runtime?.name && runtime?.download) {
                   handleDownloadClick(
                     runtime.name,
-                    [runtime.download],
-                    "runtime"
+                    runtimeDownloadUrls(runtime),
+                    "runtime",
+                    runtime.version
                   );
                 }
               }}
