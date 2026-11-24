@@ -215,8 +215,9 @@ export async function runSourceEdit(opts: {
   /** Templates only: renders the candidate and reports problems (renderer/check). */
   check?: (template: string) => RenderIssue[];
 }): Promise<EditResult> {
-  const { target, instruction, source, jobDesc, call, maxAttempts = 2, check } = opts;
-  const generate = target === "template" && opts.generate === true;
+  const generate = opts.target === "template" && opts.generate === true;
+  // A whole new design goes wrong in more ways than an edit; it gets one more try.
+  const { target, instruction, source, jobDesc, call, maxAttempts = generate ? 3 : 2, check } = opts;
 
   // Content edits never send personal details (name, email, phone, links):
   // they are left out of the prompt and put back from the original.

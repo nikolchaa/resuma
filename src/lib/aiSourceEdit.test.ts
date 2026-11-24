@@ -159,9 +159,10 @@ describe("runSourceEdit with a render check", () => {
     const r1 = await runSourceEdit({ target: "template", instruction: "x", source: tpl, call: edit.call, check });
     expect(r1).toMatchObject({ ok: true, attempts: 1 });
 
-    const gen = scripted(fence(changed), fence(changed));
+    // A new design gets three attempts.
+    const gen = scripted(fence(changed), fence(changed), fence(changed));
     const r2 = await runSourceEdit({ target: "template", instruction: "Two columns", source: tpl, call: gen.call, check, generate: true });
-    expect(r2).toMatchObject({ ok: true, attempts: 2, warnings: [{ kind: "render", issue: { kind: "missingSections" } }] });
+    expect(r2).toMatchObject({ ok: true, attempts: 3, warnings: [{ kind: "render", issue: { kind: "missingSections" } }] });
     expect(gen.prompts[0]).toContain("You design a new resume template");
     expect(gen.prompts[0]).toContain("Description: Two columns");
     expect(gen.prompts[0]).toContain("\\cols[widths=");
