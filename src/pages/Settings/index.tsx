@@ -10,6 +10,7 @@ import { AnimatePresence, motion as m } from "motion/react";
 
 import { BasicSettings } from "./BasicSettings";
 import { ArtificialSettings } from "./ArtificialSettings";
+import { ExternalAppsSettings } from "./ExternalAppsSettings";
 import { PersonalSettings } from "./PersonalSettings";
 import { EducationSettings } from "./EducationSettings";
 import { ExperienceSettings } from "./ExperienceSettings";
@@ -518,6 +519,19 @@ export default function Settings() {
                       updateSettings={updateSettings}
                       stockSettings={settings.llm}
                     />
+                  </CardContent>
+                </Card>
+                <Card className='mt-8'>
+                  <CardHeader>
+                    <CardTitle className='text-2xl font-semibold'>
+                      {t("mcp.heading")}
+                    </CardTitle>
+                    <CardDescription className='text-sm text-muted-foreground'>
+                      {t("mcp.description")}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ExternalAppsSettings />
                   </CardContent>
                 </Card>
               </m.div>
