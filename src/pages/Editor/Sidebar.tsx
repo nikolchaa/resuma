@@ -52,9 +52,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<string>(mode === "source" ? "source" : "resume");
 
-  // Custom sections stay editable in Simple mode once a resume has any.
-  const hasCustom = (draft?.content.custom?.length ?? 0) > 0;
-  const showCustomTab = mode !== "simple" || hasCustom;
+  // Simple mode shows only the forms; Design adds the Custom and Design tabs,
+  // Source adds the Source tab on top.
+  const showCustomTab = mode !== "simple";
   const showDesignTab = mode !== "simple";
 
   // Tabs that disappear with the mode fall back to the first tab; entering

@@ -243,7 +243,7 @@ export const BasicSettings = ({
       </div>
 
       {/* Default editor mode */}
-      <div className='flex items-center justify-between gap-4'>
+      <div className='flex items-center justify-between'>
         <Label className='w-1/3'>
           {t("settings.editorMode")}{" "}
           <InfoTip text={t("settings.editorMode.description")} />
