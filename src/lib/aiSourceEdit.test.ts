@@ -1,0 +1,115 @@
+import { describe, expect, it } from "vitest";
+import { contentWarnings, extractSource, runSourceEdit } from "./aiSourceEdit";
+import { lineDiff, withContext } from "./lineDiff";
+import { normalizeResume } from "./resumeMigration";
+import { printContent } from "@/renderer/rsm/content";
+import { sampleResume } from "@/renderer/testing/sample";
+import { BUILTIN_TEMPLATES } from "@/templates";
+
+const source = printContent(normalizeResume(sampleResume())!.content);
+const fence = (s: string) => "Sure! Here it is:\n```rsm\n" + s + "```\nLet me know.";
+
+/** A fake model that returns the given replies in order and records prompts. */
+const scripted = (...replies: string[]) => {
+  const prompts: string[] = [];
+  return {
+    prompts,
+    call: async (p: string) => {
+      prompts.push(p);
+      return replies.shift() ?? "";
+    },
+  };
+};
+
+describe("extractSource", () => {
+  it("takes the fenced block and drops reasoning tags", () => {
+    expect(extractSource("<think>\\fake{x}</think>\n```rsm\n\\p{a}\n```")).toBe("\\p{a}\n");
+    expect(extractSource("Here:\n```\n\\p{b}\n```")).toBe("\\p{b}\n");
+    expect(extractSource("Okay so \\personal{}")).toBe("\\personal{}\n");
+  });
+});
+
+describe("runSourceEdit", () => {
+  it("returns a valid content edit with its prompt carrying the source and instruction", async () => {
+    const edited = source.replace("Built the billing platform", "Designed and built the billing platform");
+    const model = scripted(fence(edited));
+    const r = await runSourceEdit({ target: "content", instruction: "Make it stronger", source, jobDesc: "Rust dev", call: model.call });
+    expect(r).toMatchObject({ ok: true, attempts: 1, warnings: [] });
+    expect(model.prompts[0]).toContain("Instruction: Make it stronger");
+    expect(model.prompts[0]).toContain("Rust dev");
+    expect(model.prompts[0]).toContain("\\jobTitle{Software Engineer}");
+  });
+
+  it("retries once with the diagnostics, then succeeds", async () => {
+    const broken = source.replace("\\company{Acme}", "\\employer{Acme}");
+    const fixed = source.replace("Acme", "Acme Corp");
+    const model = scripted(fence(broken), fence(fixed));
+    const r = await runSourceEdit({ target: "content", instruction: "x", source, call: model.call });
+    expect(r).toMatchObject({ ok: true, attempts: 2 });
+    expect(model.prompts[1]).toMatch(/Unknown field `\\employer`/);
+  });
+
+  it("gives up after two invalid replies without applying anything", async () => {
+    const model = scripted(fence("\\personal{"), fence("\\nope{}"));
+    const r = await runSourceEdit({ target: "content", instruction: "x", source, call: model.call });
+    expect(r).toMatchObject({ ok: false, reason: "invalid", attempts: 2 });
+    if (!r.ok) expect(r.diagnostics.length).toBeGreaterThan(0);
+  });
+
+  it("reports unchanged and empty replies", async () => {
+    expect(await runSourceEdit({ target: "content", instruction: "x", source, call: scripted(fence(source)).call }))
+      .toMatchObject({ ok: false, reason: "unchanged" });
+    expect(await runSourceEdit({ target: "content", instruction: "x", source, call: scripted("").call }))
+      .toMatchObject({ ok: false, reason: "empty" });
+  });
+
+  it("validates template edits with the template validator", async () => {
+    const tpl = BUILTIN_TEMPLATES.modern;
+    const good = tpl.replace("default=#00d9cb", "default=#1d4ed8");
+    const r1 = await runSourceEdit({ target: "template", instruction: "blue", source: tpl, call: scripted(fence(good)).call });
+    expect(r1).toMatchObject({ ok: true });
+    const bad = tpl.replace("\\style[title]", "\\style[ttl]");
+    const model = scripted(fence(bad), fence(bad));
+    const r2 = await runSourceEdit({ target: "template", instruction: "x", source: tpl, call: model.call });
+    expect(r2).toMatchObject({ ok: false, reason: "invalid" });
+    expect(model.prompts[0]).toContain("Style properties:");
+    expect(model.prompts[1]).toMatch(/Unknown style `title`/);
+  });
+});
+
+describe("contentWarnings", () => {
+  it("flags removed entries, new dates, new names and personal changes", () => {
+    const edited = source
+      .replace("\\company{Acme}", "\\company{Google}")
+      .replace("\\from{2021-03}", "\\from{2018-01}")
+      .replace("\\email{jane@doe.dev}", "\\email{jane@gmail.com}")
+      .replace(/\\awards\{[\s\S]*?\n\}\n/, "\\awards{}\n");
+    expect(contentWarnings(source, edited)).toEqual([
+      { kind: "removed", section: "awards", count: 1 },
+      { kind: "newDates", values: ["2018-01"] },
+      { kind: "newNames", values: ["Google"] },
+      { kind: "personalChanged", fields: ["email"] },
+    ]);
+  });
+});
+
+describe("lineDiff", () => {
+  it("marks added and removed lines and keeps context", () => {
+    const d = lineDiff("a\nb\nc\nd\ne\nf\ng", "a\nb\nC\nd\ne\nf\ng\nh");
+    expect(d.filter((l) => l.type !== "same")).toEqual([
+      { type: "del", text: "c" },
+      { type: "add", text: "C" },
+      { type: "add", text: "h" },
+    ]);
+    expect(withContext(d, 1)).toEqual([
+      { type: "skip", count: 1 },
+      { type: "same", text: "b" },
+      { type: "del", text: "c" },
+      { type: "add", text: "C" },
+      { type: "same", text: "d" },
+      { type: "skip", count: 2 },
+      { type: "same", text: "g" },
+      { type: "add", text: "h" },
+    ]);
+  });
+});

@@ -27,6 +27,9 @@ const callLLM = async (prompt: string): Promise<string> => {
   }
 };
 
+/** Sends a raw prompt to the configured provider (throws when AI is off). */
+export const runPrompt = (prompt: string): Promise<string> => callLLM(prompt);
+
 // === AI Task-Specific Helpers ===
 
 export const runResumeCleanup = async (
