@@ -9,7 +9,7 @@ import type { ResumeContent, ResumeData } from "@/lib/resumesStore";
 import { normalizeContent } from "@/lib/resumeMigration";
 import { showError, showSuccess, showWarning } from "@/lib/toastUtils";
 import { getTemplate, resolveTemplate } from "@/renderer";
-import { parseContent, printContent } from "@/renderer/rsm/content";
+import { mergeParsedContent, parseContent, printContent } from "@/renderer/rsm/content";
 import { templateSourceFor } from "@/templates";
 import { AiEditPanel } from "./AiEditPanel";
 
@@ -23,14 +23,9 @@ type Props = {
   setDraft: SetDraft;
 };
 
-/** Content keys the .rsm content form covers; anything else on `content` is kept. */
-const CONTENT_KEYS = ["personal", "education", "experience", "projects", "skills", "awards", "layout", "custom"];
-
-const mergeContent = (current: ResumeContent, parsed: ResumeContent): ResumeContent => {
-  const rest: Record<string, unknown> = { ...current };
-  for (const k of CONTENT_KEYS) delete rest[k];
-  return normalizeContent({ ...rest, ...parsed });
-};
+/** Parsed source over the current content, keeping fields outside the schema. */
+const mergeContent = (current: ResumeContent, parsed: ResumeContent): ResumeContent =>
+  normalizeContent(mergeParsedContent(current, parsed));
 
 /** Canonical text of some content; equal strings mean equal content. */
 const canonical = (content: ResumeContent) => printContent(normalizeContent(content));
@@ -86,7 +81,7 @@ export const SourceEditor = ({ draft, setDraft }: Props) => {
       (d) => {
         if (!d) return d;
         // Identical to the built-in? Then it isn't the resume's own template.
-        const own = text === templateSourceFor(d.theme) ? undefined : text;
+        const own = text.replace(/\r\n/g, "\n") === templateSourceFor(d.theme) ? undefined : text;
         return own === d.templateSource ? d : { ...d, templateSource: own };
       },
       { checkpoint }
@@ -199,6 +194,7 @@ export const SourceEditor = ({ draft, setDraft }: Props) => {
           key={tab}
           target={tab}
           source={text}
+          hasErrors={errors > 0}
           jobDesc={draft.jobDesc}
           onAccept={(next) => {
             if (tab === "content") {

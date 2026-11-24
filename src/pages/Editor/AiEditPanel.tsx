@@ -11,6 +11,8 @@ import { lineDiff, withContext } from "@/lib/lineDiff";
 type Props = {
   target: EditTarget;
   source: string;
+  /** The source has errors: the model would get (and keep) a broken document. */
+  hasErrors: boolean;
   jobDesc?: string;
   /** Applies the accepted source (one undo step). */
   onAccept: (text: string) => void;
@@ -19,7 +21,7 @@ type Props = {
 const fill = (s: string, vars: Record<string, string | number>) =>
   s.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? String(vars[k]) : m));
 
-export const AiEditPanel = ({ target, source, jobDesc, onAccept }: Props) => {
+export const AiEditPanel = ({ target, source, hasErrors, jobDesc, onAccept }: Props) => {
   const { t } = useLanguage();
   const aiEnabled = useAiEnabled();
   const [instruction, setInstruction] = useState("");
@@ -27,6 +29,9 @@ export const AiEditPanel = ({ target, source, jobDesc, onAccept }: Props) => {
   const [result, setResult] = useState<EditResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showOutput, setShowOutput] = useState(false);
+  // The source the request was made from; applying over newer edits would revert them.
+  const [requestedFrom, setRequestedFrom] = useState<string | null>(null);
+  const stale = result?.ok === true && requestedFrom !== source;
 
   if (aiEnabled === false) {
     return <p className='text-sm text-muted-foreground'>{t("ai.edit.off")}</p>;
@@ -38,11 +43,12 @@ export const AiEditPanel = ({ target, source, jobDesc, onAccept }: Props) => {
       : [t("ai.edit.suggest.template1"), t("ai.edit.suggest.template2")];
 
   const run = async () => {
-    if (!instruction.trim()) return;
+    if (!instruction.trim() || hasErrors || busy) return;
     setBusy(true);
     setResult(null);
     setError(null);
     setShowOutput(false);
+    setRequestedFrom(source);
     try {
       setResult(await runSourceEdit({ target, instruction, source, jobDesc, call: runPrompt }));
     } catch (e) {
@@ -64,6 +70,10 @@ export const AiEditPanel = ({ target, source, jobDesc, onAccept }: Props) => {
         return fill(t("ai.edit.warn.newNames"), { values: w.values.join(", ") });
       case "personalChanged":
         return fill(t("ai.edit.warn.personalChanged"), { values: w.fields.join(", ") });
+      case "newNumbers":
+        return fill(t("ai.edit.warn.newNumbers"), { values: w.values.join(", ") });
+      case "sectionsDropped":
+        return fill(t("ai.edit.warn.sectionsDropped"), { values: w.values.join(", ") });
     }
   };
 
@@ -94,7 +104,9 @@ export const AiEditPanel = ({ target, source, jobDesc, onAccept }: Props) => {
           </button>
         ))}
       </div>
-      <Button onClick={run} disabled={busy || !instruction.trim()} className='self-start'>
+      {target === "content" && <p className='text-xs text-muted-foreground'>{t("ai.edit.privacy")}</p>}
+      {hasErrors && <p className='text-xs text-destructive'>{t("ai.edit.fixFirst")}</p>}
+      <Button onClick={run} disabled={busy || hasErrors || !instruction.trim()} className='self-start'>
         {busy ? <Loader2 className='h-4 w-4 animate-spin mr-1' /> : <Sparkles className='h-4 w-4 mr-1' />}
         {busy ? t("ai.edit.running") : t("ai.edit.run")}
       </Button>
@@ -131,7 +143,7 @@ export const AiEditPanel = ({ target, source, jobDesc, onAccept }: Props) => {
             </ul>
           )}
           <div className='max-h-72 overflow-auto rounded-md border font-mono text-xs'>
-            {withContext(lineDiff(source, result.text)).map((l, i) =>
+            {withContext(lineDiff(result.before, result.text)).map((l, i) =>
               l.type === "skip" ? (
                 <div key={i} className='bg-muted px-2 py-0.5 text-muted-foreground italic'>
                   {fill(t("source.diff.skip"), { n: l.count })}
@@ -153,8 +165,10 @@ export const AiEditPanel = ({ target, source, jobDesc, onAccept }: Props) => {
               )
             )}
           </div>
+          {stale && <p className='text-sm text-destructive'>{t("ai.edit.stale")}</p>}
           <div className='flex gap-2'>
             <Button
+              disabled={stale}
               onClick={() => {
                 onAccept(result.text);
                 setResult(null);

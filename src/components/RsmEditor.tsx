@@ -4,7 +4,7 @@
  */
 import { useEffect, useRef } from "react";
 import { basicSetup } from "codemirror";
-import { EditorState } from "@codemirror/state";
+import { EditorState, Transaction } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { StreamLanguage } from "@codemirror/language";
 import { lintGutter, setDiagnostics } from "@codemirror/lint";
@@ -115,7 +115,12 @@ export const RsmEditor = ({ value, onChange, diagnostics, ariaLabel, className }
     if (!v || v.state.doc.toString() === value) return;
     external.current = true;
     try {
-      v.dispatch({ changes: { from: 0, to: v.state.doc.length, insert: value } });
+      // Not part of the editor's own undo history: Ctrl+Z here must not bring back
+      // text that the resume's undo (or a form edit) just replaced.
+      v.dispatch({
+        changes: { from: 0, to: v.state.doc.length, insert: value },
+        annotations: Transaction.addToHistory.of(false),
+      });
     } finally {
       external.current = false;
     }
