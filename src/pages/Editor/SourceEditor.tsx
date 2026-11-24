@@ -15,6 +15,7 @@ import { useFonts } from "@/renderer/browser/useRenderedResume";
 import { mergeParsedContent, parseContent, printContent } from "@/renderer/rsm/content";
 import { templateSourceFor } from "@/templates";
 import { AiEditPanel } from "./AiEditPanel";
+import { TemplateLibraryPanel } from "./TemplateLibraryPanel";
 
 type SetDraft = (
   action: React.SetStateAction<ResumeData | null>,
@@ -204,6 +205,20 @@ export const SourceEditor = ({ draft, setDraft, format, language }: Props) => {
       <p className={`text-xs ${errors ? "text-destructive" : "text-muted-foreground"}`}>
         {errors ? `${errors} ${t("source.problems")}` : t("source.noProblems")}
       </p>
+
+      {tab === "template" && (
+        <div className='border-t pt-4'>
+          <TemplateLibraryPanel
+            source={templateText}
+            name={templateResult.template?.name ?? resolved.template.name}
+            valid={errors === 0}
+            onUse={(next) => {
+              setTemplateText(next);
+              applyTemplate(next, true);
+            }}
+          />
+        </div>
+      )}
 
       <div className='border-t pt-4'>
         <AiEditPanel

@@ -3,10 +3,14 @@ import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useTemplateLibrary } from "@/lib/templateLibrary";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -40,6 +44,16 @@ type Props = {
 
 export const ResumeEditor = ({ draft, setDraft }: Props) => {
   const { t } = useLanguage();
+  const { templates: library } = useTemplateLibrary();
+  // Which picker entry the resume's template is: a built-in, a library
+  // template (its copy is unchanged), or its own edited copy.
+  const ownSource: string | undefined = draft?.templateSource?.replace(/\r\n/g, "\n");
+  const libraryMatch = ownSource ? library.find((l) => l.source === ownSource) : undefined;
+  const templateValue = libraryMatch
+    ? `lib:${libraryMatch.id}`
+    : ownSource
+    ? "own"
+    : draft?.theme ?? "professional";
   const [atsModalOpen, setAtsModalOpen] = useState(false);
   const [atsResults, setAtsResults] = useState<{
     present: string[];
@@ -108,15 +122,19 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
       <div className='flex items-center justify-between'>
         <Label className='w-1/3'>{t("field.template")}</Label>
         <Select
-          value={draft?.templateSource ? "own" : draft?.theme ?? "professional"}
+          value={templateValue}
           onValueChange={(value) => {
             if (value === "own") return;
-            // Picking a built-in template drops the resume's own copy (undo restores it).
-            setDraft({
-              ...draft,
-              theme: value,
-              templateSource: undefined,
-            });
+            const fromLibrary = value.startsWith("lib:")
+              ? library.find((l) => `lib:${l.id}` === value)
+              : undefined;
+            // A library template is copied into the resume; a built-in drops
+            // the resume's own copy (undo restores either).
+            setDraft(
+              fromLibrary
+                ? { ...draft, templateSource: fromLibrary.source }
+                : { ...draft, theme: value, templateSource: undefined }
+            );
           }}
         >
           <SelectTrigger className='w-2/3 text-right'>
@@ -129,7 +147,20 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
             <SelectItem value='modern'>{t("editor.template.modern")}</SelectItem>
             <SelectItem value='compact'>{t("editor.template.compact")}</SelectItem>
             <SelectItem value='sidebar'>{t("editor.template.sidebar")}</SelectItem>
-            {draft?.templateSource && (
+            {library.length > 0 && (
+              <>
+                <SelectSeparator />
+                <SelectGroup>
+                  <SelectLabel>{t("library.title")}</SelectLabel>
+                  {library.map((l) => (
+                    <SelectItem key={l.id} value={`lib:${l.id}`}>
+                      {l.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </>
+            )}
+            {templateValue === "own" && (
               <SelectItem value='own'>{t("source.own")}</SelectItem>
             )}
           </SelectContent>
