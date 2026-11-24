@@ -7,7 +7,7 @@
 import type { ResumeData } from "@/lib/resumesStore";
 import { normalizeContent } from "@/lib/resumeMigration";
 import { mergeParsedContent, parseContent, printContent } from "@/renderer/rsm/content";
-import { templateSourceFor } from "@/templates";
+import { BUILTIN_TEMPLATES, templateSourceFor } from "@/templates";
 
 export type ResumePart = "content" | "template";
 
@@ -46,13 +46,15 @@ export function fullText(data: ResumeData, part: ResumePart): string {
 /**
  * The resume after applying a proposed text to a part. Content keeps fields
  * outside the format, and keeps the original personal details unless the
- * client was allowed to see (and so to change) them. A template equal to the
- * built-in theme isn't stored as the resume's own copy.
+ * client was allowed to see (and so to change) them. A template that is
+ * exactly a built-in one switches the resume to it instead of storing a copy.
  */
 export function applyText(data: ResumeData, part: ResumePart, text: string, sharesPersonal: boolean): ResumeData {
   if (part === "template") {
-    const own = lf(text) === templateSourceFor(data.theme) ? undefined : lf(text);
-    return { ...data, templateSource: own };
+    // Exactly a built-in template: switch to it instead of keeping a copy.
+    const builtin = Object.entries(BUILTIN_TEMPLATES).find(([, source]) => source === lf(text))?.[0];
+    if (builtin) return { ...data, theme: builtin, templateSource: undefined };
+    return { ...data, templateSource: lf(text) };
   }
   const parsed = parseContent(text).content;
   if (!parsed) throw new Error("The content isn't valid Resuma Markup.");

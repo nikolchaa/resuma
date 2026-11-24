@@ -106,18 +106,29 @@ describe("ProposalStore", () => {
     });
     expect(r).toMatchObject({ ok: true, proposal: { warnings: expect.arrayContaining([{ kind: "render", issue: { kind: "tinyText", size: 5 } }]) } });
     await store.apply("p1");
-    expect(files.get("jane")!.templateSource).toBe(BUILTIN_TEMPLATES.sidebar);
+    // Exactly a built-in: the resume switches to it rather than keeping a copy.
+    expect(files.get("jane")).toMatchObject({ theme: "sidebar", templateSource: undefined });
+    await store.undo("p1");
+    expect(files.get("jane")).toMatchObject({ theme: "professional", templateSource: undefined });
+    // A changed copy is kept as the resume's own template.
+    const own = BUILTIN_TEMPLATES.sidebar.replace("default=#1f2937", "default=#14532d");
+    const tpl2 = view(files.get("jane")!, "template");
+    await store.proposeResume({ client: "x", resumeId: "jane", part: "template", source: own, baseRevision: revisionOf(tpl2), summary: "" });
+    await store.apply(store.list()[store.list().length - 1].id);
+    expect(files.get("jane")).toMatchObject({ theme: "professional", templateSource: own });
 
     const t1 = await store.proposeTemplate({ client: "x", name: "Ocean", source: BUILTIN_TEMPLATES.modern, summary: "" });
     expect(t1).toMatchObject({ ok: true, proposal: { target: { kind: "template", libraryId: "ocean" } } });
-    await store.apply("p2");
+    const id1 = t1.ok ? t1.proposal.id : "";
+    await store.apply(id1);
     expect(library.get("ocean")?.source).toBe(BUILTIN_TEMPLATES.modern);
     const t2 = await store.proposeTemplate({ client: "x", name: "Ocean", source: BUILTIN_TEMPLATES.compact, summary: "" });
     expect(t2).toMatchObject({ ok: true, proposal: { warnings: expect.arrayContaining([{ kind: "replacesTemplate", name: "Ocean" }]) } });
-    await store.apply("p3");
-    await store.undo("p3");
+    const id2 = t2.ok ? t2.proposal.id : "";
+    await store.apply(id2);
+    await store.undo(id2);
     expect(library.get("ocean")?.source).toBe(BUILTIN_TEMPLATES.modern);
-    await store.undo("p2");
+    await store.undo(id1);
     expect(library.has("ocean")).toBe(false);
     expect(await store.proposeTemplate({ client: "x", name: "Bad", source: "\\template[id=x]\n\\p{", summary: "" })).toMatchObject({ ok: false, reason: "invalid" });
   });

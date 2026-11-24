@@ -6,7 +6,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getVersion } from "@tauri-apps/api/app";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
-import { appProposals, checkWithApp, currentResume, listLibraryTemplates, listResumes, sharesPersonal } from "./app";
+import { appProposals, checkWithApp, currentResume, currentResumes, listLibraryTemplates, sharesPersonal } from "./app";
 import { McpHub } from "./hub";
 import { createResumaMcpServer, McpDeps } from "./server";
 
@@ -16,7 +16,7 @@ type Forward = { session: string; key: string | null; message: JSONRPCMessage & 
 async function appDeps(): Promise<McpDeps> {
   const version = await getVersion().catch(() => "unknown");
   return {
-    listResumes,
+    listResumes: currentResumes,
     loadResume: currentResume,
     proposals: appProposals,
     listLibrary: listLibraryTemplates,

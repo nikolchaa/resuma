@@ -46,6 +46,14 @@ export async function currentResume(id: string): Promise<ResumeData | null> {
   return live ? structuredClone(live) : loadResume(id);
 }
 
+/** All resumes as the user sees them: open ones as their editor drafts. */
+export async function currentResumes(): Promise<ResumeData[]> {
+  return (await listResumes()).map((r) => {
+    const live = getLiveDraft(r.id)?.get();
+    return live ? structuredClone(live) : r;
+  });
+}
+
 export async function sharesPersonal(id: string): Promise<boolean> {
   return (await getMcpSettings()).sharePersonal.includes(id);
 }
