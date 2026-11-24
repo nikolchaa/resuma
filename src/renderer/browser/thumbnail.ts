@@ -1,12 +1,13 @@
 /**
- * Thumbnail painter: draws page 1 of the laid-out document onto a canvas
- * (no PDF round-trip). Fonts must already be loaded via `loadFonts()`.
+ * Thumbnail painter: draws a page of the laid-out document onto a canvas
+ * (no PDF round-trip), page 1 unless told otherwise. Fonts must already be
+ * loaded via `loadFonts()`.
  */
 import { cssFamily } from "../engine/fonts";
 import type { RenderedDocument } from "../engine/types";
 
-export function renderThumbnail(doc: RenderedDocument, scale = 1): string {
-  const page = doc.pages[0];
+export function renderThumbnail(doc: RenderedDocument, scale = 1, pageIndex = 0): string {
+  const page = doc.pages[Math.min(Math.max(0, pageIndex), doc.pages.length - 1)];
   const canvas = document.createElement("canvas");
   canvas.width = Math.round(page.width * scale);
   canvas.height = Math.round(page.height * scale);

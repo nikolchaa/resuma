@@ -6,7 +6,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getVersion } from "@tauri-apps/api/app";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
-import { appProposals, checkWithApp, currentResume, currentResumes, listLibraryTemplates, sharesPersonal } from "./app";
+import { appProposals, checkWithApp, currentResume, currentResumes, listLibraryTemplates, renderPreviewWithApp, sharesPersonal } from "./app";
+import { recordActivity } from "./activity";
 import { McpHub } from "./hub";
 import { createResumaMcpServer, McpDeps } from "./server";
 
@@ -22,6 +23,8 @@ async function appDeps(): Promise<McpDeps> {
     listLibrary: listLibraryTemplates,
     checkTemplate: checkWithApp,
     sharesPersonal,
+    renderPreview: renderPreviewWithApp,
+    logActivity: recordActivity,
     version,
   };
 }

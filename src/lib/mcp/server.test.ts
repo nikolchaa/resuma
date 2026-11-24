@@ -31,8 +31,16 @@ const deps = (shared: string[] = [], store = memoryStore({ shared }).store): Mcp
     };
   },
   sharesPersonal: async (id) => shared.includes(id),
+  renderPreview: async (data, templateSource, page) => {
+    rendered.push({ data, templateSource, page });
+    return { png: "iVBORw0KGgo=", pages: 2 };
+  },
+  logActivity: (entry) => activity.push(entry),
   version: "test",
 });
+
+const rendered: { data: ResumeData; templateSource?: string; page: number }[] = [];
+const activity: { client: string; tool: string; target?: string }[] = [];
 
 async function connect(d: McpDeps) {
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
@@ -59,6 +67,7 @@ describe("Resuma MCP server", () => {
         "list_templates",
         "propose_edit",
         "propose_template",
+        "render_preview",
         "validate",
       ].sort()
     );
@@ -143,6 +152,52 @@ describe("Resuma MCP server", () => {
     expect(text(await client.callTool({ name: "get_template", arguments: { id: "library:ocean" } }))).toBe(ocean);
     expect(text(await client.callTool({ name: "get_template", arguments: { id: "compact" } }))).toBe(BUILTIN_TEMPLATES.compact);
     expect((await client.callTool({ name: "get_template", arguments: { id: "nope" } })).isError).toBe(true);
+  });
+});
+
+describe("previews, prompts and activity", () => {
+  it("renders previews with placeholders instead of personal details unless shared", async () => {
+    rendered.length = 0;
+    const client = await connect(deps());
+    const r = await client.callTool({ name: "render_preview", arguments: { resume_id: "jane", page: 2 } });
+    expect((r.content as { type: string; mimeType?: string }[])[0]).toMatchObject({ type: "image", mimeType: "image/png" });
+    expect(JSON.parse((r.content as { text: string }[])[1].text)).toEqual({ page: 2, pages: 2 });
+    expect(rendered[0].data.content.personal.fullName).toBe("Alex Example");
+    expect(rendered[0].data.content.experience[0].company).toBe("Acme");
+    expect(rendered[0].page).toBe(2);
+
+    const shared = await connect(deps(["jane"]));
+    await shared.callTool({ name: "render_preview", arguments: { resume_id: "jane" } });
+    expect(rendered[1].data.content.personal.fullName).toBe("Jane Marie Doe");
+
+    // A template alone renders on the sample resume; a broken one is refused.
+    await client.callTool({ name: "render_preview", arguments: { template: BUILTIN_TEMPLATES.sidebar } });
+    expect(rendered[2]).toMatchObject({ templateSource: BUILTIN_TEMPLATES.sidebar, data: { id: "probe" } });
+    expect((await client.callTool({ name: "render_preview", arguments: { template: "\\template[id=x]\n\\p{" } })).isError).toBe(true);
+    expect((await client.callTool({ name: "render_preview", arguments: {} })).isError).toBe(true);
+  });
+
+  it("offers ready-made prompts", async () => {
+    const client = await connect(deps());
+    expect((await client.listPrompts()).prompts.map((p) => p.name).sort()).toEqual(["design_template", "tailor_resume"]);
+    const tailor = await client.getPrompt({ name: "tailor_resume", arguments: { resume_id: "jane", job_description: "Rust developer" } });
+    const msg = (tailor.messages[0].content as { text: string }).text;
+    expect(msg).toContain("Rust developer");
+    expect(msg).toContain("Never invent");
+    expect(msg).toContain("propose_edit");
+  });
+
+  it("records which tool was called on what, never the content", async () => {
+    activity.length = 0;
+    const client = await connect(deps());
+    await client.callTool({ name: "list_resumes", arguments: {} });
+    await client.callTool({ name: "get_resume", arguments: { id: "jane", part: "content" } });
+    await client.callTool({ name: "validate", arguments: { kind: "template", source: BUILTIN_TEMPLATES.modern } });
+    expect(activity).toEqual([
+      { client: "test", tool: "list_resumes", target: undefined },
+      { client: "test", tool: "get_resume", target: "jane" },
+      { client: "test", tool: "validate", target: undefined },
+    ]);
   });
 });
 

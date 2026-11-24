@@ -16,6 +16,7 @@ import { renderResume } from "@/renderer";
 import { checkTemplate, probeResume, RenderIssue } from "@/renderer/check";
 import { loadFonts } from "@/renderer/browser/loadFonts";
 import { generateResumeThumbnail } from "@/renderer/browser/useRenderedResume";
+import { renderThumbnail } from "@/renderer/browser/thumbnail";
 import { getLiveDraft } from "./liveDrafts";
 import { ProposalStore } from "./proposals";
 import { getMcpSettings } from "./settings";
@@ -38,6 +39,18 @@ export async function checkWithApp(template: string, resume: ResumeData | null):
     issues: checkTemplate(template, data, opts),
     pages: renderResume({ ...data, templateSource: template }, opts).pages.length,
   };
+}
+
+/** A page of `data` (with `templateSource` when given) as a PNG, base64 without the data: prefix. */
+export async function renderPreviewWithApp(
+  data: ResumeData,
+  templateSource: string | undefined,
+  page: number
+): Promise<{ png: string; pages: number }> {
+  const opts = await renderOptions();
+  const doc = renderResume(templateSource ? { ...data, templateSource } : data, opts);
+  const url = renderThumbnail(doc, 1.5, page - 1);
+  return { png: url.slice(url.indexOf(",") + 1), pages: doc.pages.length };
 }
 
 /** The resume as the user sees it: the open editor's draft, else the saved file. */

@@ -19,6 +19,7 @@ import { compileTemplate } from "@/renderer/template/template";
 import type { Diagnostic } from "@/renderer/rsm/parse";
 import type { RenderIssue } from "@/renderer/check";
 import { BUILTIN_TEMPLATES } from "@/templates";
+import { probeResume } from "@/renderer/check";
 import type { ProposalStore, ProposalWarning, ProposeResult } from "./proposals";
 import { resumeView, revisionOf } from "./views";
 
@@ -34,6 +35,10 @@ export type McpDeps = {
   checkTemplate: (template: string, resume: ResumeData | null) => Promise<{ issues: RenderIssue[]; pages: number }>;
   /** Whether the user shared this resume's personal details with connected apps. */
   sharesPersonal: (id: string) => Promise<boolean>;
+  /** A page as a PNG (base64), and the page count. */
+  renderPreview: (data: ResumeData, templateSource: string | undefined, page: number) => Promise<{ png: string; pages: number }>;
+  /** Records a tool call for the activity list in Settings. */
+  logActivity?: (entry: { client: string; tool: string; target?: string }) => void;
   version: string;
 };
 
@@ -107,6 +112,18 @@ const diagnosticsOf = (list: Diagnostic[]) =>
 
 export function createResumaMcpServer(deps: McpDeps): McpServer {
   const server = new McpServer({ name: "resuma", version: deps.version }, { instructions: INSTRUCTIONS });
+  const clientName = () => server.server.getClientVersion()?.name?.trim() || "An AI app";
+
+  // Every tool call is recorded for the activity list in Settings (tool name
+  // and which resume or template, never the content).
+  const register = server.registerTool.bind(server);
+  server.registerTool = ((name: string, config: unknown, callback: (...args: unknown[]) => unknown) =>
+    register(name, config as never, ((...args: unknown[]) => {
+      const input = (args.length > 1 ? args[0] : {}) as Record<string, unknown>;
+      const target = [input.resume_id, input.id, input.name, input.proposal_id].find((v) => typeof v === "string") as string | undefined;
+      deps.logActivity?.({ client: clientName(), tool: name, target });
+      return callback(...args);
+    }) as never)) as typeof server.registerTool;
 
   const titleOf = async (r: ResumeData) => {
     const title = r.title?.trim() || "Untitled resume";
@@ -278,10 +295,104 @@ export function createResumaMcpServer(deps: McpDeps): McpServer {
     }
   );
 
+  server.registerTool(
+    "render_preview",
+    {
+      title: "Preview a page",
+      description:
+        "Renders a page as an image: a resume (optionally with another template), or a sample resume with a template. Personal details show as placeholders unless the user shared them.",
+      inputSchema: {
+        resume_id: z.string().optional().describe("Render this resume; leave out to use a sample resume"),
+        template: z.string().max(256 * 1024).optional().describe("Template source to render with instead of the resume's own"),
+        page: z.number().int().min(1).optional().describe("Page number, from 1"),
+      },
+      annotations: readOnly,
+    },
+    async ({ resume_id, template, page = 1 }) => {
+      if (template) {
+        const compiled = compileTemplate(template);
+        if (!compiled.template) return { ...json({ valid: false, diagnostics: diagnosticsOf(compiled.diagnostics) }), isError: true };
+      }
+      let data: ResumeData;
+      if (resume_id) {
+        const resume = await deps.loadResume(resume_id);
+        if (!resume) return fail(`No resume with id "${resume_id}".`);
+        // The picture must not show more than the text would.
+        data = (await deps.sharesPersonal(resume_id))
+          ? resume
+          : { ...resume, content: { ...resume.content, personal: probeResume().content.personal } };
+      } else {
+        if (!template) return fail("Give a resume_id, a template, or both.");
+        data = probeResume();
+      }
+      const { png, pages } = await deps.renderPreview(data, template, page);
+      return {
+        content: [
+          { type: "image" as const, data: png, mimeType: "image/png" },
+          { type: "text" as const, text: JSON.stringify({ page: Math.min(page, pages), pages }) },
+        ],
+      };
+    }
+  );
+
+  // ---- prompts: ready-made tasks a client can offer its user ----------------
+
+  server.registerPrompt(
+    "design_template",
+    {
+      title: "Design a resume template",
+      description: "Design a new Resuma template from a description and propose it.",
+      argsSchema: { description: z.string().describe("What the template should look like") },
+    },
+    ({ description }) => ({
+      messages: [
+        {
+          role: "user" as const,
+          content: {
+            type: "text" as const,
+            text: `Design a new Resuma resume template: ${description}
+
+1. Read resuma://guide/template (format and design rules). Look at a built-in with get_template for a working example.
+2. Write the complete template. Check it with validate, then check_template, and look at it with render_preview; fix every problem they report.
+3. Propose it with propose_template (to save it to the user's templates) and say in one sentence what you made.`,
+          },
+        },
+      ],
+    })
+  );
+
+  server.registerPrompt(
+    "tailor_resume",
+    {
+      title: "Tailor a resume to a job",
+      description: "Rework a resume's content for a job description and propose the changes.",
+      argsSchema: {
+        resume_id: z.string().describe("Resume id from list_resumes"),
+        job_description: z.string().describe("The job posting"),
+      },
+    },
+    ({ resume_id, job_description }) => ({
+      messages: [
+        {
+          role: "user" as const,
+          content: {
+            type: "text" as const,
+            text: `Tailor resume "${resume_id}" to this job:
+
+${job_description}
+
+1. Read resuma://guide/content, then the resume with get_resume (part: content); keep its revision.
+2. Rework wording, order and emphasis for this job. Never invent employers, schools, titles, dates, numbers or achievements; keep every section.
+3. Check the result with validate, then propose it with propose_edit (part: content, base_revision from step 1) and a one-sentence summary of what changed.`,
+          },
+        },
+      ],
+    })
+  );
+
   // ---- proposals: the user decides ------------------------------------------
 
   const proposing = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false };
-  const clientName = () => server.server.getClientVersion()?.name?.trim() || "An AI app";
 
   server.registerTool(
     "propose_edit",
