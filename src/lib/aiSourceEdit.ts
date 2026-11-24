@@ -46,7 +46,7 @@ export type EditResult =
       attempts: number;
     };
 
-const CONTENT_GUIDE = `Resuma Markup content format:
+export const CONTENT_GUIDE = `Resuma Markup content format:
 - Top level, in this order: \\education{...}, \\experience{...}, \\projects{...}, \\skills{...}, \\awards{...}, then optional \\custom[id="..."]{\\title{...} \\entry{...}...} and \\layout{...}. The personal details block is left out on purpose; do not add one.
 - A section holds \\entry{...} blocks. Each field is \\name{plain text}.
 - Lists are \\field{\\item{...}\\item{...}}. Dates are \\date{\\from{...}\\to{...}}; an empty \\to{} means "present".
@@ -54,7 +54,7 @@ const CONTENT_GUIDE = `Resuma Markup content format:
 - \\layout{\\order{\\item{skills}...} \\hidden{\\item{awards}} \\titles{\\title[section="skills"]{New title}}} arranges sections; custom section keys are custom:<id>.
 - Only \\, { and } are special characters; write \\\\, \\{ and \\} to use them literally. % at the start of a line starts a comment. Do not use any other LaTeX commands.`;
 
-const TEMPLATE_GUIDE = `Resuma Markup template format (declarative; no scripting):
+export const TEMPLATE_GUIDE = `Resuma Markup template format (declarative; no scripting):
 - Start with \\template[id=..., name=..., version=1]. Optional \\option[name, type=color|size|font|choice, default=..., label="..."] values are used in styles as @name; a choice option also needs choices="a|b|c" including its default. @font is built in (the font the user picks): use it, never declare an option called font.
 - Write one command per line and indent nested blocks like the example, so every { has its matching }.
 - \\page{margin: 40; font-family: @font; font-size: 11; color: #1f2937} sets page styles. \\style[heading]{font-size: 12; font-weight: bold} defines a style class called heading (the name goes alone in the brackets); use it as \\p[heading]{...}.
@@ -89,7 +89,7 @@ const GENERATE_RULES = `- Write a NEW template that follows the description. You
 - Give it a new \\template id (lowercase letters, digits, dashes) and a short name.`;
 
 /** Design guidance for new templates; each rule answers a mistake models made in testing. */
-const DESIGN_RULES = `Design rules:
+export const DESIGN_RULES = `Design rules:
 - Every piece of text must stand out from what is behind it. The page is white, so text on it is dark. A full-width \\header written before \\cols is on the white page too.
 - A column with a dark background needs light text: set a light color on the column style, and every style used inside that column must either set a light color or set no color at all (then it uses the column's). Never reuse a dark-text style inside a dark column; make separate styles for it (for example sideheading and heading).
 - Sizes: name 18 to 26, section headings 10 to 14, body text 9 to 11, small details 8 to 9; nothing below 7.

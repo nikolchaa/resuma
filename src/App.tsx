@@ -9,6 +9,7 @@ import {
   updateDiscordPresence,
 } from "./lib/discord";
 import { SettingsType } from "./contexts/OnboardingContext";
+import { McpBridge } from "./components/McpBridge";
 
 export default function App() {
   const location = useLocation();
@@ -54,6 +55,7 @@ export default function App() {
 
   return (
     <div className='min-h-screen bg-background text-foreground overflow-hidden'>
+      <McpBridge />
       <AnimatePresence mode='wait'>
         <m.div
           key={location.pathname}
