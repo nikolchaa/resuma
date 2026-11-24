@@ -36,7 +36,6 @@ This project, **Resuma**, makes use of various third-party open-source libraries
 | ---------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | tauri                        | Apache 2.0       | [https://github.com/tauri-apps/tauri](https://github.com/tauri-apps/tauri)                                                                       |
 | tauri-build                  | Apache 2.0       | [https://github.com/tauri-apps/tauri](https://github.com/tauri-apps/tauri)                                                                       |
-| tauri-plugin-store           | Apache 2.0       | [https://github.com/tauri-apps/plugins-workspace/tree/v2/plugins/store](https://github.com/tauri-apps/plugins-workspace/tree/v2/plugins/store)   |
 | tauri-plugin-fs              | Apache 2.0       | [https://github.com/tauri-apps/plugins-workspace/tree/v2/plugins/fs](https://github.com/tauri-apps/plugins-workspace/tree/v2/plugins/fs)         |
 | tauri-plugin-dialog          | Apache 2.0       | [https://github.com/tauri-apps/plugins-workspace/tree/v2/plugins/dialog](https://github.com/tauri-apps/plugins-workspace/tree/v2/plugins/dialog) |
 | tauri-plugin-opener          | Apache 2.0       | [https://github.com/tauri-apps/plugins-workspace/tree/v2/plugins/opener](https://github.com/tauri-apps/plugins-workspace/tree/v2/plugins/opener) |
@@ -52,6 +51,7 @@ This project, **Resuma**, makes use of various third-party open-source libraries
 | lazy_static                  | MIT / Apache 2.0 | [https://github.com/rust-lang-nursery/lazy-static.rs](https://github.com/rust-lang-nursery/lazy-static.rs)                                       |
 | tiny_http                    | MIT / Apache 2.0 | [https://github.com/tiny-http/tiny-http](https://github.com/tiny-http/tiny-http)                                                                 |
 | uuid                         | MIT / Apache 2.0 | [https://github.com/uuid-rs/uuid](https://github.com/uuid-rs/uuid)                                                                               |
+| argon2                       | MIT / Apache 2.0 | [https://github.com/RustCrypto/password-hashes](https://github.com/RustCrypto/password-hashes)                                                   |
 
 ### AI & Model Dependencies
 

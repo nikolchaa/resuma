@@ -24,11 +24,16 @@ We do **not** track usage, collect analytics, or share any data with third parti
 
 The following data is stored **locally only**:
 
-- Resume files (`.resume`)
-- Application settings (`settings.resuma`)
+- Resume files (`.resume`), **encrypted**
+- Your profile and application settings (`settings.enc`), **encrypted**
+- Saved templates (`templates/*.rsm`), which hold designs, not personal data
 - Exported resumes (PDF/TXT)
 - Downloaded local models (e.g., Qwen3 GGUF)
 - llama.cpp runtime executables
+
+Resume files and the settings file are encrypted with AES-256-GCM. The key is created on your computer the first time Resuma runs and is kept in your operating system's credential manager (or, where none is reachable, in the encrypted file described below), so Resuma opens your data without a password. This protects copies of your data folder, such as backups, cloud-synced folders or a lost disk. It does not protect against programs running under your own account, which can unlock the data the same way Resuma does.
+
+When encryption is set up, Resuma shows a **recovery key** once (you can show it again in **Settings → App Settings → Data protection**). With it your data folder opens on another computer, or here if the credential manager loses the key. Without it, a lost key means the data can't be opened. You can also export an **encrypted backup**: one file with your resumes and profile, protected by a password you choose (derived with Argon2id), to import on another computer. Files you export yourself (PDF, TXT, `.resume`, settings exports) are written as normal, unencrypted files wherever you save them.
 
 API keys for external providers are **not** kept in `settings.resuma`. They are stored in your operating system's credential manager (Windows Credential Manager, macOS Keychain, or the Linux Secret Service) and are read only when a request to that provider is made. They are never included in exported settings files.
 
