@@ -128,6 +128,7 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
             </SelectItem>
             <SelectItem value='modern'>{t("editor.template.modern")}</SelectItem>
             <SelectItem value='compact'>{t("editor.template.compact")}</SelectItem>
+            <SelectItem value='sidebar'>{t("editor.template.sidebar")}</SelectItem>
             {draft?.templateSource && (
               <SelectItem value='own'>{t("source.own")}</SelectItem>
             )}

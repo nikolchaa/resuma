@@ -1,6 +1,7 @@
 import professional from "./professional.rsm?raw";
 import modern from "./modern.rsm?raw";
 import compact from "./compact.rsm?raw";
+import sidebar from "./sidebar.rsm?raw";
 
 // Windows checkouts may turn these files into CRLF; the code editor and the
 // "is this still the built-in?" check work on LF text.
@@ -11,6 +12,7 @@ export const BUILTIN_TEMPLATES: Record<string, string> = {
   professional: lf(professional),
   modern: lf(modern),
   compact: lf(compact),
+  sidebar: lf(sidebar),
 };
 
 export const DEFAULT_TEMPLATE_ID = "professional";

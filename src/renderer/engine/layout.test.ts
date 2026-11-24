@@ -235,6 +235,97 @@ describe("renderResume", () => {
     expect(broken.diagnostics.length).toBeGreaterThan(0);
   });
 
+  describe("two columns (Sidebar)", () => {
+    const sidebar = { ...sampleResume(), theme: "sidebar" };
+    // Geometry of the built-in: margin 36, widths 32/68, gap 22, sidebar padding-right 16.
+    const geometry = (width: number) => {
+      const avail = width - 72 - 22;
+      return { side: [36, 36 + avail * 0.32 - 16], main: [36 + avail * 0.32 + 22, width - 36] };
+    };
+    const textItems = (p: { items: RenderedDocument["pages"][number]["items"] }) =>
+      p.items.filter((i) => i.type === "text") as Extract<RenderedDocument["pages"][number]["items"][number], { type: "text" }>[];
+
+    it("keeps each column's text inside its own column and the page", () => {
+      for (const format of ["A4", "LETTER"] as const) {
+        const { width, height } = PAPER[format];
+        const g = geometry(width);
+        const doc = renderResume(sidebar, { format, language: "en", fonts });
+        expect(doc.pages).toHaveLength(1);
+        const items = textItems(doc.pages[0]);
+        const inSide = items.filter((i) => i.x < g.main[0] - 1);
+        expect(inSide.map((i) => i.text)).toEqual(expect.arrayContaining(["Jane Marie Doe", "SKILLS", "jane@doe.dev"]));
+        for (const i of items) {
+          const [lo, hi] = i.x < g.main[0] - 1 ? g.side : g.main;
+          expect(i.x).toBeGreaterThanOrEqual(lo - 0.01);
+          expect(i.x + i.width).toBeLessThanOrEqual(hi + 0.01);
+          expect(i.y).toBeGreaterThan(36);
+          expect(i.y).toBeLessThan(height - 36);
+        }
+        // Experience, education and projects are in the main column.
+        const main = items.filter((i) => i.x >= g.main[0] - 1).map((i) => i.text);
+        expect(main).toEqual(expect.arrayContaining(["EXPERIENCE", "EDUCATION", "PROJECTS"]));
+      }
+    });
+
+    it("paints the sidebar background under the text, to the page edge, on every page", () => {
+      const data = { ...sidebar, content: { ...sidebar.content } };
+      data.content.experience = Array.from({ length: 14 }, (_, i) => ({ ...sidebar.content.experience[0], jobTitle: `Role ${i}` }));
+      const doc = renderResume(data, { format: "A4", language: "en", fonts });
+      expect(doc.pages.length).toBeGreaterThan(1);
+      const g = geometry(PAPER.A4.width);
+      for (const p of doc.pages) {
+        expect(p.items[0]).toMatchObject({ type: "rect", id: "cols/bg0", x: 0, y: 0, h: PAPER.A4.height, color: "#1f2937" });
+        expect((p.items[0] as { w: number }).w).toBeCloseTo(g.side[1] + 16);
+        const ids = p.items.map((i) => i.id);
+        expect(new Set(ids).size).toBe(ids.length);
+      }
+      // The sidebar text colour comes from the column style.
+      const email = textItems(doc.pages[0]).find((i) => i.text === "jane@doe.dev");
+      expect(email?.color).toBe("#e5e7eb");
+    });
+
+    it("breaks each column across pages on its own and never strands a heading", () => {
+      const g = geometry(PAPER.A4.width);
+      const headings = ["EDUCATION", "EXPERIENCE", "PROJECTS", "AWARDS", "SKILLS"];
+      for (let n = 1; n <= 30; n++) {
+        const data = { ...sidebar, content: { ...sidebar.content } };
+        data.content.experience = Array.from({ length: n }, (_, i) => ({ ...sidebar.content.experience[0], jobTitle: `Role ${i}` }));
+        data.content.skills = Array.from({ length: Math.ceil(n / 2) }, (_, i) => ({ category: `Group ${i}`, items: ["Rust", "TypeScript", "SQL"] }));
+        const doc = renderResume(data, { format: "A4", language: "en", fonts });
+        for (const p of doc.pages) {
+          for (const [lo] of [g.side, g.main]) {
+            const col = textItems(p).filter((i) => (lo === g.side[0] ? i.x < g.main[0] - 1 : i.x >= g.main[0] - 1));
+            if (!col.length) continue;
+            const last = col.reduce((a, b) => (b.y > a.y ? b : a));
+            expect(headings, `n=${n}, page ${p.index + 1}`).not.toContain(last.text);
+            for (const i of col) expect(i.y).toBeLessThan(PAPER.A4.height - 36);
+          }
+        }
+        const all = doc.pages.flatMap((p) => textItems(p).map((i) => i.text)).join("\n");
+        expect(all).toContain(`Role ${n - 1}`);
+        expect(all).toContain(`Group ${Math.ceil(n / 2) - 1}`);
+      }
+    });
+
+    it("puts custom sections where \\section[*] is and follows the user's order within a column", () => {
+      const data = { ...sidebar, content: { ...sidebar.content } };
+      data.content.custom = [{ id: "langs", title: "Languages", entries: [{ title: "German", subtitle: "B2", location: "", date: { from: "" }, description: "", items: [] }] }];
+      data.content.layout = { order: ["custom:langs", "awards", "projects"] };
+      const doc = renderResume(data, { format: "A4", language: "en", fonts });
+      const g = geometry(PAPER.A4.width);
+      const items = textItems(doc.pages[0]);
+      const sideHeadings = items.filter((i) => i.x < g.main[0] - 1 && ["SKILLS", "AWARDS"].includes(i.text)).map((i) => i.text);
+      const mainHeadings = items.filter((i) => i.x >= g.main[0] - 1 && /^[A-Z]{5,}$/.test(i.text)).map((i) => i.text);
+      expect(sideHeadings).toEqual(["AWARDS", "SKILLS"]);
+      expect(mainHeadings).toEqual(["LANGUAGES", "PROJECTS", "EXPERIENCE", "EDUCATION"]);
+    });
+
+    it("localises the sidebar labels", () => {
+      const doc = renderResume(sidebar, { format: "A4", language: "rs", fonts });
+      expect(texts(doc)).toEqual(expect.arrayContaining(["TELEFON", "VEŠTINE"]));
+    });
+  });
+
   it("tolerates missing and malformed fields from old files", () => {
     const data = sampleResume();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
