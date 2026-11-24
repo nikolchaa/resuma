@@ -65,6 +65,13 @@ pub async fn call_llm(prompt: String, llm_settings: Value) -> Result<String, Str
         "--simple-io".to_string(),
     ];
 
+    // Current builds may colour the echoed prompt with ANSI codes, which
+    // would end up in the returned text when no </think> marker is found.
+    if build == LlamaBuild::Current {
+        args.push("--color".to_string());
+        args.push("off".to_string());
+    }
+
     if let Some(ctx) = settings.get("ctxSize").and_then(|v| v.as_u64()) {
         args.push("--ctx-size".to_string());
         args.push(ctx.to_string());
@@ -76,11 +83,18 @@ pub async fn call_llm(prompt: String, llm_settings: Value) -> Result<String, Str
     let mut auto_layers_arg: Option<usize> = None;
 
     if !is_cpu_runtime {
-        if settings.get("flashAttn").and_then(|v| v.as_bool()) == Some(true) {
-            args.push("--flash-attn".to_string());
-            // Current builds take a value and default to "auto".
-            if build == LlamaBuild::Current {
-                args.push("on".to_string());
+        let flash_attn = settings.get("flashAttn").and_then(|v| v.as_bool()) == Some(true);
+        match build {
+            LlamaBuild::Legacy => {
+                if flash_attn {
+                    args.push("--flash-attn".to_string());
+                }
+            }
+            // Current builds take a value and default to "auto"; the switch
+            // keeps meaning on/off as it did with the legacy default (off).
+            LlamaBuild::Current => {
+                args.push("--flash-attn".to_string());
+                args.push(if flash_attn { "on" } else { "off" }.to_string());
             }
         }
 
@@ -331,13 +345,17 @@ mod tests {
             .ok()
             .and_then(|v| v.parse().ok())
             .unwrap_or(-1);
+        let ctx_size: u64 = std::env::var("RESUMA_TEST_CTX")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(8192);
 
         let settings = serde_json::json!({
             "provider": "local",
             "runtime": runtime,
             "model": model,
             "settings": {
-                "ctxSize": 8192,
+                "ctxSize": ctx_size,
                 "gpuLayers": gpu_layers,
                 // What Settings defaults to on an 8 GB+ GPU, plus flash
                 // attention, so every build-specific flag is exercised.
