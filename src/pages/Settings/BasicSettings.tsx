@@ -18,6 +18,7 @@ import { showError, showSuccess, showWarning } from "@/lib/toastUtils";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { AppLanguage } from "@/lib/i18n";
 import { Switch } from "@/components/ui/switch";
+import { InfoTip } from "@/components/InfoTip";
 import { setDiscordPresenceEnabled } from "@/lib/discord";
 
 type Props = {
@@ -243,12 +244,10 @@ export const BasicSettings = ({
 
       {/* Default editor mode */}
       <div className='flex items-center justify-between gap-4'>
-        <div className='flex flex-col gap-1 w-1/3'>
-          <Label>{t("settings.editorMode")}</Label>
-          <span className='text-sm text-muted-foreground'>
-            {t("settings.editorMode.description")}
-          </span>
-        </div>
+        <Label className='w-1/3'>
+          {t("settings.editorMode")}{" "}
+          <InfoTip text={t("settings.editorMode.description")} />
+        </Label>
         <Select
           value={editorMode ?? "simple"}
           onValueChange={(v) => handleChange("editorMode", v)}
@@ -266,14 +265,10 @@ export const BasicSettings = ({
 
       {/* Discord Rich Presence (opt-in) */}
       <div className='flex items-center justify-between gap-4'>
-        <div className='flex flex-col gap-1'>
-          <Label htmlFor='discord-presence'>
-            {t("settings.discordPresence")}
-          </Label>
-          <span className='text-sm text-muted-foreground'>
-            {t("settings.discordPresence.description")}
-          </span>
-        </div>
+        <Label htmlFor='discord-presence'>
+          {t("settings.discordPresence")}{" "}
+          <InfoTip text={t("settings.discordPresence.description")} />
+        </Label>
         <Switch
           id='discord-presence'
           checked={discordPresence ?? false}
