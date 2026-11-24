@@ -208,7 +208,8 @@ const Artificial = () => {
   const handleDownloadClick = async (
     assetName: string,
     assetUrls: string[],
-    assetType: "runtime" | "model"
+    assetType: "runtime" | "model",
+    version?: string
   ) => {
     if (!assetName) return;
 
@@ -226,6 +227,7 @@ const Artificial = () => {
         assetUrls,
         noExtract: assetType === "model",
         assetType,
+        version: version ?? null,
       });
     } catch (error) {
       showError(`${t("ai.downloadErrorPrefix")} ${assetName}`, (error as Error).message);
@@ -399,7 +401,8 @@ const Artificial = () => {
                   handleDownloadClick(
                     runtime.name,
                     runtimeDownloadUrls(runtime),
-                    "runtime"
+                    "runtime",
+                    runtime.version
                   );
                 }
               }}

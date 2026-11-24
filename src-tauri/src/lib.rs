@@ -31,6 +31,8 @@ async fn download_and_extract(
     asset_urls: Vec<String>,
     no_extract: bool,
     asset_type: String, // e.g., "runtimes", "models", etc.
+    // Build tag recorded after extraction, e.g. "b12675" for runtimes.
+    version: Option<String>,
 ) -> Result<(), String> {
     spawn(async move {
         if asset_urls.is_empty() {
@@ -41,12 +43,37 @@ async fn download_and_extract(
             return;
         }
 
+        if asset_name.is_empty()
+            || asset_name.contains(['/', '\\'])
+            || asset_name.contains("..")
+        {
+            let _ = window.emit(
+                &format!("download_error:{}", asset_name),
+                "Invalid asset name".to_string(),
+            );
+            return;
+        }
+
         let base_dir = dirs::data_dir()
             .ok_or_else(|| "Failed to find data directory".to_string())
             .unwrap()
             .join("com.resuma.app")
             .join(&format!("{}s", asset_type)) // ← dynamic folder like runtimes, models, etc.
             .join(&asset_name);
+
+        // Re-downloading a runtime (an update, or a repair of an incomplete
+        // install) starts from an empty folder: llama.cpp loads every
+        // ggml-*.dll backend it finds, so leftovers from an older build
+        // would be loaded into the new one.
+        if !no_extract && base_dir.exists() {
+            if let Err(e) = fs::remove_dir_all(&base_dir) {
+                let _ = window.emit(
+                    &format!("download_error:{}", asset_name),
+                    format!("Failed to remove the previous install: {e}"),
+                );
+                return;
+            }
+        }
 
         if let Err(e) = fs::create_dir_all(&base_dir) {
             let _ = window.emit(
@@ -152,11 +179,22 @@ async fn download_and_extract(
         // (the CUDA build plus its cudart/cuBLAS DLLs); models are never
         // extracted, sharded or not.
         if !no_extract && !downloaded_files.is_empty() {
-            for zip_path in &downloaded_files {
-                if let Err(e) = extract_zip(zip_path, &base_dir) {
+            for archive_path in &downloaded_files {
+                if let Err(e) = extract_archive(archive_path, &base_dir) {
                     let _ = window.emit(
                         &format!("extract_error:{}", asset_name),
                         format!("Extraction failed: {e}"),
+                    );
+                    return;
+                }
+            }
+            // Lets check_asset_ready tell a current install from one made
+            // with an older llama.cpp build.
+            if let Some(version) = &version {
+                if let Err(e) = fs::write(base_dir.join(VERSION_MARKER), version) {
+                    let _ = window.emit(
+                        &format!("extract_error:{}", asset_name),
+                        format!("Failed to record the runtime version: {e}"),
                     );
                     return;
                 }
@@ -168,6 +206,37 @@ async fn download_and_extract(
         }
     });
 
+    Ok(())
+}
+
+/// File in a runtime folder holding the llama.cpp build it was extracted
+/// from (e.g. "b12675").
+const VERSION_MARKER: &str = "resuma-runtime-version.txt";
+
+/// Extracts a .zip or .tar.gz into `extract_to` and deletes the archive.
+/// Any other file is left where it is.
+fn extract_archive(archive_path: &PathBuf, extract_to: &PathBuf) -> io::Result<()> {
+    let name = archive_path
+        .file_name()
+        .map(|n| n.to_string_lossy().to_lowercase())
+        .unwrap_or_default();
+
+    if name.ends_with(".zip") {
+        extract_zip(archive_path, extract_to)
+    } else if name.ends_with(".tar.gz") || name.ends_with(".tgz") {
+        extract_tar_gz(archive_path, extract_to)
+    } else {
+        Ok(())
+    }
+}
+
+fn extract_tar_gz(archive_path: &PathBuf, extract_to: &PathBuf) -> io::Result<()> {
+    let file = File::open(archive_path)?;
+    let mut archive = tar::Archive::new(flate2::read::GzDecoder::new(file));
+    // `unpack` refuses entries that would land outside `extract_to` and
+    // keeps the executable bits and .so symlinks of the Linux/macOS builds.
+    archive.unpack(extract_to)?;
+    fs::remove_file(archive_path)?;
     Ok(())
 }
 
@@ -209,6 +278,7 @@ async fn check_asset_ready(
     asset_type: String,
     asset_name: String,
     required_files: Option<Vec<String>>,
+    version: Option<String>,
 ) -> Result<bool, String> {
     let base_dir = dirs::data_dir()
         .ok_or_else(|| "Failed to find data directory".to_string())?
@@ -216,7 +286,15 @@ async fn check_asset_ready(
         .join(asset_type)
         .join(asset_name);
 
+    let version_matches = match version {
+        Some(expected) => fs::read_to_string(base_dir.join(VERSION_MARKER))
+            .map(|found| found.trim() == expected)
+            .unwrap_or(false),
+        None => true,
+    };
+
     Ok(base_dir.exists()
+        && version_matches
         && required_files
             .unwrap_or_default()
             .iter()
@@ -315,4 +393,37 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn extracts_tar_gz_runtimes_and_removes_the_archive() {
+        let dir = std::env::temp_dir().join(format!("resuma-tar-test-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let archive = dir.join("llama-b12675-bin-ubuntu-x64.tar.gz");
+
+        {
+            let file = File::create(&archive).unwrap();
+            let gz = flate2::write::GzEncoder::new(file, flate2::Compression::fast());
+            let mut builder = tar::Builder::new(gz);
+            let data = b"#!/bin/sh\n";
+            let mut header = tar::Header::new_gnu();
+            header.set_size(data.len() as u64);
+            header.set_mode(0o755);
+            header.set_cksum();
+            builder
+                .append_data(&mut header, "llama-b12675/llama-completion", &data[..])
+                .unwrap();
+            builder.into_inner().unwrap().finish().unwrap();
+        }
+
+        extract_archive(&archive, &dir).unwrap();
+        assert!(dir.join("llama-b12675").join("llama-completion").is_file());
+        assert!(!archive.exists());
+        let _ = fs::remove_dir_all(&dir);
+    }
 }

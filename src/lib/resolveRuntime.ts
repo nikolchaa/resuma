@@ -17,6 +17,8 @@ export interface RuntimeEntry {
   name: string;
   label: string;
   download: string;
+  /** llama.cpp build tag; installs from another build read as out of date. */
+  version?: string;
   /**
    * More archives extracted into the same folder, e.g. the CUDA build's
    * cudart/cuBLAS DLLs, which llama.cpp publishes as a separate zip.
@@ -173,12 +175,14 @@ export function runtimeDownloadUrls(rt: {
 }
 
 /**
- * Whether a downloaded runtime folder is complete. Installs made before a
- * runtime gained `requiredFiles` (the CUDA runtime without its cudart DLLs)
- * read as not installed, so Download repairs them in place.
+ * Whether a downloaded runtime folder is complete and current. Installs from
+ * another llama.cpp build, or missing a required file (the CUDA runtime
+ * without its cudart DLLs), read as not installed, so Download replaces
+ * them in place.
  */
 export async function isRuntimeInstalled(rt: {
   name: string;
+  version?: string;
   requiredFiles?: string[];
 }): Promise<boolean> {
   try {
@@ -186,6 +190,7 @@ export async function isRuntimeInstalled(rt: {
       assetType: "runtimes",
       assetName: rt.name,
       requiredFiles: rt.requiredFiles ?? [],
+      version: rt.version ?? null,
     });
   } catch {
     return false;
