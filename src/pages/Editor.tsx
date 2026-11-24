@@ -189,6 +189,8 @@ export const Editor = () => {
         mode={mode}
         setMode={setMode}
         width={sidebarWidth}
+        format={pdfFormat}
+        language={language}
       />
 
       {/* PDF Preview */}

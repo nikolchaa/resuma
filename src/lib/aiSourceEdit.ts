@@ -11,6 +11,7 @@ import { parseContent, printContent, topLevelBlocks } from "@/renderer/rsm/conte
 import { compileTemplate } from "@/renderer/template/template";
 import { ENTRY_FIELDS, LABELS, PERSONAL_FIELDS, SECTION_KINDS } from "@/renderer/template/schema";
 import { PAGE_PROPERTIES, PROPERTIES } from "@/renderer/template/styles";
+import type { RenderIssue } from "@/renderer/check";
 import type { ResumeContent } from "./resumesStore";
 
 export type EditTarget = "content" | "template";
@@ -22,7 +23,9 @@ export type EditWarning =
   | { kind: "newNames"; values: string[] }
   | { kind: "newNumbers"; values: string[] }
   | { kind: "personalChanged"; fields: string[] }
-  | { kind: "sectionsDropped"; values: string[] };
+  | { kind: "sectionsDropped"; values: string[] }
+  /** A problem found by rendering the template (see renderer/check). */
+  | { kind: "render"; issue: RenderIssue };
 
 export type EditResult =
   | {
@@ -49,12 +52,35 @@ const TEMPLATE_GUIDE = `Resuma Markup template format (declarative; no scripting
 - Style properties: ${Object.keys(PROPERTIES).join(", ")}. Page properties: ${Object.keys(PAGE_PROPERTIES).join(", ")}. Numbers are points, colours are hex, fonts are Figtree, Inter or "Space Grotesk", font-weight is normal or bold, border-bottom is "<width> <colour>", keep is together or with-next.
 - \\header{...} renders personal fields: ${Object.keys(PERSONAL_FIELDS).join(", ")}.
 - \\section[kind]{...} for kind in ${SECTION_KINDS.join(", ")}, or * for custom sections. Inside, \\entries[style]{...} repeats per entry.
+- Two columns: \\cols[widths="32,68", gap=20, left=styleName, right=styleName]{left column}{right column}. Each column holds \\header{...} and \\section[...]{...} blocks; with \\cols every \\section must be inside a column, and only a \\header written before \\cols spans the full width. A column style may set background (fills the column to the page edge and full page height), color, font properties, padding-left and padding-right; background works only on column styles.
 - Entry fields: ${Object.entries(ENTRY_FIELDS)
   .map(([k, f]) => `${k === "*" ? "custom" : k} (${Object.keys(f).join(", ")})`)
   .join("; ")}.
 - Blocks: \\p[style]{inline}, \\block[style]{blocks}, \\row{left blocks}{right blocks}, \\hr[style], \\if{field}{then}{else}, \\each{listField}{...}.
 - Inline: plain text, \\v{field} (options nolink, first, rest), \\sectiontitle, \\label{key} for ${Object.keys(LABELS).join(", ")}, \\range[sep=" – "]{date}, \\join[sep=" | "]{a}{b}..., \\list[sep=", "]{listField}, \\lines[prefix="• "]{listField}, \\span[style]{...}, \\if, \\each (use \\v{.} for the item).
 - Every style class you use must be defined with \\style.`;
+
+const GENERATE_RULES = `- Write a NEW template that follows the description. You may change the layout, styles, options and wording completely; the example template only shows the syntax.
+- Show every section (education, experience, projects, awards, skills, and \\section[*] for custom sections) with the useful fields of each.
+- Give it a new \\template id (lowercase letters, digits, dashes) and a short name.
+- Keep text readable: font sizes of at least 7, and text colours that stand out from their background.`;
+
+function buildGeneratePrompt(description: string, example: string): string {
+  return `You design a new resume template written in Resuma Markup.
+
+${TEMPLATE_GUIDE}
+
+Rules:
+- Return the COMPLETE new template in a single \`\`\`rsm code block and nothing else.
+${GENERATE_RULES}
+
+Description: ${description.trim()}
+
+Example template (for the syntax):
+\`\`\`rsm
+${example}
+\`\`\``;
+}
 
 function buildPrompt(target: EditTarget, instruction: string, source: string, jobDesc?: string): string {
   const rules =
@@ -82,7 +108,7 @@ function retryPrompt(previous: string, diagnostics: Diagnostic[]): string {
   const problems = diagnostics
     .filter((d) => d.severity === "error")
     .slice(0, 12)
-    .map((d) => `- line ${d.line}, column ${d.col}: ${d.message}`)
+    .map((d) => (d.line > 0 ? `- line ${d.line}, column ${d.col}: ${d.message}` : `- ${d.message}`))
     .join("\n");
   return `Your answer could not be used because of these problems:
 ${problems}
@@ -125,6 +151,25 @@ function validate(target: EditTarget, sent: string, reply: string): Diagnostic[]
 
 const normalise = (s: string) => s.replace(/\r\n/g, "\n").trim();
 
+/** Render problems the model is asked to fix (others are only shown to the user). */
+const BLOCKING_RENDER: RenderIssue["kind"][] = ["offPage", "lowContrast"];
+
+/** How a render problem is explained to the model in a retry. */
+function describeIssue(issue: RenderIssue): string {
+  switch (issue.kind) {
+    case "missingSections":
+      return `These sections render nothing: ${issue.values.join(", ")}. Add a \\section for each (\\section[*] for custom sections).`;
+    case "offPage":
+      return `${issue.count} pieces of text run off the page. Reduce widths, margins or padding.`;
+    case "lowContrast":
+      return `This text is hard to read against its background: ${issue.values.map((v) => `"${v}"`).join(", ")}. Use text colours that contrast with the background.`;
+    case "tinyText":
+      return `Some text is only ${issue.size} points; use at least 7.`;
+    case "morePages":
+      return `The resume now needs ${issue.after} pages instead of ${issue.before}.`;
+  }
+}
+
 export async function runSourceEdit(opts: {
   target: EditTarget;
   instruction: string;
@@ -132,8 +177,16 @@ export async function runSourceEdit(opts: {
   jobDesc?: string;
   call: (prompt: string) => Promise<string>;
   maxAttempts?: number;
+  /**
+   * Templates only: write a new template from the instruction, using
+   * `source` only as a syntax example. The result replaces the template.
+   */
+  generate?: boolean;
+  /** Templates only: renders the candidate and reports problems (renderer/check). */
+  check?: (template: string) => RenderIssue[];
 }): Promise<EditResult> {
-  const { target, instruction, source, jobDesc, call, maxAttempts = 2 } = opts;
+  const { target, instruction, source, jobDesc, call, maxAttempts = 2, check } = opts;
+  const generate = target === "template" && opts.generate === true;
 
   // Content edits never send personal details (name, email, phone, links):
   // they are left out of the prompt and put back from the original.
@@ -149,9 +202,11 @@ export async function runSourceEdit(opts: {
   }
   const before = target === "content" ? printContent(parseContent(source).content!) : source;
 
-  let prompt = buildPrompt(target, instruction, sent, jobDesc);
+  let prompt = generate ? buildGeneratePrompt(instruction, sent) : buildPrompt(target, instruction, sent, jobDesc);
   let output = "";
   let diagnostics: Diagnostic[] = [];
+  // A new template must cover every section; an edit may drop one on purpose.
+  const blocking: RenderIssue["kind"][] = generate ? [...BLOCKING_RENDER, "missingSections"] : BLOCKING_RENDER;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     output = extractSource(await call(prompt));
     if (!output.trim()) return { ok: false, reason: "empty", diagnostics: [], output, attempts: attempt };
@@ -165,7 +220,18 @@ export async function runSourceEdit(opts: {
       if (normalise(text) === normalise(before)) {
         return { ok: false, reason: "unchanged", diagnostics: [], output, attempts: attempt };
       }
-      const warnings = target === "content" ? contentWarnings(before, text) : templateWarnings(before, text);
+      const issues = target === "template" && check ? check(text) : [];
+      const toFix = issues.filter((i) => blocking.includes(i.kind));
+      if (toFix.length && attempt < maxAttempts) {
+        prompt = retryPrompt(
+          output,
+          toFix.map((i) => ({ severity: "error" as const, line: 0, col: 0, message: describeIssue(i) }))
+        );
+        continue;
+      }
+      const warnings: EditWarning[] =
+        target === "content" ? contentWarnings(before, text) : generate ? [] : templateWarnings(before, text);
+      warnings.push(...issues.map((issue) => ({ kind: "render" as const, issue })));
       return { ok: true, before, text, attempts: attempt, warnings };
     }
     prompt = retryPrompt(output, diagnostics);

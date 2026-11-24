@@ -18,6 +18,8 @@ import { ResumeEditor } from "./ResumeEditor";
 import { Card, CardContent } from "@/components/ui/card";
 import Loader from "@/assets/loader.svg?react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import type { AppLanguage } from "@/lib/i18n";
+import type { PaperFormat } from "@/renderer";
 
 type SidebarProps = {
   draft: ResumeData | null;
@@ -31,6 +33,9 @@ type SidebarProps = {
   setMode: (mode: EditorMode) => void;
   /** Sidebar CSS width (wider in Source mode). */
   width: string;
+  /** Paper size and resume language, for checking AI-written templates. */
+  format: PaperFormat;
+  language: AppLanguage;
 };
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -41,6 +46,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   mode,
   setMode,
   width,
+  format,
+  language,
 }) => {
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<string>(mode === "source" ? "source" : "resume");
@@ -285,7 +292,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
             >
-              <SourceEditor draft={draft} setDraft={setDraft} />
+              <SourceEditor draft={draft} setDraft={setDraft} format={format} language={language} />
             </m.div>
           )}
           {activeTab === "design" && (

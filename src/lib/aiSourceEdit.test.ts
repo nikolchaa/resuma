@@ -114,6 +114,48 @@ describe("runSourceEdit", () => {
   });
 });
 
+describe("runSourceEdit with a render check", () => {
+  const tpl = BUILTIN_TEMPLATES.modern;
+  const changed = tpl.replace("default=#00d9cb", "default=#1d4ed8");
+
+  it("asks the model to fix blocking render problems, then accepts the fix", async () => {
+    const better = tpl.replace("default=#00d9cb", "default=#2563eb");
+    const model = scripted(fence(changed), fence(better));
+    const check = (t: string) => (t.includes("#1d4ed8") ? [{ kind: "lowContrast" as const, values: ["EXPERIENCE"] }] : []);
+    const r = await runSourceEdit({ target: "template", instruction: "blue", source: tpl, call: model.call, check });
+    expect(r).toMatchObject({ ok: true, attempts: 2, warnings: [] });
+    expect(model.prompts[1]).toMatch(/hard to read against its background: "EXPERIENCE"/);
+  });
+
+  it("returns the last answer with its render problems as warnings when retries run out", async () => {
+    const check = () => [{ kind: "offPage" as const, count: 3 }, { kind: "morePages" as const, before: 1, after: 2 }];
+    const r = await runSourceEdit({ target: "template", instruction: "x", source: tpl, call: scripted(fence(changed), fence(changed)).call, check });
+    expect(r).toMatchObject({
+      ok: true,
+      attempts: 2,
+      warnings: [
+        { kind: "render", issue: { kind: "offPage", count: 3 } },
+        { kind: "render", issue: { kind: "morePages", before: 1, after: 2 } },
+      ],
+    });
+  });
+
+  it("only shows (doesn't retry) a missing section on an edit, but retries it when generating", async () => {
+    const check = () => [{ kind: "missingSections" as const, values: ["awards"] }];
+    const edit = scripted(fence(changed));
+    const r1 = await runSourceEdit({ target: "template", instruction: "x", source: tpl, call: edit.call, check });
+    expect(r1).toMatchObject({ ok: true, attempts: 1 });
+
+    const gen = scripted(fence(changed), fence(changed));
+    const r2 = await runSourceEdit({ target: "template", instruction: "Two columns", source: tpl, call: gen.call, check, generate: true });
+    expect(r2).toMatchObject({ ok: true, attempts: 2, warnings: [{ kind: "render", issue: { kind: "missingSections" } }] });
+    expect(gen.prompts[0]).toContain("You design a new resume template");
+    expect(gen.prompts[0]).toContain("Description: Two columns");
+    expect(gen.prompts[0]).toContain("\\cols[widths=");
+    expect(gen.prompts[1]).toMatch(/These sections render nothing: awards/);
+  });
+});
+
 describe("contentWarnings", () => {
   it("flags removed entries, new dates, new names and personal changes", () => {
     const edited = source

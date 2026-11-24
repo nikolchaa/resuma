@@ -8,7 +8,10 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import type { ResumeContent, ResumeData } from "@/lib/resumesStore";
 import { normalizeContent } from "@/lib/resumeMigration";
 import { showError, showSuccess, showWarning } from "@/lib/toastUtils";
-import { getTemplate, resolveTemplate } from "@/renderer";
+import { getTemplate, PaperFormat, resolveTemplate } from "@/renderer";
+import type { AppLanguage } from "@/lib/i18n";
+import { checkTemplate } from "@/renderer/check";
+import { useFonts } from "@/renderer/browser/useRenderedResume";
 import { mergeParsedContent, parseContent, printContent } from "@/renderer/rsm/content";
 import { templateSourceFor } from "@/templates";
 import { AiEditPanel } from "./AiEditPanel";
@@ -21,6 +24,8 @@ type SetDraft = (
 type Props = {
   draft: ResumeData | null;
   setDraft: SetDraft;
+  format: PaperFormat;
+  language: AppLanguage;
 };
 
 /** Parsed source over the current content, keeping fields outside the schema. */
@@ -30,9 +35,10 @@ const mergeContent = (current: ResumeContent, parsed: ResumeContent): ResumeCont
 /** Canonical text of some content; equal strings mean equal content. */
 const canonical = (content: ResumeContent) => printContent(normalizeContent(content));
 
-export const SourceEditor = ({ draft, setDraft }: Props) => {
+export const SourceEditor = ({ draft, setDraft, format, language }: Props) => {
   const { t } = useLanguage();
   const [tab, setTab] = useState<"content" | "template">("content");
+  const { fonts } = useFonts();
 
   // ---- content --------------------------------------------------------------
   const draftContentText = useMemo(() => (draft ? canonical(draft.content) : ""), [draft?.content]);
@@ -95,6 +101,16 @@ export const SourceEditor = ({ draft, setDraft }: Props) => {
 
   const resetTemplate = () =>
     setDraft((d) => (d ? { ...d, templateSource: undefined } : d), { checkpoint: true });
+
+  // AI-written templates are rendered with this resume (and a probe resume)
+  // before the user sees them; problems go back to the model or show as warnings.
+  const checkCandidate = useMemo(
+    () =>
+      fonts && draft
+        ? (candidate: string) => checkTemplate(candidate, draft, { format, language, fonts }, templateText)
+        : undefined,
+    [fonts, draft, format, language, templateText]
+  );
 
   // ---- shared ---------------------------------------------------------------
   const text = tab === "content" ? contentText : templateText;
@@ -196,6 +212,7 @@ export const SourceEditor = ({ draft, setDraft }: Props) => {
           source={text}
           hasErrors={errors > 0}
           jobDesc={draft.jobDesc}
+          check={tab === "template" ? checkCandidate : undefined}
           onAccept={(next) => {
             if (tab === "content") {
               setContentText(next);

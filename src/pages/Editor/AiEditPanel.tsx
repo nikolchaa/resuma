@@ -7,6 +7,7 @@ import { useAiEnabled } from "@/hooks/useAiEnabled";
 import { EditResult, EditTarget, EditWarning, runSourceEdit } from "@/lib/aiSourceEdit";
 import { runPrompt } from "@/lib/llmUtils";
 import { lineDiff, withContext } from "@/lib/lineDiff";
+import type { RenderIssue } from "@/renderer/check";
 
 type Props = {
   target: EditTarget;
@@ -14,6 +15,8 @@ type Props = {
   /** The source has errors: the model would get (and keep) a broken document. */
   hasErrors: boolean;
   jobDesc?: string;
+  /** Templates: renders a candidate and reports problems before it is shown. */
+  check?: (template: string) => RenderIssue[];
   /** Applies the accepted source (one undo step). */
   onAccept: (text: string) => void;
 };
@@ -21,10 +24,12 @@ type Props = {
 const fill = (s: string, vars: Record<string, string | number>) =>
   s.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? String(vars[k]) : m));
 
-export const AiEditPanel = ({ target, source, hasErrors, jobDesc, onAccept }: Props) => {
+export const AiEditPanel = ({ target, source, hasErrors, jobDesc, check, onAccept }: Props) => {
   const { t } = useLanguage();
   const aiEnabled = useAiEnabled();
   const [instruction, setInstruction] = useState("");
+  // Templates: change the current one, or design a new one from a description.
+  const [generate, setGenerate] = useState(false);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<EditResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +45,27 @@ export const AiEditPanel = ({ target, source, hasErrors, jobDesc, onAccept }: Pr
   const suggestions =
     target === "content"
       ? [t("ai.edit.suggest.content1"), t("ai.edit.suggest.content2")]
+      : generate
+      ? [t("ai.edit.suggest.generate1"), t("ai.edit.suggest.generate2")]
       : [t("ai.edit.suggest.template1"), t("ai.edit.suggest.template2")];
+
+  const sectionName = (key: string) =>
+    key === "custom" ? t("editor.sidebar.custom") : t(`template.section.${key}`);
+
+  const issueText = (issue: RenderIssue) => {
+    switch (issue.kind) {
+      case "missingSections":
+        return fill(t("ai.edit.warn.missingSections"), { values: issue.values.map(sectionName).join(", ") });
+      case "offPage":
+        return fill(t("ai.edit.warn.offPage"), { n: issue.count });
+      case "lowContrast":
+        return fill(t("ai.edit.warn.lowContrast"), { values: issue.values.map((v) => `“${v}”`).join(", ") });
+      case "tinyText":
+        return fill(t("ai.edit.warn.tinyText"), { size: issue.size });
+      case "morePages":
+        return fill(t("ai.edit.warn.morePages"), { before: issue.before, after: issue.after });
+    }
+  };
 
   const run = async () => {
     if (!instruction.trim() || hasErrors || busy) return;
@@ -50,7 +75,7 @@ export const AiEditPanel = ({ target, source, hasErrors, jobDesc, onAccept }: Pr
     setShowOutput(false);
     setRequestedFrom(source);
     try {
-      setResult(await runSourceEdit({ target, instruction, source, jobDesc, call: runPrompt }));
+      setResult(await runSourceEdit({ target, instruction, source, jobDesc, call: runPrompt, generate, check }));
     } catch (e) {
       setError((e as Error)?.message || String(e));
     } finally {
@@ -74,6 +99,8 @@ export const AiEditPanel = ({ target, source, hasErrors, jobDesc, onAccept }: Pr
         return fill(t("ai.edit.warn.newNumbers"), { values: w.values.join(", ") });
       case "sectionsDropped":
         return fill(t("ai.edit.warn.sectionsDropped"), { values: w.values.join(", ") });
+      case "render":
+        return issueText(w.issue);
     }
   };
 
@@ -82,10 +109,31 @@ export const AiEditPanel = ({ target, source, hasErrors, jobDesc, onAccept }: Pr
       <div className='flex items-center gap-2 font-semibold'>
         <Sparkles className='h-4 w-4 text-primary' /> {t("ai.edit.title")}
       </div>
+      {target === "template" && (
+        <div role='radiogroup' aria-label={t("ai.edit.title")} className='grid grid-cols-2 gap-1 rounded-lg bg-muted p-1'>
+          {([false, true] as const).map((g) => (
+            <button
+              key={String(g)}
+              role='radio'
+              aria-checked={generate === g}
+              disabled={busy}
+              onClick={() => {
+                setGenerate(g);
+                setResult(null);
+              }}
+              className={`rounded-md px-3 py-1 text-sm ${
+                generate === g ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t(g ? "ai.edit.mode.generate" : "ai.edit.mode.edit")}
+            </button>
+          ))}
+        </div>
+      )}
       <Textarea
         rows={2}
         value={instruction}
-        placeholder={t(`ai.edit.placeholder.${target}`)}
+        placeholder={t(generate && target === "template" ? "ai.edit.placeholder.generate" : `ai.edit.placeholder.${target}`)}
         onChange={(e) => setInstruction(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) run();
@@ -105,6 +153,9 @@ export const AiEditPanel = ({ target, source, hasErrors, jobDesc, onAccept }: Pr
         ))}
       </div>
       {target === "content" && <p className='text-xs text-muted-foreground'>{t("ai.edit.privacy")}</p>}
+      {target === "template" && generate && (
+        <p className='text-xs text-muted-foreground'>{t("ai.edit.generate.note")}</p>
+      )}
       {hasErrors && <p className='text-xs text-destructive'>{t("ai.edit.fixFirst")}</p>}
       <Button onClick={run} disabled={busy || hasErrors || !instruction.trim()} className='self-start'>
         {busy ? <Loader2 className='h-4 w-4 animate-spin mr-1' /> : <Sparkles className='h-4 w-4 mr-1' />}
