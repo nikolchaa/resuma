@@ -59,6 +59,15 @@ describe("compileTemplate", () => {
     expect(warn.diagnostics).toEqual([expect.objectContaining({ severity: "warning", message: expect.stringMatching(/only works on a column style/) })]);
   });
 
+  it("ignores a redeclared built-in font option with a warning", () => {
+    const { template, diagnostics } = compileTemplate(
+      wrap('\\option[font, type=choice, default=Inter, choices="Inter|Figtree"]\n\\header{\\p[s]{\\v{fullName}}}')
+    );
+    expect(template?.options.map((o) => o.name)).toEqual(["font"]);
+    expect(template?.options[0].type).toBe("font");
+    expect(diagnostics).toEqual([expect.objectContaining({ severity: "warning", message: expect.stringMatching(/built in/) })]);
+  });
+
   it("rejects unknown fields with the available ones listed", () => {
     const { template, diagnostics } = compileTemplate(wrap("\\header{\\p{\\v{nmae}}}"));
     expect(template).toBeNull();

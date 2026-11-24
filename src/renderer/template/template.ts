@@ -629,6 +629,11 @@ export function compileTemplate(source: string): TemplateResult {
           diag(cmd.pos, "`\\option` needs a name first, e.g. `\\option[accent, type=color, default=#00d9cb]`.");
           break;
         }
+        if (BUILTIN_OPTIONS.some((o) => o.name === name)) {
+          // Harmless: the built-in always wins, so don't fail the whole template over it.
+          diag(cmd.pos, `\`@${name}\` is built in (the resume's own setting); this \`\\option\` is ignored.`, "warning");
+          break;
+        }
         if (knownOptions().has(name)) {
           diag(cmd.pos, `Option \`${name}\` is already defined.`);
           break;

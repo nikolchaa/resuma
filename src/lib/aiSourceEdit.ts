@@ -47,7 +47,8 @@ const CONTENT_GUIDE = `Resuma Markup content format:
 - Only \\, { and } are special characters; write \\\\, \\{ and \\} to use them literally. % at the start of a line starts a comment. Do not use any other LaTeX commands.`;
 
 const TEMPLATE_GUIDE = `Resuma Markup template format (declarative; no scripting):
-- Start with \\template[id=..., name=..., version=1]. Optional \\option[name, type=color|size|font|choice, default=..., label="..."] values are used in styles as @name.
+- Start with \\template[id=..., name=..., version=1]. Optional \\option[name, type=color|size|font|choice, default=..., label="..."] values are used in styles as @name; a choice option also needs choices="a|b|c" including its default. @font is built in (the font the user picks): use it, never declare an option called font.
+- Write one command per line and indent nested blocks like the example, so every { has its matching }.
 - \\page{margin: 40; font-family: @font; font-size: 11; color: #1f2937} sets page styles. \\style[name]{property: value; ...} defines a style class.
 - Style properties: ${Object.keys(PROPERTIES).join(", ")}. Page properties: ${Object.keys(PAGE_PROPERTIES).join(", ")}. Numbers are points, colours are hex, fonts are Figtree, Inter or "Space Grotesk", font-weight is normal or bold, border-bottom is "<width> <colour>", keep is together or with-next.
 - \\header{...} renders personal fields: ${Object.keys(PERSONAL_FIELDS).join(", ")}.
@@ -113,7 +114,7 @@ function retryPrompt(previous: string, diagnostics: Diagnostic[]): string {
   return `Your answer could not be used because of these problems:
 ${problems}
 
-Fix them and return the complete corrected source again in a single \`\`\`rsm code block and nothing else.
+Fix them and return the complete corrected source again in a single \`\`\`rsm code block and nothing else. Write one command per line so every { has its matching }.
 
 Your previous answer:
 \`\`\`rsm
