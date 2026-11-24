@@ -92,6 +92,16 @@ describe("runSourceEdit", () => {
       .toMatchObject({ ok: false, reason: "empty" });
   });
 
+  it("reports a reply cut off while the model was still thinking", async () => {
+    const r = await runSourceEdit({
+      target: "template",
+      instruction: "x",
+      source: BUILTIN_TEMPLATES.modern,
+      call: scripted("<think>Let me plan this. First the example:\n```rsm\n" + BUILTIN_TEMPLATES.modern + "```\nthen").call,
+    });
+    expect(r).toMatchObject({ ok: false, reason: "cutOff", attempts: 1 });
+  });
+
   it("validates template edits with the template validator", async () => {
     const tpl = BUILTIN_TEMPLATES.modern;
     const good = tpl.replace("default=#00d9cb", "default=#1d4ed8");

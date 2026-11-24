@@ -36,7 +36,14 @@ export type EditResult =
       attempts: number;
       warnings: EditWarning[];
     }
-  | { ok: false; reason: "invalid" | "unchanged" | "empty"; diagnostics: Diagnostic[]; output: string; attempts: number };
+  | {
+      ok: false;
+      /** cutOff: the model ran out of context while still thinking. */
+      reason: "invalid" | "unchanged" | "empty" | "cutOff";
+      diagnostics: Diagnostic[];
+      output: string;
+      attempts: number;
+    };
 
 const CONTENT_GUIDE = `Resuma Markup content format:
 - Top level, in this order: \\education{...}, \\experience{...}, \\projects{...}, \\skills{...}, \\awards{...}, then optional \\custom[id="..."]{\\title{...} \\entry{...}...} and \\layout{...}. The personal details block is left out on purpose; do not add one.
@@ -209,7 +216,13 @@ export async function runSourceEdit(opts: {
   // A new template must cover every section; an edit may drop one on purpose.
   const blocking: RenderIssue["kind"][] = generate ? [...BLOCKING_RENDER, "missingSections"] : BLOCKING_RENDER;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    output = extractSource(await call(prompt));
+    const reply = await call(prompt);
+    // Thinking that never ends means the context filled up before the answer;
+    // anything "extracted" from such a reply is not an answer.
+    if (/<think>/i.test(reply) && !/<\/think>/i.test(reply)) {
+      return { ok: false, reason: "cutOff", diagnostics: [], output: reply.slice(-2000), attempts: attempt };
+    }
+    output = extractSource(reply);
     if (!output.trim()) return { ok: false, reason: "empty", diagnostics: [], output, attempts: attempt };
     diagnostics = validate(target, sent, output);
     if (!diagnostics.length) {
