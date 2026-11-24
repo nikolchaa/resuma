@@ -436,7 +436,14 @@ function placementOf(cols: TemplateColumns, kind: TemplateSectionKind): 0 | 1 {
  * sections are dropped.
  */
 export function sectionOrder(template: Template, content: ResumeContent, includeHidden = false): SectionKey[] {
-  const builtins = template.sections.map((s) => s.kind).filter((k): k is SectionKind => k !== "*");
+  let builtins = template.sections.map((s) => s.kind).filter((k): k is SectionKind => k !== "*");
+  const cols = template.columns;
+  if (cols) {
+    // The wider column's sections first: once the user reorders, this order
+    // is saved, and it should still read naturally in a single-column template.
+    const wide = cols.widths[0] > cols.widths[1] ? 0 : 1;
+    builtins = [...builtins.filter((k) => placementOf(cols, k) === wide), ...builtins.filter((k) => placementOf(cols, k) !== wide)];
+  }
   return orderedSections(content, builtins, includeHidden);
 }
 

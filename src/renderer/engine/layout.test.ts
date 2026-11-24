@@ -320,6 +320,13 @@ describe("renderResume", () => {
       expect(mainHeadings).toEqual(["LANGUAGES", "PROJECTS", "EXPERIENCE", "EDUCATION"]);
     });
 
+    it("orders sections main column first, so a saved order suits single-column templates too", async () => {
+      const { sectionOrder } = await import("./compile");
+      const { resolveTemplate } = await import("..");
+      const { template } = resolveTemplate({ theme: "sidebar" });
+      expect(sectionOrder(template, sidebar.content)).toEqual(["experience", "education", "projects", "skills", "awards"]);
+    });
+
     it("localises the sidebar labels", () => {
       const doc = renderResume(sidebar, { format: "A4", language: "rs", fonts });
       expect(texts(doc)).toEqual(expect.arrayContaining(["TELEFON", "VEŠTINE"]));
