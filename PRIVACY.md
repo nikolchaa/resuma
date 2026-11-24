@@ -77,7 +77,8 @@ Resuma can let AI apps on your computer that support the Model Context Protocol 
 While it is off, Resuma does not listen for connections at all. When it is on:
 
 - Resuma listens only on your own computer (`127.0.0.1`), only while it is open, and only answers apps that present the access token shown in that setting. You can make a new token at any time, which disconnects every app using the old one.
-- A connected app can list your resumes and read their content and templates, read the built-in and saved templates, and ask Resuma to check templates. It cannot change, create or delete anything.
+- A connected app can list your resumes and read their content and templates, read the built-in and saved templates, and ask Resuma to check templates. While a resume is open in the editor, it reads what you see there, including unsaved changes.
+- A connected app can **suggest** changes to a resume or suggest saving a template. Suggestions wait under **Suggested changes** until you apply or discard them; nothing is deleted. If you turn on **Apply changes without asking**, suggestions that raise no warnings are applied at once, and you can still undo them. Suggestions are kept only until Resuma is closed.
 - **Personal details** (name, email, phone, website and profile links) are left out of everything a connected app receives, including resume titles, unless you turn on sharing for that specific resume.
 
 What a connected app does with what it reads is up to that app and, if it uses a cloud AI service, that service. Section 3's advice applies: review the terms of any app and AI service before you connect it.
