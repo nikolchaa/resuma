@@ -300,7 +300,7 @@ const translations: Record<AppLanguage, Record<string, string>> = {
       "Layer count unavailable for this model - it will offload as many layers as fit.",
     "ai.autoGpuLayers": "Auto offload",
     "ai.autoGpuLayers.tooltip":
-      "Let llama.cpp decide how many layers to put on the GPU (passes -1).",
+      "Put as many layers on the GPU as its free memory allows, based on the model size and context size.",
     "ai.flashAttention": "Flash Attention",
     "ai.flashAttention.tooltip":
       "Enables Flash Attention for faster generation if supported.",
@@ -739,7 +739,7 @@ const translations: Record<AppLanguage, Record<string, string>> = {
       "Broj slojeva nije dostupan za ovaj model - prebaciće se koliko god stane.",
     "ai.autoGpuLayers": "Automatsko prebacivanje",
     "ai.autoGpuLayers.tooltip":
-      "Prepusti llama.cpp da odluči koliko slojeva ide na GPU (prosleđuje -1).",
+      "Prebaci na GPU onoliko slojeva koliko dozvoljava slobodna memorija, na osnovu veličine modela i konteksta.",
     "ai.flashAttention": "Flash Attention",
     "ai.flashAttention.tooltip":
       "Omogućava Flash Attention za brže generisanje ako je podržano.",

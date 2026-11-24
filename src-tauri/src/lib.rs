@@ -12,6 +12,7 @@ use tauri_plugin_prevent_default::Builder as PreventDefaultBuilder;
 use tauri_plugin_prevent_default::PlatformOptions;
 
 mod gguf;
+mod gpu_offload;
 mod huggingface;
 mod llm;
 mod remote;

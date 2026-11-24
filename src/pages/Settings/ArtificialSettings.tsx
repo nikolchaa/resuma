@@ -77,7 +77,7 @@ export const ArtificialSettings = ({
   // clamps to the real count at load time.
   const knownLayers = layerCounts[llm.model];
   const maxGpuLayers = knownLayers && knownLayers > 0 ? knownLayers : 999;
-  /** "-1" is the llama.cpp sentinel for "offload everything that fits". */
+  /** "-1" means Auto offload; the backend sizes it from free GPU memory. */
   const autoLayers = settings.gpuLayers === -1;
   const isCpuRuntime =
     getRuntimes(system).find((r) => r.runtime.name === llm.runtime)?.runtime
@@ -428,7 +428,7 @@ export const ArtificialSettings = ({
             <Label className='w-1/3'>
               {t("ai.autoGpuLayers")}{" "}
               {renderParamTooltip(
-                "gpu_layers=-1",
+                "gpu_layers=auto",
                 t("ai.autoGpuLayers.tooltip"),
               )}
             </Label>
@@ -439,7 +439,7 @@ export const ArtificialSettings = ({
                 updateSettings("llm", {
                   settings: {
                     ...settings,
-                    // "Auto" is spelled exactly how llama.cpp understands it.
+                    // Stored as -1; the backend resolves it to a layer count per request.
                     gpuLayers: checked
                       ? -1
                       : Math.min(Math.max(0, settings.gpuLayers), maxGpuLayers),
