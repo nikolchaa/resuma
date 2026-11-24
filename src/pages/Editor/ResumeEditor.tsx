@@ -108,13 +108,16 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
       <div className='flex items-center justify-between'>
         <Label className='w-1/3'>{t("field.template")}</Label>
         <Select
-          value={draft?.theme ?? "professional"}
-          onValueChange={(value) =>
+          value={draft?.templateSource ? "own" : draft?.theme ?? "professional"}
+          onValueChange={(value) => {
+            if (value === "own") return;
+            // Picking a built-in template drops the resume's own copy (undo restores it).
             setDraft({
               ...draft,
               theme: value,
-            })
-          }
+              templateSource: undefined,
+            });
+          }}
         >
           <SelectTrigger className='w-2/3 text-right'>
             <SelectValue placeholder={t("editor.template.select")} />
@@ -125,6 +128,9 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
             </SelectItem>
             <SelectItem value='modern'>{t("editor.template.modern")}</SelectItem>
             <SelectItem value='compact'>{t("editor.template.compact")}</SelectItem>
+            {draft?.templateSource && (
+              <SelectItem value='own'>{t("source.own")}</SelectItem>
+            )}
           </SelectContent>
         </Select>
       </div>

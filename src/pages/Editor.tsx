@@ -42,6 +42,8 @@ export const Editor = () => {
     if (isNew) return;
     const onKey = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+      // The source editor has its own text undo; resume history applies elsewhere.
+      if ((e.target as HTMLElement | null)?.closest?.(".cm-editor")) return;
       const key = e.key.toLowerCase();
       if (key === "z" && !e.shiftKey) {
         e.preventDefault();
@@ -58,6 +60,8 @@ export const Editor = () => {
   const [pdfFormat, setPdfFormat] = useState<"A4" | "LETTER">("A4"); // Default
   const [language, setLanguage] = useState<AppLanguage>("en");
   const [mode, setMode] = useState<EditorMode>("simple");
+  // Source mode needs room for the code editor.
+  const sidebarRem = mode === "source" ? 42 : 28;
 
   // Live preview: re-laid-out on every change, painted in place (no flash).
   const { doc, error: renderError } = useRenderedResume(
@@ -89,7 +93,8 @@ export const Editor = () => {
       const format = settings?.paperSize === "US" ? "LETTER" : "A4";
       setPdfFormat(format);
       setLanguage(normalizeLanguage(settings?.language));
-      setMode(settings?.editorMode === "design" ? "design" : "simple");
+      const m = settings?.editorMode;
+      setMode(m === "design" || m === "source" ? m : "simple");
     };
 
     fetchPaperSize();
@@ -172,6 +177,7 @@ export const Editor = () => {
         handleSave={handleSave}
         mode={mode}
         setMode={setMode}
+        width={sidebarRem}
       />
 
       {/* PDF Preview */}
@@ -194,7 +200,10 @@ export const Editor = () => {
             </div>
           )}
 
-          <div className='absolute bottom-8 left-[calc(calc(100vw/2)+calc(28rem/2))] -translate-x-1/2 bg-background border shadow-sm rounded-lg flex items-center gap-2 p-2 z-30 text-foreground'>
+          <div
+            className='absolute bottom-8 -translate-x-1/2 bg-background border shadow-sm rounded-lg flex items-center gap-2 p-2 z-30 text-foreground'
+            style={{ left: `calc(50vw + ${sidebarRem / 2}rem)` }}
+          >
             <Button
               size='sm'
               variant='outline'

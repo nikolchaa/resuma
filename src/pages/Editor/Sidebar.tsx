@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { DesignEditor } from "./DesignEditor";
 import { CustomSectionsEditor } from "./CustomSectionsEditor";
+import { SourceEditor } from "./SourceEditor";
 import type { EditorMode } from "@/contexts/OnboardingContext";
 import { ArrowLeft } from "lucide-react";
 import { PersonalEditor } from "./PersonalEditor";
@@ -20,11 +21,16 @@ import { useLanguage } from "@/contexts/LanguageContext";
 
 type SidebarProps = {
   draft: ResumeData | null;
-  setDraft: React.Dispatch<React.SetStateAction<ResumeData | null>>;
+  setDraft: (
+    action: React.SetStateAction<ResumeData | null>,
+    opts?: { checkpoint?: boolean }
+  ) => void;
   handleDiscard: () => void;
   handleSave: () => void;
   mode: EditorMode;
   setMode: (mode: EditorMode) => void;
+  /** Sidebar width in rem (wider in Source mode). */
+  width: number;
 };
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -34,23 +40,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
   handleSave,
   mode,
   setMode,
+  width,
 }) => {
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState<string>("resume");
+  const [activeTab, setActiveTab] = useState<string>(mode === "source" ? "source" : "resume");
 
   // Custom sections stay editable in Simple mode once a resume has any.
   const hasCustom = (draft?.content.custom?.length ?? 0) > 0;
-  const showCustomTab = mode === "design" || hasCustom;
+  const showCustomTab = mode !== "simple" || hasCustom;
+  const showDesignTab = mode !== "simple";
 
-  // Design-only tabs disappear in Simple mode; fall back to the first tab.
+  // Tabs that disappear with the mode fall back to the first tab; entering
+  // Source mode opens the Source tab.
   useEffect(() => {
     if (
-      (mode === "simple" && activeTab === "design") ||
-      (activeTab === "custom" && !showCustomTab)
+      (activeTab === "design" && !showDesignTab) ||
+      (activeTab === "custom" && !showCustomTab) ||
+      (activeTab === "source" && mode !== "source")
     ) {
       setActiveTab("resume");
     }
-  }, [mode, activeTab, showCustomTab]);
+  }, [mode, activeTab, showCustomTab, showDesignTab]);
+
+  useEffect(() => {
+    if (mode === "source") setActiveTab("source");
+  }, [mode]);
 
   const hiddenSections = new Set(draft?.content.layout?.hidden ?? []);
   const unhide = (key: string) =>
@@ -107,20 +121,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: "skills", label: t("editor.sidebar.skills") },
     { id: "awards", label: t("editor.sidebar.awards") },
     ...(showCustomTab ? [{ id: "custom", label: t("editor.sidebar.custom") }] : []),
-    ...(mode === "design" ? [{ id: "design", label: t("editor.sidebar.design") }] : []),
+    ...(showDesignTab ? [{ id: "design", label: t("editor.sidebar.design") }] : []),
+    ...(mode === "source" ? [{ id: "source", label: t("editor.sidebar.source") }] : []),
   ];
 
   return (
-    <div className='bg-background min-w-[28rem] w-[28rem] max-w-[28rem] border-r shadow-sm flex flex-col'>
-      <Logo className='w-full p-8 pb-4' />
+    <div
+      className='bg-background border-r shadow-sm flex flex-col shrink-0 transition-[width] duration-200'
+      style={{ width: `${width}rem` }}
+    >
+      <Logo className='w-full max-w-[28rem] self-center p-8 pb-4' />
 
       {/* Editor mode */}
       <div
         role='radiogroup'
         aria-label={t("editor.mode.label")}
-        className='mx-4 mb-2 grid grid-cols-2 gap-1 rounded-lg bg-muted p-1'
+        className='mx-4 mb-2 grid grid-cols-3 gap-1 rounded-lg bg-muted p-1'
       >
-        {(["simple", "design"] as const).map((m) => (
+        {(["simple", "design", "source"] as const).map((m) => (
           <button
             key={m}
             role='radio'
@@ -257,6 +275,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 setOpenLoader={setOpenLoader}
                 setCurrentSection={setCurrentSection}
               />
+            </m.div>
+          )}
+          {activeTab === "source" && (
+            <m.div
+              key='source'
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <SourceEditor draft={draft} setDraft={setDraft} />
             </m.div>
           )}
           {activeTab === "design" && (

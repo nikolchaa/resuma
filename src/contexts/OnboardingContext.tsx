@@ -7,8 +7,11 @@ import {
   RemoteSettings,
 } from "@/lib/resolveProvider";
 
-/** Simple = forms only; Design adds template options, section layout and custom sections. */
-export type EditorMode = "simple" | "design";
+/**
+ * Simple = forms only; Design adds template options, section layout and custom
+ * sections; Source adds .rsm source editing and AI edits of content and template.
+ */
+export type EditorMode = "simple" | "design" | "source";
 
 export type SettingsType = {
   app: {

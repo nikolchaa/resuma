@@ -259,6 +259,7 @@ export const BasicSettings = ({
           <SelectContent>
             <SelectItem value='simple'>{t("editor.mode.simple")}</SelectItem>
             <SelectItem value='design'>{t("editor.mode.design")}</SelectItem>
+            <SelectItem value='source'>{t("editor.mode.source")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
