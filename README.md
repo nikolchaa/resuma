@@ -35,6 +35,7 @@ Powered by Tauri, Rust, React (TSX), and llama.cpp, Resuma brings the power of p
 - ☁️ Optional cloud APIs (Anthropic, OpenAI, Gemini, DeepSeek, Kimi, or a custom endpoint) using your own key
 - 🖧 Optional local model hosts (Ollama, LM Studio, or any OpenAI-compatible endpoint)
 - 🔑 API keys kept in the OS credential manager, never in the settings file or its exports
+- 🔌 Optional MCP connection so other AI apps on your computer can read your resumes and check templates (off by default, token-protected, personal details hidden unless you share them)
 - 🚀 Cross-platform support: Windows, macOS, and Linux
 - 🔍 Advanced search and filtering for resume entries
 - 🎨 Theming support with light/dark modes

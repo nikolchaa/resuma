@@ -1,6 +1,6 @@
 # Privacy Policy
 
-Effective Date: August 4, 2026 (previously June 14, 2025)
+Effective Date: November 24, 2026 (previously August 4, 2026)
 
 This Privacy Policy describes how Resuma handles your data.
 
@@ -8,7 +8,7 @@ This Privacy Policy describes how Resuma handles your data.
 
 ## 1. Data Collection
 
-Resuma is a local-first application. By default, **no personal data is collected, transmitted, or stored on external servers**. Sending resume content to an external AI provider is possible, but only after you explicitly configure one - see [Section 3](#3-optional-ai-providers). Showing a generic status on your Discord profile is likewise opt-in - see [Section 4](#4-optional-discord-presence).
+Resuma is a local-first application. By default, **no personal data is collected, transmitted, or stored on external servers**. Sending resume content to an external AI provider is possible, but only after you explicitly configure one - see [Section 3](#3-optional-ai-providers). Showing a generic status on your Discord profile is likewise opt-in - see [Section 4](#4-optional-discord-presence) - and so is letting other AI apps on your computer read your resumes - see [Section 5](#5-optional-connection-for-other-ai-apps).
 
 All resume content, settings, model files, and AI runtime binaries are stored locally on your device:
 
@@ -70,19 +70,33 @@ While it is off, Resuma does not connect to Discord at all. When it is on, Resum
 
 ---
 
-## 5. Third-Party Libraries
+## 5. Optional Connection for Other AI Apps
+
+Resuma can let AI apps on your computer that support the Model Context Protocol (MCP) - for example a desktop AI assistant or a coding tool - work with your resumes. This is **off by default** and is turned on or off in **Settings → AI Settings → Other AI apps**.
+
+While it is off, Resuma does not listen for connections at all. When it is on:
+
+- Resuma listens only on your own computer (`127.0.0.1`), only while it is open, and only answers apps that present the access token shown in that setting. You can make a new token at any time, which disconnects every app using the old one.
+- A connected app can list your resumes and read their content and templates, read the built-in and saved templates, and ask Resuma to check templates. It cannot change, create or delete anything.
+- **Personal details** (name, email, phone, website and profile links) are left out of everything a connected app receives, including resume titles, unless you turn on sharing for that specific resume.
+
+What a connected app does with what it reads is up to that app and, if it uses a cloud AI service, that service. Section 3's advice applies: review the terms of any app and AI service before you connect it.
+
+---
+
+## 6. Third-Party Libraries
 
 Resuma uses various open-source libraries and tools listed in [THIRD_PARTY.md](./THIRD_PARTY.md). These tools do **not** collect data unless explicitly stated.
 
 ---
 
-## 6. Your Control
+## 7. Your Control
 
 You have full control over all your data. You may delete files, settings, or models at any time using your file system or the in-app UI.
 
 ---
 
-## 7. Contact
+## 8. Contact
 
 For questions or privacy-related concerns, contact: [contact@nikolchaa.com](mailto:contact@nikolchaa.com)
 

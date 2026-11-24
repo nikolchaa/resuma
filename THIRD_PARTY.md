@@ -14,6 +14,8 @@ This project, **Resuma**, makes use of various third-party open-source libraries
 | pdf-lib                  | MIT     | [https://github.com/Hopding/pdf-lib](https://github.com/Hopding/pdf-lib)                       |
 | @pdf-lib/fontkit         | MIT     | [https://github.com/Hopding/fontkit](https://github.com/Hopding/fontkit)                       |
 | CodeMirror 6 (`codemirror`, `@codemirror/*`) | MIT | [https://codemirror.net](https://codemirror.net)                                  |
+| @modelcontextprotocol/sdk | MIT    | [https://github.com/modelcontextprotocol/typescript-sdk](https://github.com/modelcontextprotocol/typescript-sdk) |
+| zod                      | MIT     | [https://zod.dev](https://zod.dev)                                                             |
 | motion                   | MIT     | [https://motion.dev](https://motion.dev)                                                       |
 | canvas-confetti          | MIT     | [https://github.com/catdad/canvas-confetti](https://github.com/catdad/canvas-confetti)         |
 | lucide-react             | ISC     | [https://github.com/lucide-icons/lucide](https://github.com/lucide-icons/lucide)               |
@@ -48,6 +50,8 @@ This project, **Resuma**, makes use of various third-party open-source libraries
 | dirs / dirs-next             | MIT              | [https://github.com/dirs-dev/dirs-rs](https://github.com/dirs-dev/dirs-rs)                                                                       |
 | discord-rich-presence        | MIT              | [https://github.com/vionya/discord-rich-presence](https://github.com/vionya/discord-rich-presence)                                               |
 | lazy_static                  | MIT / Apache 2.0 | [https://github.com/rust-lang-nursery/lazy-static.rs](https://github.com/rust-lang-nursery/lazy-static.rs)                                       |
+| tiny_http                    | MIT / Apache 2.0 | [https://github.com/tiny-http/tiny-http](https://github.com/tiny-http/tiny-http)                                                                 |
+| uuid                         | MIT / Apache 2.0 | [https://github.com/uuid-rs/uuid](https://github.com/uuid-rs/uuid)                                                                               |
 
 ### AI & Model Dependencies
 
