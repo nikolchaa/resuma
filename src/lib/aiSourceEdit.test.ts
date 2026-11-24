@@ -135,6 +135,11 @@ describe("contentWarnings on numbers", () => {
     const edited = source.replace("cut invoice time by 40%", "cut invoice time by 70%").replace("2,000 customers", "5,000 customers");
     expect(contentWarnings(source, edited)).toEqual([{ kind: "newNumbers", values: ["5,000", "70%"] }]);
   });
+
+  it("doesn't treat labels like C1 or v2 as numbers", () => {
+    const edited = source.replace("\\item{Rust}", "\\item{Rust}\\item{English C1}\\item{OAuth2}");
+    expect(contentWarnings(source, edited)).toEqual([]);
+  });
 });
 
 describe("lineDiff", () => {

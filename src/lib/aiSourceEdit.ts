@@ -236,7 +236,8 @@ export function contentWarnings(beforeSource: string, afterSource: string): Edit
   if (newNames.length) warnings.push({ kind: "newNames", values: newNames });
 
   // Numbers in free text ("40%" → "70%", "2,000 customers") that weren't there before.
-  const numbers = (s: string) => new Set(s.match(/\d+(?:[.,]\d+)*%?/g) ?? []);
+  // Standalone numbers only: "C1", "B2", "v2" or "Q3" are labels, not claims.
+  const numbers = (s: string) => new Set(s.match(/(?<![A-Za-z\d])\d+(?:[.,]\d+)*%?(?![A-Za-z])/g) ?? []);
   const oldNumbers = numbers(beforeSource);
   const inNewDates = new Set(newDates.flatMap((d) => [...numbers(d)]));
   const newNumbers = [...numbers(afterSource)].filter((n) => !oldNumbers.has(n) && !inNewDates.has(n));
