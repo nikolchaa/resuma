@@ -292,17 +292,35 @@ export function layoutDocument({ boxes, page, margin, fonts }: LayoutInput): {
 
   // ---- pagination ---------------------------------------------------------
 
-  const flows = boxes.flatMap((b) => flatten(b, ml, contentWidth));
   const top = mt;
   const bottom = page.height - mb;
-  const bodyHeight = bottom - top;
+  const flows = boxes.flatMap((b) => flatten(b, ml, contentWidth));
+  const pageItems = paginate(flows, top, top, bottom);
 
-  const pages: LaidOutPage[] = [];
+  const pages: LaidOutPage[] = pageItems.map((items, index) => ({
+    index,
+    width: page.width,
+    height: page.height,
+    items,
+  }));
+  if (pages.length === 0) pages.push({ index: 0, width: page.width, height: page.height, items: [] });
+
+  return { pages, fontKeys: [...usedFonts] };
+}
+
+/**
+ * Places flows on pages, honouring keep-with-next. The first page starts at
+ * `firstTop` (below a full-width header, say), later pages at `top`.
+ * Returns the items of each page; trailing empty pages are not included.
+ */
+function paginate(flows: Flow[], firstTop: number, top: number, bottom: number): DisplayItem[][] {
+  const bodyHeight = bottom - top;
+  const pages: DisplayItem[][] = [];
   let items: DisplayItem[] = [];
-  let y = top;
+  let y = firstTop;
   let atTop = true;
   const newPage = () => {
-    pages.push({ index: pages.length, width: page.width, height: page.height, items });
+    pages.push(items);
     items = [];
     y = top;
     atTop = true;
@@ -335,7 +353,6 @@ export function layoutDocument({ boxes, page, margin, fonts }: LayoutInput): {
     y += f.h;
     atTop = false;
   }
-  if (items.length || pages.length === 0) newPage();
-
-  return { pages, fontKeys: [...usedFonts] };
+  if (items.length) newPage();
+  return pages;
 }
