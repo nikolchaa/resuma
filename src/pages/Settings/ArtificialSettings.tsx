@@ -12,7 +12,11 @@ import { RotateCcw, Info, Download, Check, Trash2, X } from "lucide-react";
 import { SettingsType } from "@/contexts/OnboardingContext";
 import { useSystem } from "@/contexts/SystemContext";
 import { CardDescription, CardTitle } from "@/components/ui/card";
-import { getRuntimes } from "@/lib/resolveRuntime";
+import {
+  getRuntimes,
+  isRuntimeInstalled,
+  runtimeDownloadUrls,
+} from "@/lib/resolveRuntime";
 import { Badge } from "@/components/ui/badge";
 import { DownloadState } from "@/types/download";
 import { DownloadStatusMap } from "@/types/downloadStatus";
@@ -65,6 +69,8 @@ export const ArtificialSettings = ({
     {},
   );
   const [deletingRuntime, setDeletingRuntime] = useState<string | null>(null);
+  /** Downloaded runtimes missing a required file; shown as needing a re-download. */
+  const [incompleteRuntimes, setIncompleteRuntimes] = useState<string[]>([]);
   const [availableRuntimes, setAvailableRuntimes] = useState<RuntimeEntry[]>(
     [],
   );
@@ -149,22 +155,39 @@ export const ArtificialSettings = ({
       );
     }
 
+    // A folder alone is not enough: an install can predate a required part
+    // (the CUDA runtime without its cudart DLLs). Incomplete installs stay
+    // downloadable so Download repairs them in place.
+    const known = getRuntimes(system).map((entry) => entry.runtime);
+    const incomplete = new Set<string>();
+    await Promise.all(
+      known
+        .filter(
+          (rt) =>
+            runtimeFolders.includes(rt.name) && (rt.requiredFiles?.length ?? 0) > 0,
+        )
+        .map(async (rt) => {
+          if (!(await isRuntimeInstalled(rt))) incomplete.add(rt.name);
+        }),
+    );
+    const installed = runtimeFolders.filter((name) => !incomplete.has(name));
+
     // Update status map
     const runtimeReadyMap: DownloadStatusMap = {};
-    runtimeFolders.forEach((name) => {
+    installed.forEach((name) => {
       runtimeReadyMap[name] = { state: "ready", progress: 100 };
     });
 
-    setDownloadStatusMap((prev) => ({
-      ...runtimeReadyMap,
-      ...prev,
-    }));
+    setDownloadStatusMap((prev) => {
+      const next = { ...runtimeReadyMap, ...prev };
+      for (const name of incomplete) {
+        if (next[name]?.state === "ready") delete next[name];
+      }
+      return next;
+    });
+    setIncompleteRuntimes([...incomplete]);
 
-    const runtimes = getRuntimes(system)
-      .filter((entry) => runtimeFolders.includes(entry.runtime.name))
-      .map((entry) => entry.runtime);
-
-    setAvailableRuntimes(runtimes);
+    setAvailableRuntimes(known.filter((rt) => installed.includes(rt.name)));
   }, [system, t]);
 
   useEffect(() => {
@@ -206,7 +229,7 @@ export const ArtificialSettings = ({
 
   const handleDownloadClick = async (
     assetName: string,
-    assetUrl: string,
+    assetUrls: string[],
     assetType: "runtime" | "model",
   ) => {
     if (!assetName) return;
@@ -222,7 +245,7 @@ export const ArtificialSettings = ({
     try {
       await invoke("download_and_extract", {
         assetName,
-        assetUrls: [assetUrl],
+        assetUrls,
         noExtract: assetType === "model",
         assetType,
       });
@@ -568,6 +591,13 @@ export const ArtificialSettings = ({
                       </>
                     )}
                   </Badge>
+                  {incompleteRuntimes.includes(entry.runtime.name) &&
+                    downloadStatusMap[entry.runtime.name]?.state !==
+                      "ready" && (
+                      <Badge variant='destructive' className='w-fit'>
+                        {t("ai.runtime.incomplete")}
+                      </Badge>
+                    )}
                 </div>
 
                 <div className='flex gap-2'>
@@ -598,7 +628,7 @@ export const ArtificialSettings = ({
                       onClick={() =>
                         handleDownloadClick(
                           entry.runtime.name,
-                          entry.runtime.download,
+                          runtimeDownloadUrls(entry.runtime),
                           "runtime",
                         )
                       }

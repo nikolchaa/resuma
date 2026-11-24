@@ -33,7 +33,11 @@ import {
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAdaptiveSettings, LLMSettings } from "@/lib/defaultSettings";
-import { getRuntimes } from "@/lib/resolveRuntime";
+import {
+  getRuntimes,
+  isRuntimeInstalled,
+  runtimeDownloadUrls,
+} from "@/lib/resolveRuntime";
 import {
   RuntimeEntry,
   selectRecommendedRuntime,
@@ -159,7 +163,7 @@ const Artificial = () => {
     const checkRuntimeExistence = async () => {
       if (!runtime?.name) return;
 
-      const assetExists = await checkAssetReady("runtimes", runtime.name);
+      const assetExists = await isRuntimeInstalled(runtime);
 
       if (assetExists) {
         setDownloadStatusMap((prev) => ({
@@ -394,7 +398,7 @@ const Artificial = () => {
                 if (runtime?.name && runtime?.download) {
                   handleDownloadClick(
                     runtime.name,
-                    [runtime.download],
+                    runtimeDownloadUrls(runtime),
                     "runtime"
                   );
                 }

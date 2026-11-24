@@ -53,6 +53,10 @@
     "name": "llama-cuda",
     "label": "NVIDIA CUDA",
     "download": "https://github.com/ggml-org/llama.cpp/releases/download/b5588/llama-b5588-bin-win-cuda-12.4-x64.zip",
+    "extraDownloads": [
+      "https://github.com/ggml-org/llama.cpp/releases/download/b5588/cudart-llama-bin-win-cuda-12.4-x64.zip"
+    ],
+    "requiredFiles": ["cudart64_12.dll", "cublas64_12.dll", "cublasLt64_12.dll"],
     "platform": "windows",
     "backend": "cuda",
     "compatibleGpus": [

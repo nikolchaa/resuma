@@ -56,18 +56,34 @@ async fn download_and_extract(
             return;
         }
 
-        // Sharded models download several files into one folder; progress is
-        // reported across every known byte so the bar stays meaningful.
-        let mut grand_total: u64 = 0;
+        // Sharded models and multi-archive runtimes download several files
+        // into one folder; progress is reported across every byte. Sizes are
+        // asked for up front so the bar does not jump back when the next
+        // file starts; any unknown size is added once its download begins.
+        let client = Client::new();
+        let mut known_sizes: Vec<Option<u64>> = Vec::with_capacity(asset_urls.len());
+        for url in &asset_urls {
+            let size = match client.head(url).send().await {
+                Ok(res) if res.status().is_success() => res
+                    .headers()
+                    .get(reqwest::header::CONTENT_LENGTH)
+                    .and_then(|v| v.to_str().ok())
+                    .and_then(|v| v.parse::<u64>().ok()),
+                _ => None,
+            };
+            known_sizes.push(size);
+        }
+        let mut grand_total: u64 = known_sizes.iter().flatten().sum();
         let mut downloaded_total: u64 = 0;
         let mut last_file_path: Option<PathBuf> = None;
+        let mut downloaded_files: Vec<PathBuf> = Vec::new();
 
-        for url in &asset_urls {
+        for (index, url) in asset_urls.iter().enumerate() {
             let filename = url.split('/').last().unwrap_or("download.zip");
             let file_path = base_dir.join(filename);
             last_file_path = Some(file_path.clone());
+            downloaded_files.push(file_path.clone());
 
-            let client = Client::new();
             let response = match client.get(url).send().await {
                 Ok(res) => res,
                 Err(e) => {
@@ -79,7 +95,9 @@ async fn download_and_extract(
                 }
             };
 
-            grand_total += response.content_length().unwrap_or(0);
+            if known_sizes[index].is_none() {
+                grand_total += response.content_length().unwrap_or(0);
+            }
             let mut stream = response.bytes_stream();
             let mut file = match File::create(&file_path) {
                 Ok(f) => f,
@@ -130,15 +148,18 @@ async fn download_and_extract(
                 .unwrap_or_default(),
         );
 
-        // A multi-part model has several zip-less files; extraction only ever
-        // makes sense for the single-file runtime archives.
-        if !no_extract && asset_urls.len() == 1 && last_file_path.is_some() {
-            if let Err(e) = extract_zip(&last_file_path.unwrap(), &base_dir) {
-                let _ = window.emit(
-                    &format!("extract_error:{}", asset_name),
-                    format!("Extraction failed: {e}"),
-                );
-                return;
+        // Runtimes may come as several archives extracted into one folder
+        // (the CUDA build plus its cudart/cuBLAS DLLs); models are never
+        // extracted, sharded or not.
+        if !no_extract && !downloaded_files.is_empty() {
+            for zip_path in &downloaded_files {
+                if let Err(e) = extract_zip(zip_path, &base_dir) {
+                    let _ = window.emit(
+                        &format!("extract_error:{}", asset_name),
+                        format!("Extraction failed: {e}"),
+                    );
+                    return;
+                }
             }
             let _ = window.emit(
                 &format!("extract_complete:{}", asset_name),
@@ -180,15 +201,26 @@ fn extract_zip(zip_path: &PathBuf, extract_to: &PathBuf) -> io::Result<()> {
     Ok(())
 }
 
+/// True when the asset folder exists and holds every `required_files` entry
+/// (e.g. the CUDA runtime's cudart DLLs, which ship in a separate archive
+/// that older app versions never downloaded).
 #[tauri::command]
-async fn check_asset_ready(asset_type: String, asset_name: String) -> Result<bool, String> {
+async fn check_asset_ready(
+    asset_type: String,
+    asset_name: String,
+    required_files: Option<Vec<String>>,
+) -> Result<bool, String> {
     let base_dir = dirs::data_dir()
         .ok_or_else(|| "Failed to find data directory".to_string())?
         .join("com.resuma.app")
         .join(asset_type)
         .join(asset_name);
 
-    Ok(base_dir.exists())
+    Ok(base_dir.exists()
+        && required_files
+            .unwrap_or_default()
+            .iter()
+            .all(|file| base_dir.join(file).is_file()))
 }
 
 /// Total bytes on disk for one downloaded asset folder, following
