@@ -1,13 +1,14 @@
 //! Turns the "Auto offload" GPU-layers setting into a real `--gpu-layers`
-//! count.
+//! value.
 //!
-//! The setting is stored as `-1`, but the bundled llama.cpp (b5588) reads
-//! `--gpu-layers -1` as "keep the default", and that default is 0 layers on
-//! CUDA, Vulkan and HIP builds (only Metal builds default to all layers). So
-//! passing `-1` through ran every request on the CPU. Here "auto" asks the
-//! runtime which devices it can use (`llama-cli --list-devices`) and sizes
-//! the offload from the device memory, the model file size and the KV cache
-//! for the configured context.
+//! The setting is stored as `-1`. Current llama.cpp builds (the pinned
+//! b12675) understand `--gpu-layers auto` and fit layers to free memory
+//! themselves, so they get exactly that. Older installs (b5588, from earlier
+//! app versions) read `-1` as "keep the default", which is 0 layers on
+//! CUDA, Vulkan and HIP builds, so passing it through ran every request on
+//! the CPU. For those, "auto" asks the runtime which devices it can use
+//! (`--list-devices`) and sizes the offload from the device memory, the
+//! model file size and the KV cache for the configured context.
 
 use std::path::Path;
 
@@ -152,6 +153,9 @@ pub enum AutoLayers {
     /// Keep llama.cpp's own default (`-1`), as before this module existed:
     /// no usable device was listed, or the runtime could not be probed.
     LlamaDefault,
+    /// Pass `--gpu-layers auto`: the build fits layers to free memory itself
+    /// (and skips integrated GPUs when a discrete one is present).
+    Fit,
 }
 
 /// The runtime ships a GPU backend, but it found no device. For CUDA this
@@ -159,16 +163,25 @@ pub enum AutoLayers {
 /// an NVIDIA driver too old for CUDA 12.
 pub const CUDA_NO_DEVICE_ERROR: &str = "The NVIDIA CUDA runtime found no usable GPU, so the AI would run on the CPU only. Its CUDA libraries are probably missing: re-download the NVIDIA CUDA runtime in Settings > AI, update the NVIDIA driver, or switch the runtime to Vulkan.";
 
-/// Resolves "auto" for one request.
+/// Resolves "auto" for one request. `self_fitting` builds (the pinned
+/// b12675 and newer) size the offload themselves with `--fit`, so they only
+/// get the CUDA device check; older builds get the estimate below.
 pub fn resolve_auto(
     runtime: &str,
     runtime_path: &Path,
     model_dir: &Path,
     model_path: &Path,
     ctx_size: Option<u64>,
+    self_fitting: bool,
 ) -> Result<AutoLayers, String> {
-    // Metal builds already treat -1 as "all layers" on unified memory.
-    if cfg!(target_os = "macos") {
+    let is_cuda = runtime.to_lowercase().contains("cuda");
+
+    if self_fitting && !is_cuda {
+        return Ok(AutoLayers::Fit);
+    }
+
+    // Legacy Metal builds already treat -1 as "all layers".
+    if !self_fitting && cfg!(target_os = "macos") {
         return Ok(AutoLayers::LlamaDefault);
     }
 
@@ -179,16 +192,23 @@ pub fn resolve_auto(
         Ok(output) => output,
         Err(e) => {
             eprintln!("[llm] could not list devices for auto offload: {e}");
-            return Ok(AutoLayers::LlamaDefault);
+            return Ok(if self_fitting {
+                AutoLayers::Fit
+            } else {
+                AutoLayers::LlamaDefault
+            });
         }
     };
 
     let devices = parse_devices(&String::from_utf8_lossy(&output.stdout));
     if devices.is_empty() {
-        if runtime.to_lowercase().contains("cuda") {
+        if is_cuda {
             return Err(CUDA_NO_DEVICE_ERROR.to_string());
         }
         return Ok(AutoLayers::LlamaDefault);
+    }
+    if self_fitting {
+        return Ok(AutoLayers::Fit);
     }
 
     // llama.cpp splits layers across every device it lists.
