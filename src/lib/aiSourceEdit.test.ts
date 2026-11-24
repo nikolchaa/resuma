@@ -76,6 +76,9 @@ describe("runSourceEdit", () => {
     const r = await runSourceEdit({ target: "content", instruction: "x", source, call: model.call });
     expect(r).toMatchObject({ ok: true, attempts: 2 });
     expect(model.prompts[1]).toMatch(/Unknown field `\\employer`/);
+    // Calls are stateless: the retry carries the guide, the instruction and the previous answer.
+    expect(model.prompts[1].startsWith(model.prompts[0])).toBe(true);
+    expect(model.prompts[1]).toContain("\\employer{Acme}");
   });
 
   it("gives up after two invalid replies without applying anything", async () => {

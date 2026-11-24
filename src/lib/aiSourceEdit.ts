@@ -127,21 +127,28 @@ ${source}
 \`\`\``;
 }
 
-function retryPrompt(previous: string, diagnostics: Diagnostic[]): string {
+/**
+ * The original request again (each call is stateless: without it the model
+ * would have lost the format guide and the instruction), then the previous
+ * answer and what was wrong with it.
+ */
+function retryPrompt(original: string, previous: string, diagnostics: Diagnostic[]): string {
   const problems = diagnostics
     .filter((d) => d.severity === "error")
     .slice(0, 12)
     .map((d) => (d.line > 0 ? `- line ${d.line}, column ${d.col}: ${d.message}` : `- ${d.message}`))
     .join("\n");
-  return `Your answer could not be used because of these problems:
-${problems}
+  return `${original}
 
-Fix them and return the complete corrected source again in a single \`\`\`rsm code block and nothing else. Write one command per line so every { has its matching }.
-
-Your previous answer:
+You already answered this once:
 \`\`\`rsm
 ${previous}
-\`\`\``;
+\`\`\`
+
+That answer could not be used because of these problems:
+${problems}
+
+Fix them and return the complete corrected source in a single \`\`\`rsm code block and nothing else. Write one command per line so every { has its matching }.`;
 }
 
 /** Pulls the .rsm source out of a model reply (code block, reasoning tags, chatter). */
@@ -225,7 +232,8 @@ export async function runSourceEdit(opts: {
   }
   const before = target === "content" ? printContent(parseContent(source).content!) : source;
 
-  let prompt = generate ? buildGeneratePrompt(instruction, sent) : buildPrompt(target, instruction, sent, jobDesc);
+  const original = generate ? buildGeneratePrompt(instruction, sent) : buildPrompt(target, instruction, sent, jobDesc);
+  let prompt = original;
   let output = "";
   let diagnostics: Diagnostic[] = [];
   // A new template must cover every section; an edit may drop one on purpose.
@@ -253,6 +261,7 @@ export async function runSourceEdit(opts: {
       const toFix = issues.filter((i) => blocking.includes(i.kind));
       if (toFix.length && attempt < maxAttempts) {
         prompt = retryPrompt(
+          original,
           output,
           toFix.map((i) => ({ severity: "error" as const, line: 0, col: 0, message: describeIssue(i) }))
         );
@@ -263,7 +272,7 @@ export async function runSourceEdit(opts: {
       warnings.push(...issues.map((issue) => ({ kind: "render" as const, issue })));
       return { ok: true, before, text, attempts: attempt, warnings };
     }
-    prompt = retryPrompt(output, diagnostics);
+    prompt = retryPrompt(original, output, diagnostics);
   }
   return { ok: false, reason: "invalid", diagnostics, output, attempts: maxAttempts };
 }
