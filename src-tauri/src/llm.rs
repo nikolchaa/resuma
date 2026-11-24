@@ -61,11 +61,17 @@ pub async fn call_llm(prompt: String, llm_settings: Value) -> Result<String, Str
         }
     }
 
+    // The prompt goes to llama-cli as a UTF-8 file, not as a command-line
+    // argument: on Windows, arguments pass through the ANSI code page, which
+    // turns Cyrillic, "—", "•" etc. into "?", and the command line is capped
+    // at 32K characters, which a full resume prompt can approach.
+    let prompt_file = PromptFile::create(&prompt)?;
+
     let mut args = vec![
         "--model".to_string(),
         model_path.to_string_lossy().to_string(),
-        "--prompt".to_string(),
-        prompt.clone(),
+        "--file".to_string(),
+        prompt_file.path.to_string_lossy().to_string(),
         "--jinja".to_string(),
         "-st".to_string(),
         "--simple-io".to_string(),
@@ -126,6 +132,8 @@ pub async fn call_llm(prompt: String, llm_settings: Value) -> Result<String, Str
             .map_err(|e| format!("Failed to execute process: {}", e))?
     };
 
+    drop(prompt_file);
+
     if !output.status.success() {
         return Err(format!(
             "LLM process exited with error: {}",
@@ -139,6 +147,35 @@ pub async fn call_llm(prompt: String, llm_settings: Value) -> Result<String, Str
         Ok(extracted)
     } else {
         Ok(stdout.trim().to_string())
+    }
+}
+
+/// A temporary UTF-8 file holding one prompt; removed when dropped, also on
+/// early returns and errors.
+struct PromptFile {
+    path: PathBuf,
+}
+
+impl PromptFile {
+    fn create(prompt: &str) -> Result<Self, String> {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        let path = std::env::temp_dir().join(format!(
+            "resuma-prompt-{}-{}.txt",
+            std::process::id(),
+            nanos
+        ));
+        std::fs::write(&path, prompt.as_bytes())
+            .map_err(|e| format!("Failed to write the prompt file: {}", e))?;
+        Ok(Self { path })
+    }
+}
+
+impl Drop for PromptFile {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.path);
     }
 }
 
