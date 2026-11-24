@@ -59,7 +59,9 @@ export const AiEditPanel = ({ target, source, hasErrors, jobDesc, check, onAccep
       case "offPage":
         return fill(t("ai.edit.warn.offPage"), { n: issue.count });
       case "lowContrast":
-        return fill(t("ai.edit.warn.lowContrast"), { values: issue.values.map((v) => `“${v}”`).join(", ") });
+        return issue.values.length
+          ? fill(t("ai.edit.warn.lowContrast"), { values: issue.values.map((v) => `“${v}”`).join(", ") })
+          : t("ai.edit.warn.lowContrastAny");
       case "tinyText":
         return fill(t("ai.edit.warn.tinyText"), { size: issue.size });
       case "morePages":

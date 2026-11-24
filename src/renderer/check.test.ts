@@ -23,15 +23,32 @@ describe("checkTemplate", () => {
     const white = BUILTIN_TEMPLATES.professional.replace("color: #1f2937}", "color: #fafafa}");
     const issue = checkTemplate(white, sampleResume(), opts).find((i) => i.kind === "lowContrast");
     expect(issue).toMatchObject({ kind: "lowContrast" });
-    expect((issue as { values: string[] }).values.length).toBeGreaterThan(0);
+    expect((issue as { values: string[] }).values).toContain("Alex Example".toUpperCase());
 
     const dark = BUILTIN_TEMPLATES.sidebar.replace("default=#e5e7eb", "default=#2a3444");
     const side = checkTemplate(dark, sampleResume(), opts).find((i) => i.kind === "lowContrast") as {
       values: string[];
       pairs: { text: string; background: string }[];
     };
-    expect(side.values).toContain("jane@doe.dev");
+    // Examples are quoted from the probe resume, never from the user's own text.
+    expect(side.values).toContain("alex@example.com");
     expect(side.pairs).toContainEqual({ text: "#2a3444", background: "#1f2937" });
+  });
+
+  it("never quotes the user's own text in any issue", () => {
+    const data = sampleResume();
+    const personal = Object.values(data.content.personal).filter(Boolean) as string[];
+    const words = [...personal, "Acme", "Built the billing platform", "University of Belgrade"];
+    // Unreadable everywhere, off the page and tiny: every kind of issue fires.
+    const broken = BUILTIN_TEMPLATES.sidebar
+      .replace("default=#e5e7eb", "default=#1f2937")
+      .replace("\\page{margin: 36;", "\\page{margin: 0;")
+      .replace("\\style[text]{font-size: 9.5;", "\\style[text]{font-size: 5;")
+      .replace("\\style[heading]{font-size: 12;", "\\style[heading]{color: #ffffff; font-size: 12;");
+    const issues = checkTemplate(broken, data, opts, BUILTIN_TEMPLATES.professional);
+    expect(issues.map((i) => i.kind)).toEqual(expect.arrayContaining(["lowContrast", "tinyText"]));
+    const text = JSON.stringify(issues);
+    for (const w of words) expect(text).not.toContain(w);
   });
 
   it("reports tiny text and a resume that needs more pages", () => {

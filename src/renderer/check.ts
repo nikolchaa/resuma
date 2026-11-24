@@ -17,7 +17,10 @@ export type RenderIssue =
   | { kind: "missingSections"; values: string[] }
   /** Text items that run off the page. */
   | { kind: "offPage"; count: number }
-  /** Text too close in colour to what is behind it (a few examples, and the colour pairs involved). */
+  /**
+   * Text too close in colour to what is behind it: a few examples (from the
+   * probe resume only, never the user's text) and the colour pairs involved.
+   */
   | { kind: "lowContrast"; values: string[]; pairs?: { text: string; background: string }[] }
   /** Smallest text size, when it is below a readable size. */
   | { kind: "tinyText"; size: number }
@@ -96,25 +99,33 @@ export function checkTemplate(
   const missing = missingSections(probe);
   if (missing.length) issues.push({ kind: "missingSections", values: missing });
 
-  const texts = [mine, probe].flatMap((doc) => doc.pages.map((p) => ({ page: p, items: p.items })));
+  // Issues are shown to the user and sent back to the model, so quoted text
+  // only ever comes from the probe resume: the user's own render contributes
+  // counts and colours, never words (it holds their name, email, phone…).
+  const texts = [
+    ...mine.pages.map((page) => ({ page, quote: false })),
+    ...probe.pages.map((page) => ({ page, quote: true })),
+  ];
   let offPage = 0;
+  let unreadable = 0;
   const lowContrast = new Set<string>();
   const pairs = new Map<string, { text: string; background: string }>();
   let smallest = Infinity;
-  for (const { page, items } of texts) {
-    for (const [item, background] of withBackgrounds(items)) {
+  for (const { page, quote } of texts) {
+    for (const [item, background] of withBackgrounds(page.items)) {
       if (item.x < -0.5 || item.x + item.width > page.width + 0.5 || item.y > page.height || item.y - item.size < -0.5) {
         offPage++;
       }
       if (item.text.trim() && contrast(item.color, background) < MIN_CONTRAST) {
-        if (lowContrast.size < 3) lowContrast.add(item.text.trim().slice(0, 40));
+        unreadable++;
+        if (quote && lowContrast.size < 3) lowContrast.add(item.text.trim().slice(0, 40));
         if (pairs.size < 4) pairs.set(`${item.color}/${background}`, { text: item.color, background });
       }
       if (item.text.trim()) smallest = Math.min(smallest, item.size);
     }
   }
   if (offPage) issues.push({ kind: "offPage", count: offPage });
-  if (lowContrast.size) issues.push({ kind: "lowContrast", values: [...lowContrast], pairs: [...pairs.values()] });
+  if (unreadable) issues.push({ kind: "lowContrast", values: [...lowContrast], pairs: [...pairs.values()] });
   if (smallest < MIN_SIZE) issues.push({ kind: "tinyText", size: smallest });
 
   if (previousSource && getTemplate(previousSource).template) {

@@ -210,7 +210,8 @@ function describeIssue(issue: RenderIssue): string {
       return `${issue.count} pieces of text run off the page. Reduce widths, margins or padding.`;
     case "lowContrast": {
       const colours = (issue.pairs ?? []).map((p) => `text ${p.text} on background ${p.background}`).join("; ");
-      return `This text is hard to read against its background: ${issue.values.map((v) => `"${v}"`).join(", ")}${
+      const examples = issue.values.length ? `: ${issue.values.map((v) => `"${v}"`).join(", ")}` : "";
+      return `Some text is hard to read against its background${examples}${
         colours ? ` (${colours})` : ""
       }. Find the styles that set those text colours in that place, or the column style whose background is behind them, and change the colours so text is dark on light backgrounds and light on dark ones.`;
     }
