@@ -69,6 +69,10 @@ pub async fn call_llm(prompt: String, llm_settings: Value) -> Result<String, Str
         "--jinja".to_string(),
         "-st".to_string(),
         "--simple-io".to_string(),
+        // Pass the prompt through verbatim. By default llama-cli turns "\n",
+        // "\t", "\\" etc. into control characters, which mangles JSON escapes
+        // and every Resuma Markup command (\to, \notes, \template, \v …).
+        "--no-escape".to_string(),
     ];
 
     if let Some(ctx) = settings.get("ctxSize").and_then(|v| v.as_u64()) {
