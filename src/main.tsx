@@ -24,6 +24,7 @@ import { OnboardingProvider } from "./contexts/OnboardingContext";
 import Awards from "./pages/Onboarding/Awards";
 import { Toaster } from "./components/ui/sonner";
 import { LanguageProvider } from "./contexts/LanguageContext";
+import { VaultGate } from "./components/VaultGate";
 
 const router = createBrowserRouter([
   {
@@ -65,7 +66,10 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
         <LanguageProvider>
           <Titlebar />
           <Toaster />
-          <RouterProvider router={router} />
+          {/* Nothing reads or writes user data until it can be decrypted. */}
+          <VaultGate>
+            <RouterProvider router={router} />
+          </VaultGate>
         </LanguageProvider>
       </SystemProvider>
     </ThemeProvider>

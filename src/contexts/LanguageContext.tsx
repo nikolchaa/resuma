@@ -14,11 +14,10 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
   const [language, setLanguage] = useState<AppLanguage>("en");
 
   useEffect(() => {
-    const load = async () => {
-      const app = await getSection<{ language?: string }>("app");
-      setLanguage(normalizeLanguage(app?.language));
-    };
-    load();
+    // While the data is locked this fails; the unlock screen sets the language afterwards.
+    getSection<{ language?: string }>("app")
+      .then((app) => setLanguage(normalizeLanguage(app?.language)))
+      .catch(() => {});
   }, []);
 
   const value = useMemo(

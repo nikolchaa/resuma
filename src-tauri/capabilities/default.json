@@ -11,7 +11,6 @@
     "core:window:allow-close",
     "core:window:allow-minimize",
     "core:window:allow-toggle-maximize",
-    "store:default",
     "hwinfo:allow-get-cpu-info",
     "hwinfo:allow-get-gpu-info",
     "hwinfo:allow-get-memory-info",

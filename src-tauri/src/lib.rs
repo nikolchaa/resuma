@@ -11,6 +11,7 @@ use tauri_plugin_prevent_default::Builder as PreventDefaultBuilder;
 #[cfg(target_os = "windows")]
 use tauri_plugin_prevent_default::PlatformOptions;
 
+mod datavault;
 mod gguf;
 mod gpu_offload;
 mod huggingface;
@@ -20,6 +21,10 @@ mod remote;
 mod rpc;
 mod secrets;
 use huggingface::{get_huggingface_files, search_huggingface_models};
+use datavault::{
+    vault_acknowledge_recovery, vault_export_backup, vault_import_backup, vault_init, vault_list_resumes, vault_read,
+    vault_recovery_code, vault_reset, vault_status, vault_unlock, vault_write,
+};
 use mcp::{mcp_regenerate_token, mcp_reply, mcp_start, mcp_status, mcp_stop, mcp_token};
 use remote::list_remote_models;
 use rpc::{set_activity, start_rpc, stop_rpc};
@@ -412,7 +417,6 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_hwinfo::init())
         .plugin(prevent_default_plugin)
@@ -438,6 +442,17 @@ pub fn run() {
             mcp_token,
             mcp_regenerate_token,
             mcp_reply,
+            vault_status,
+            vault_init,
+            vault_recovery_code,
+            vault_acknowledge_recovery,
+            vault_unlock,
+            vault_reset,
+            vault_read,
+            vault_write,
+            vault_list_resumes,
+            vault_export_backup,
+            vault_import_backup,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

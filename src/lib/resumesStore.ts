@@ -1,14 +1,7 @@
-import {
-  mkdir,
-  readDir,
-  readTextFile,
-  writeFile,
-  remove,
-  exists,
-  BaseDirectory,
-} from "@tauri-apps/plugin-fs";
+import { remove, exists, BaseDirectory } from "@tauri-apps/plugin-fs";
 import { join } from "@tauri-apps/api/path";
 import { CURRENT_SCHEMA, normalizeResume } from "./resumeMigration";
+import { vaultListResumes, vaultRead, vaultWrite } from "./vault";
 
 // Types
 export interface ResumeData {
@@ -115,84 +108,53 @@ export interface ResumeContent {
   custom?: CustomSection[];
 }
 
-// Storage Constants
+// Storage: resumes are encrypted at rest (see vault.ts).
 const RESUMES_DIR = "resumes";
-
-// Helpers
-async function getResumePath(id: string): Promise<string> {
-  return await join(RESUMES_DIR, `${id}.resume`);
-}
-
-async function ensureResumesDir(): Promise<void> {
-  const dirExists = await exists(RESUMES_DIR, {
-    baseDir: BaseDirectory.AppData,
-  });
-  if (!dirExists) {
-    await mkdir(RESUMES_DIR, {
-      baseDir: BaseDirectory.AppData,
-      recursive: true,
-    });
-  }
-}
+const vaultName = (id: string) => `resumes/${id}.resume`;
 
 // CRUD
 export async function saveResume(data: ResumeData): Promise<void> {
-  await ensureResumesDir();
-  const path = await getResumePath(data.id);
-  await writeFile(
-    path,
-    new TextEncoder().encode(
-      JSON.stringify(
-        // Never downgrade the stamp of a file written by a newer Resuma.
-        { ...data, schema: Math.max(data.schema ?? 0, CURRENT_SCHEMA) },
-        null,
-        2
-      )
-    ),
-    {
-      baseDir: BaseDirectory.AppData,
-    }
+  await vaultWrite(
+    vaultName(data.id),
+    JSON.stringify(
+      // Never downgrade the stamp of a file written by a newer Resuma.
+      { ...data, schema: Math.max(data.schema ?? 0, CURRENT_SCHEMA) },
+      null,
+      2
+    )
   );
 }
 
 export async function loadResume(id: string): Promise<ResumeData | null> {
-  const path = await getResumePath(id);
   try {
-    const raw = await readTextFile(path, {
-      baseDir: BaseDirectory.AppData,
-    });
-    return normalizeResume(JSON.parse(raw));
-  } catch {
+    const raw = await vaultRead(vaultName(id));
+    return raw === null ? null : normalizeResume(JSON.parse(raw));
+  } catch (e) {
+    console.error(`[resumes] couldn't read ${id}:`, e);
     return null;
   }
 }
 
 export async function deleteResume(id: string): Promise<void> {
-  const path = await getResumePath(id);
-  await remove(path, { baseDir: BaseDirectory.AppData });
+  const path = await join(RESUMES_DIR, `${id}.resume`);
+  if (await exists(path, { baseDir: BaseDirectory.AppData })) {
+    await remove(path, { baseDir: BaseDirectory.AppData });
+  }
 }
 
 export async function listResumes(): Promise<ResumeData[]> {
-  await ensureResumesDir();
-  const files = await readDir(RESUMES_DIR, {
-    baseDir: BaseDirectory.AppData,
-  });
   const resumes: ResumeData[] = [];
-
-  for (const file of files) {
-    if (file.name?.endsWith(".resume")) {
-      const fullPath = await join(RESUMES_DIR, file.name);
-      try {
-        const raw = await readTextFile(fullPath, {
-          baseDir: BaseDirectory.AppData,
-        });
-        const parsed = normalizeResume(JSON.parse(raw));
-        if (parsed) resumes.push(parsed);
-      } catch {
-        // skip unreadable or corrupted files
-      }
+  for (const file of await vaultListResumes()) {
+    if (file.text === null) {
+      console.error(`[resumes] couldn't read ${file.name}:`, file.error);
+      continue;
+    }
+    try {
+      const parsed = normalizeResume(JSON.parse(file.text));
+      if (parsed) resumes.push(parsed);
+    } catch {
+      // skip corrupted files
     }
   }
-
   return resumes;
 }
