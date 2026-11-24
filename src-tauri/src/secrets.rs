@@ -224,6 +224,23 @@ pub fn get_api_key(provider: &str) -> Result<Option<String>, String> {
     vault_get(&vault_path()?, provider)
 }
 
+/// Stores a secret under `name` (credential store, else the encrypted vault).
+pub fn store_secret(name: &str, value: &str) -> Result<(), String> {
+    if keyring_available() {
+        keyring_entry(name)?
+            .set_password(value)
+            .map_err(|e| format!("Failed to store API key: {e}"))?;
+
+        // Drop any copy left behind from a run without a credential store.
+        if let Ok(path) = vault_path() {
+            let _ = vault_delete(&path, name);
+        }
+        return Ok(());
+    }
+
+    vault_set(&vault_path()?, name, value)
+}
+
 #[tauri::command]
 pub async fn set_api_key(provider: String, key: String) -> Result<(), String> {
     let key = key.trim().to_string();
@@ -232,19 +249,7 @@ pub async fn set_api_key(provider: String, key: String) -> Result<(), String> {
         return delete_api_key(provider).await;
     }
 
-    if keyring_available() {
-        keyring_entry(&provider)?
-            .set_password(&key)
-            .map_err(|e| format!("Failed to store API key: {e}"))?;
-
-        // Drop any copy left behind from a run without a credential store.
-        if let Ok(path) = vault_path() {
-            let _ = vault_delete(&path, &provider);
-        }
-        return Ok(());
-    }
-
-    vault_set(&vault_path()?, &provider, &key)
+    store_secret(&provider, &key)
 }
 
 #[tauri::command]

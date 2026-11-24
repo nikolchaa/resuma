@@ -15,10 +15,12 @@ mod gguf;
 mod gpu_offload;
 mod huggingface;
 mod llm;
+mod mcp;
 mod remote;
 mod rpc;
 mod secrets;
 use huggingface::{get_huggingface_files, search_huggingface_models};
+use mcp::{mcp_regenerate_token, mcp_reply, mcp_start, mcp_status, mcp_stop, mcp_token};
 use remote::list_remote_models;
 use rpc::{set_activity, start_rpc, stop_rpc};
 use secrets::{delete_api_key, has_api_key, keystore_status, set_api_key};
@@ -430,6 +432,12 @@ pub fn run() {
             list_remote_models,
             search_huggingface_models,
             get_huggingface_files,
+            mcp_start,
+            mcp_stop,
+            mcp_status,
+            mcp_token,
+            mcp_regenerate_token,
+            mcp_reply,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
