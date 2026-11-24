@@ -208,8 +208,12 @@ function describeIssue(issue: RenderIssue): string {
       return `These sections render nothing: ${issue.values.join(", ")}. Add a \\section for each (\\section[*] for custom sections).`;
     case "offPage":
       return `${issue.count} pieces of text run off the page. Reduce widths, margins or padding.`;
-    case "lowContrast":
-      return `This text is hard to read against its background: ${issue.values.map((v) => `"${v}"`).join(", ")}. Use text colours that contrast with the background.`;
+    case "lowContrast": {
+      const colours = (issue.pairs ?? []).map((p) => `text ${p.text} on background ${p.background}`).join("; ");
+      return `This text is hard to read against its background: ${issue.values.map((v) => `"${v}"`).join(", ")}${
+        colours ? ` (${colours})` : ""
+      }. Find the styles that set those text colours in that place, or the column style whose background is behind them, and change the colours so text is dark on light backgrounds and light on dark ones.`;
+    }
     case "tinyText":
       return `Some text is only ${issue.size} points; use at least 7.`;
     case "morePages":

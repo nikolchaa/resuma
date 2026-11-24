@@ -26,8 +26,12 @@ describe("checkTemplate", () => {
     expect((issue as { values: string[] }).values.length).toBeGreaterThan(0);
 
     const dark = BUILTIN_TEMPLATES.sidebar.replace("default=#e5e7eb", "default=#2a3444");
-    const side = checkTemplate(dark, sampleResume(), opts).find((i) => i.kind === "lowContrast") as { values: string[] };
+    const side = checkTemplate(dark, sampleResume(), opts).find((i) => i.kind === "lowContrast") as {
+      values: string[];
+      pairs: { text: string; background: string }[];
+    };
     expect(side.values).toContain("jane@doe.dev");
+    expect(side.pairs).toContainEqual({ text: "#2a3444", background: "#1f2937" });
   });
 
   it("reports tiny text and a resume that needs more pages", () => {

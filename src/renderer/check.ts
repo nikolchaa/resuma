@@ -17,8 +17,8 @@ export type RenderIssue =
   | { kind: "missingSections"; values: string[] }
   /** Text items that run off the page. */
   | { kind: "offPage"; count: number }
-  /** Text too close in colour to what is behind it (a few examples). */
-  | { kind: "lowContrast"; values: string[] }
+  /** Text too close in colour to what is behind it (a few examples, and the colour pairs involved). */
+  | { kind: "lowContrast"; values: string[]; pairs?: { text: string; background: string }[] }
   /** Smallest text size, when it is below a readable size. */
   | { kind: "tinyText"; size: number }
   /** The user's resume needs more pages than with the previous template. */
@@ -99,20 +99,22 @@ export function checkTemplate(
   const texts = [mine, probe].flatMap((doc) => doc.pages.map((p) => ({ page: p, items: p.items })));
   let offPage = 0;
   const lowContrast = new Set<string>();
+  const pairs = new Map<string, { text: string; background: string }>();
   let smallest = Infinity;
   for (const { page, items } of texts) {
     for (const [item, background] of withBackgrounds(items)) {
       if (item.x < -0.5 || item.x + item.width > page.width + 0.5 || item.y > page.height || item.y - item.size < -0.5) {
         offPage++;
       }
-      if (item.text.trim() && contrast(item.color, background) < MIN_CONTRAST && lowContrast.size < 3) {
-        lowContrast.add(item.text.trim().slice(0, 40));
+      if (item.text.trim() && contrast(item.color, background) < MIN_CONTRAST) {
+        if (lowContrast.size < 3) lowContrast.add(item.text.trim().slice(0, 40));
+        if (pairs.size < 4) pairs.set(`${item.color}/${background}`, { text: item.color, background });
       }
       if (item.text.trim()) smallest = Math.min(smallest, item.size);
     }
   }
   if (offPage) issues.push({ kind: "offPage", count: offPage });
-  if (lowContrast.size) issues.push({ kind: "lowContrast", values: [...lowContrast] });
+  if (lowContrast.size) issues.push({ kind: "lowContrast", values: [...lowContrast], pairs: [...pairs.values()] });
   if (smallest < MIN_SIZE) issues.push({ kind: "tinyText", size: smallest });
 
   if (previousSource && getTemplate(previousSource).template) {
