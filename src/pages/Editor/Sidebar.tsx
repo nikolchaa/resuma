@@ -29,8 +29,8 @@ type SidebarProps = {
   handleSave: () => void;
   mode: EditorMode;
   setMode: (mode: EditorMode) => void;
-  /** Sidebar width in rem (wider in Source mode). */
-  width: number;
+  /** Sidebar CSS width (wider in Source mode). */
+  width: string;
 };
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -128,7 +128,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <div
       className='bg-background border-r shadow-sm flex flex-col shrink-0 transition-[width] duration-200'
-      style={{ width: `${width}rem` }}
+      style={{ width }}
     >
       <Logo className='w-full max-w-[28rem] self-center p-8 pb-4' />
 

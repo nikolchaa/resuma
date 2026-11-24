@@ -61,7 +61,7 @@ export const Editor = () => {
   const [language, setLanguage] = useState<AppLanguage>("en");
   const [mode, setMode] = useState<EditorMode>("simple");
   // Source mode needs room for the code editor.
-  const sidebarRem = mode === "source" ? 42 : 28;
+  const sidebarWidth = mode === "source" ? "clamp(28rem, 42vw, 42rem)" : "28rem";
 
   // Live preview: re-laid-out on every change, painted in place (no flash).
   const { doc, error: renderError } = useRenderedResume(
@@ -165,6 +165,17 @@ export const Editor = () => {
   };
 
   const [zoomLevel, setZoomLevel] = useState(1);
+
+  // The wider Source sidebar can leave less room than the page needs (e.g. at
+  // the 1280 px minimum window); zoom out just enough to fit when entering it.
+  useEffect(() => {
+    if (mode !== "source") return;
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const sidebarPx = Math.min(42 * rem, Math.max(28 * rem, 0.42 * window.innerWidth));
+    const available = window.innerWidth - sidebarPx - 64; // preview padding
+    const fit = Math.floor((available / PAGE_WIDTH) * 20) / 20;
+    if (fit < 1) setZoomLevel((z) => Math.min(z, Math.max(0.5, fit)));
+  }, [mode]);
   const numPages = doc?.pages.length ?? 0;
 
   return (
@@ -177,7 +188,7 @@ export const Editor = () => {
         handleSave={handleSave}
         mode={mode}
         setMode={setMode}
-        width={sidebarRem}
+        width={sidebarWidth}
       />
 
       {/* PDF Preview */}
@@ -202,7 +213,7 @@ export const Editor = () => {
 
           <div
             className='absolute bottom-8 -translate-x-1/2 bg-background border shadow-sm rounded-lg flex items-center gap-2 p-2 z-30 text-foreground'
-            style={{ left: `calc(50vw + ${sidebarRem / 2}rem)` }}
+            style={{ left: `calc(50vw + ${sidebarWidth} / 2)` }}
           >
             <Button
               size='sm'
