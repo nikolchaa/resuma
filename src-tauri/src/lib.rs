@@ -82,6 +82,11 @@ async fn download_and_extract(
         let discard_staging = || {
             if !no_extract {
                 let _ = fs::remove_dir_all(&download_dir);
+                // Drop `downloads/` too once nothing else is staged in it;
+                // remove_dir refuses non-empty folders.
+                if let Some(parent) = download_dir.parent() {
+                    let _ = fs::remove_dir(parent);
+                }
             }
         };
         discard_staging();
