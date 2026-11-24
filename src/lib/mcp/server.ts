@@ -84,6 +84,8 @@ function describeWarning(w: ProposalWarning): string {
       return `The template no longer shows: ${w.values.join(", ")}.`;
     case "replacesTemplate":
       return `Replaces the saved template "${w.name}".`;
+    case "partsRemoved":
+      return `Removes: ${w.values.join(", ")}.`;
     case "render":
       return `Render check: ${w.issue.kind}.`;
   }
@@ -399,7 +401,7 @@ ${job_description}
     {
       title: "Propose a change to a resume",
       description:
-        "Proposes new content or a new template for a resume, as the complete Resuma Markup text of that part. The user applies or discards it in Resuma. Pass the revision from get_resume; if the resume changed since, read it again. Content must keep every section that was there; leave out \\personal if you weren't shown it.",
+        "Proposes new content or a new template for a resume, as the complete Resuma Markup text of that part. The user applies or discards it in Resuma. Pass the revision from get_resume; if the resume changed since, read it again. A section you leave out is removed (the user sees a warning), so include every section you want to keep; leave out \\personal if you weren't shown it.",
       inputSchema: {
         resume_id: z.string(),
         part: z.enum(["content", "template"]),

@@ -16,7 +16,12 @@ export const fill = (s: string, vars: Record<string, string | number>) =>
 export function useWarningText() {
   const { t } = useLanguage();
 
-  const sectionName = (key: string) => (key === "custom" ? t("editor.sidebar.custom") : t(`template.section.${key}`));
+  const sectionName = (key: string) =>
+    key === "custom"
+      ? t("editor.sidebar.custom")
+      : key === "layout"
+      ? t("ai.edit.warn.layoutPart")
+      : t(`template.section.${key}`, key);
 
   const issueText = (issue: RenderIssue) => {
     switch (issue.kind) {
@@ -53,6 +58,8 @@ export function useWarningText() {
         return fill(t("ai.edit.warn.sectionsDropped"), { values: w.values.join(", ") });
       case "replacesTemplate":
         return fill(t("ai.edit.warn.replacesTemplate"), { name: w.name });
+      case "partsRemoved":
+        return fill(t("ai.edit.warn.partsRemoved"), { values: w.values.map(sectionName).join(", ") });
       case "render":
         return issueText(w.issue);
     }

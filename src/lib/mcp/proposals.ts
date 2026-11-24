@@ -10,9 +10,14 @@ import { contentWarnings, EditWarning, sourceEditProblems, templateWarnings } fr
 import type { Diagnostic } from "@/renderer/rsm/parse";
 import type { RenderIssue } from "@/renderer/check";
 import { compileTemplate } from "@/renderer/template/template";
+import { topLevelBlocks } from "@/renderer/rsm/content";
 import { applyText, fullText, resumeView, ResumePart, revisionOf } from "./views";
 
-export type ProposalWarning = EditWarning | { kind: "replacesTemplate"; name: string };
+export type ProposalWarning =
+  | EditWarning
+  | { kind: "replacesTemplate"; name: string }
+  /** Top-level parts of the content the proposal leaves out (they're removed). */
+  | { kind: "partsRemoved"; values: string[] };
 
 export type ProposalStatus = "pending" | "applied" | "discarded" | "stale" | "undone";
 
@@ -65,6 +70,12 @@ export type ProposeResult =
   | { ok: false; reason: "notFound" | "stale" | "invalid" | "unchanged"; message: string; diagnostics?: Diagnostic[] };
 
 const KEEP = 50;
+
+/** Top-level blocks (sections, custom sections, layout) of `before` that `after` doesn't have. */
+function missingParts(before: string, after: string): string[] {
+  const present = new Set(topLevelBlocks(after));
+  return topLevelBlocks(before).filter((b) => !present.has(b));
+}
 
 export class ProposalStore {
   private proposals: Proposal[] = [];
@@ -140,7 +151,14 @@ export class ProposalStore {
       };
     }
     // Same checks as the in-app AI: valid markup, and no section left out.
-    const problems = sourceEditProblems(part, view, source).filter((d) => d.severity === "error");
+    // Markup errors refuse the proposal. Unlike the in-app AI (where a missing
+    // part means a cut-off reply), a connected app may leave a part out on
+    // purpose: that becomes a warning the user reviews, and it is never
+    // applied automatically.
+    const missing = part === "content" ? missingParts(view, source) : [];
+    const problems = sourceEditProblems(part, view, source).filter(
+      (d) => d.severity === "error" && !(missing.length && /left out/.test(d.message))
+    );
     if (problems.length) {
       return { ok: false, reason: "invalid", message: "The proposed text has problems; nothing was proposed.", diagnostics: problems };
     }
@@ -152,6 +170,12 @@ export class ProposalStore {
     }
     const warnings: ProposalWarning[] =
       part === "content" ? contentWarnings(before, after) : templateWarnings(before, after);
+    if (missing.length) {
+      const named = missing.map((b) =>
+        b.startsWith("custom:") ? data.content.custom?.find((c) => `custom:${c.id}` === b)?.title || b : b
+      );
+      warnings.unshift({ kind: "partsRemoved", values: named });
+    }
     if (part === "template") {
       const issues = await this.io.checkTemplate(after, next);
       warnings.push(...issues.map((issue) => ({ kind: "render" as const, issue })));

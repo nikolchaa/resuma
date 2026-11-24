@@ -34,13 +34,19 @@ describe("ProposalStore", () => {
     const base = { client: "x", resumeId: "jane", part: "content" as const, summary: "" };
     expect(await store.proposeResume({ ...base, source: before, baseRevision: "deadbeef" })).toMatchObject({ ok: false, reason: "stale" });
     expect(await store.proposeResume({ ...base, source: "\\experience{", baseRevision: revisionOf(before) })).toMatchObject({ ok: false, reason: "invalid" });
-    const onlyExperience = before.match(/\\experience\{[\s\S]*?\n\}\n/)![0];
-    const partial = await store.proposeResume({ ...base, source: onlyExperience, baseRevision: revisionOf(before) });
-    expect(partial).toMatchObject({ ok: false, reason: "invalid" });
-    if (!partial.ok) expect(partial.diagnostics?.[0].message).toMatch(/left out/);
     expect(await store.proposeResume({ ...base, source: before, baseRevision: revisionOf(before) })).toMatchObject({ ok: false, reason: "unchanged" });
     expect(await store.proposeResume({ ...base, resumeId: "nope", source: before, baseRevision: "x" })).toMatchObject({ ok: false, reason: "notFound" });
     expect(store.list()).toEqual([]);
+  });
+
+  it("lets a proposal leave a section out, with a warning that keeps it from auto-applying", async () => {
+    const { store, files } = memoryStore({ autoApply: true });
+    const before = view(files.get("jane")!);
+    const withoutAwards = before.replace(/\\awards\{[\s\S]*?\n\}\n\n?/, "");
+    const r = await store.proposeResume({ client: "x", resumeId: "jane", part: "content", source: withoutAwards, baseRevision: revisionOf(before), summary: "" });
+    expect(r).toMatchObject({ ok: true, proposal: { status: "pending", warnings: expect.arrayContaining([{ kind: "partsRemoved", values: ["awards"] }]) } });
+    await store.apply(r.ok ? r.proposal.id : "");
+    expect(files.get("jane")!.content.awards).toEqual([]);
   });
 
   it("goes stale when the resume changes before it's applied", async () => {
