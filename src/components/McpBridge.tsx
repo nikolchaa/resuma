@@ -1,45 +1,27 @@
 import { useEffect } from "react";
 import { startMcpBridge } from "@/lib/mcp/bridge";
-import { getMcpSettings, McpSettings, onMcpSettings, setMcpState } from "@/lib/mcp/settings";
+import { createBridgeController } from "@/lib/mcp/controller";
+import { getMcpSettings, onMcpSettings, setMcpState } from "@/lib/mcp/settings";
+import { windowSingleton } from "@/lib/singleton";
+
+/** One bridge controller per window, whatever mounts this component. */
+const bridge = windowSingleton("mcpBridge", () => createBridgeController(startMcpBridge, setMcpState));
 
 /**
  * Runs the MCP server for other AI apps while it's switched on in Settings,
- * and restarts it when the port changes. Renders nothing.
+ * and restarts it when the port changes. Renders nothing. The bridge lives
+ * as long as the window; unmounting only stops listening to settings.
  */
 export function McpBridge() {
   useEffect(() => {
-    let stop: (() => Promise<void>) | null = null;
-    let running: { enabled: boolean; port: number } = { enabled: false, port: 0 };
-    let queue = Promise.resolve();
-
-    const apply = (s: McpSettings) => {
-      // One change at a time: stopping and starting overlap otherwise.
-      queue = queue.then(async () => {
-        if (s.enabled === running.enabled && s.port === running.port) return;
-        if (stop) {
-          await stop().catch(() => {});
-          stop = null;
-        }
-        running = { enabled: s.enabled, port: s.port };
-        if (!s.enabled) return setMcpState({ state: "off" });
-        setMcpState({ state: "starting" });
-        try {
-          stop = await startMcpBridge(s.port);
-          setMcpState({ state: "running", port: s.port });
-        } catch (e) {
-          running = { enabled: false, port: 0 };
-          setMcpState({ state: "error", message: typeof e === "string" ? e : (e as Error).message });
-        }
-      });
-    };
-
-    getMcpSettings().then(apply);
-    const unsubscribe = onMcpSettings(apply);
+    let active = true;
+    getMcpSettings().then((s) => {
+      if (active) void bridge.sync(s);
+    });
+    const unsubscribe = onMcpSettings((s) => void bridge.sync(s));
     return () => {
+      active = false;
       unsubscribe();
-      queue = queue.then(async () => {
-        if (stop) await stop().catch(() => {});
-      });
     };
   }, []);
 
