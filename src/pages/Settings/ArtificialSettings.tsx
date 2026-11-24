@@ -155,7 +155,8 @@ export const ArtificialSettings = ({
       );
     }
 
-    // A folder alone is not enough: an install can predate a required part
+    // A folder alone is not enough: an install can come from an older
+    // llama.cpp build (pre-b12675 command line) or predate a required part
     // (the CUDA runtime without its cudart DLLs). Incomplete installs stay
     // downloadable so Download repairs them in place.
     const known = getRuntimes(system).map((entry) => entry.runtime);
@@ -164,7 +165,8 @@ export const ArtificialSettings = ({
       known
         .filter(
           (rt) =>
-            runtimeFolders.includes(rt.name) && (rt.requiredFiles?.length ?? 0) > 0,
+            runtimeFolders.includes(rt.name) &&
+            (!!rt.version || !!rt.requiredFiles?.length),
         )
         .map(async (rt) => {
           if (!(await isRuntimeInstalled(rt))) incomplete.add(rt.name);
@@ -187,7 +189,9 @@ export const ArtificialSettings = ({
     });
     setIncompleteRuntimes([...incomplete]);
 
-    setAvailableRuntimes(known.filter((rt) => installed.includes(rt.name)));
+    // Outdated installs still run (the backend speaks both command lines), so
+    // they stay selectable; only the badge and Download button change.
+    setAvailableRuntimes(known.filter((rt) => runtimeFolders.includes(rt.name)));
   }, [system, t]);
 
   useEffect(() => {
@@ -231,6 +235,7 @@ export const ArtificialSettings = ({
     assetName: string,
     assetUrls: string[],
     assetType: "runtime" | "model",
+    version?: string,
   ) => {
     if (!assetName) return;
 
@@ -248,6 +253,7 @@ export const ArtificialSettings = ({
         assetUrls,
         noExtract: assetType === "model",
         assetType,
+        version: version ?? null,
       });
     } catch (err) {
       showError(
@@ -630,6 +636,7 @@ export const ArtificialSettings = ({
                           entry.runtime.name,
                           runtimeDownloadUrls(entry.runtime),
                           "runtime",
+                          entry.runtime.version,
                         )
                       }
                     >

@@ -4,6 +4,8 @@ export interface RuntimeEntry {
   name: string;
   label: string;
   download: string;
+  /** llama.cpp build tag; installs from another build read as out of date. */
+  version?: string;
   /**
    * More archives extracted into the same folder, e.g. the CUDA build's
    * cudart/cuBLAS DLLs, which llama.cpp publishes as a separate zip.
