@@ -6,6 +6,11 @@ on:
       - "v*.*.*"
   workflow_dispatch:
 
+# The release is created and its assets uploaded with the workflow's own
+# token, so there is no personal access token to expire.
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ${{ matrix.os }}
@@ -15,15 +20,21 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
       - name: Install Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: lts/*
+          cache: npm
 
       - name: Install Linux build dependencies
         if: matrix.os == 'ubuntu-latest'
@@ -38,16 +49,14 @@ jobs:
             librsvg2-dev \
             patchelf
 
+      # Also installs the Tauri CLI (a dev dependency), which tauri-action uses.
       - name: Install frontend dependencies
         run: npm install
-
-      - name: Install Tauri CLI
-        run: cargo install tauri-cli
 
       - name: Build and release with Tauri
         uses: tauri-apps/tauri-action@v0
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: v__VERSION__
           releaseName: "Resuma v__VERSION__ ✨"
