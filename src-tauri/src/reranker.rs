@@ -72,6 +72,15 @@ fn server_binary(runtime_dir: &Path) -> Result<PathBuf, String> {
     }
 }
 
+/// `<app data>/rerankers`; tests may point elsewhere with `RESUMA_TEST_RERANKERS_DIR`.
+fn rerankers_root(app_data: &Path) -> PathBuf {
+    #[cfg(test)]
+    if let Ok(dir) = std::env::var("RESUMA_TEST_RERANKERS_DIR") {
+        return PathBuf::from(dir);
+    }
+    app_data.join("rerankers")
+}
+
 fn free_port() -> Result<u16, String> {
     TcpListener::bind(("127.0.0.1", 0))
         .and_then(|l| l.local_addr())
@@ -100,7 +109,7 @@ async fn ensure(runtime: &str, model: &str) -> Result<u16, String> {
 
     let app_data = llm::get_app_data_path()?;
     let binary = server_binary(&llm::runtimes_root(&app_data).join(runtime))?;
-    let model_dir = app_data.join("rerankers").join(model);
+    let model_dir = rerankers_root(&app_data).join(model);
     let model_path =
         llm::find_gguf_file(&model_dir).ok_or_else(|| "The job matching model isn't downloaded.".to_string())?;
     let port = free_port()?;
@@ -254,4 +263,45 @@ pub async fn rerank(runtime: String, model: String, query: String, documents: Ve
 #[tauri::command]
 pub fn reranker_stop() {
     stop();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Scores real entries with an installed runtime and the job matching
+    /// model, the way tailoring does, against a full-length ad from the set
+    /// the cut-off was measured on. Run with:
+    /// `RESUMA_TEST_RUNTIME=llama-cpu-win RESUMA_TEST_RERANKERS_DIR=<folder>
+    /// RESUMA_TEST_RERANKER=<model folder in it> cargo test real_rerank -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn real_rerank() {
+        let runtime = std::env::var("RESUMA_TEST_RUNTIME").expect("RESUMA_TEST_RUNTIME");
+        let model = std::env::var("RESUMA_TEST_RERANKER").expect("RESUMA_TEST_RERANKER");
+        let job = "Backend Developer (Python)\nLedgerly · Remote within EU · Full-time\n\nAbout us: Ledgerly builds invoicing and payment software for 40,000 small businesses across Europe. Our platform team of 12 engineers owns the APIs that every invoice, payment and bank sync goes through.\n\nWhat you'll do:\n- Design, build and maintain REST APIs in Python using Django and FastAPI\n- Model data in PostgreSQL and write migrations that run safely on large tables\n- Write unit and integration tests and keep our CI pipeline green\n- Deploy services with Docker to AWS (ECS, RDS, S3) and monitor them with Grafana\n- Review pull requests and pair with other engineers\n- Take part in a light on-call rotation (one week in eight)\n\nWhat we're looking for:\n- 2+ years of professional experience with Python\n- Solid SQL and relational database design\n- Comfort with Git, Linux and the command line\n- Clear written communication in English\n\nNice to have:\n- Redis or another cache, Celery or other task queues\n- Kubernetes or Terraform\n- Experience with payments, accounting or banking APIs\n\nWe offer: a fully remote team, 30 days of paid leave, a learning budget of €1,500 a year, and a new laptop of your choice.";
+        let entries: Vec<String> = vec![
+            "Experience: Backend Developer at Nordlab (2022 – Present). Built REST APIs with Django and PostgreSQL; moved deployments to Docker on AWS. Cut API response times by 40%. Reviewed pull requests for a team of 5.".to_string(),
+            "Experience: Barista at Kafeterija (2019 – 2021). Prepared coffee and served customers in a busy cafe. Trained 3 new staff members. Handled the cash register and daily closing.".to_string(),
+            "Education: BSc Computer Science, University of Belgrade (2018 – 2022).".to_string(),
+            "Experience: Social Media Intern at Studio Eta (2020). Ran the studio's Instagram account and wrote weekly posts. Grew followers from 1,200 to 4,000 in six months. Designed post graphics in Canva.".to_string(),
+        ];
+        let started = std::time::Instant::now();
+        let scores = tauri::async_runtime::block_on(rerank(runtime.clone(), model.clone(), job.to_string(), entries.clone()));
+        stop();
+        let scores = scores.expect("scoring failed");
+        eprintln!("scored {} entries in {:?}: {:?}", entries.len(), started.elapsed(), scores);
+        // The scores the cut-off was measured with: the backend job and the
+        // degree stay above it, the cafe and the social media job fall below.
+        let measured = [0.9988, 0.000393, 0.0353, 0.0000698];
+        for (got, want) in scores.iter().zip(measured) {
+            // Batches of another size shift the scores slightly; the side of the cut-off is what matters.
+            assert!((got - want).abs() <= want * 0.3 + 0.0002, "scored {got}, measured {want}");
+        }
+        assert!(scores[0] >= 0.001 && scores[2] >= 0.001 && scores[1] < 0.001 && scores[3] < 0.001);
+        // After stop(), the next request starts the server again.
+        let again = tauri::async_runtime::block_on(rerank(runtime, model, job.to_string(), entries[..1].to_vec()));
+        stop();
+        assert!((again.expect("second scoring failed")[0] - scores[0]).abs() < 0.01);
+    }
 }
