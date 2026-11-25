@@ -383,6 +383,17 @@ async fn asset_disk_usage(asset_type: String, asset_name: String) -> Result<u64,
     Ok(dir_size(&base_dir))
 }
 
+/// The CPU architecture this build of the app runs as: "x64", "arm64", or
+/// Rust's own name for anything else. llama.cpp runtimes must match it.
+#[tauri::command]
+fn app_arch() -> &'static str {
+    match std::env::consts::ARCH {
+        "x86_64" => "x64",
+        "aarch64" => "arm64",
+        other => other,
+    }
+}
+
 #[tauri::command]
 async fn call_llm(prompt: String, llm_settings: serde_json::Value) -> Result<String, String> {
     // "No AI" provider: refuse outright so nothing is spawned or sent.
@@ -421,6 +432,7 @@ pub fn run() {
         .plugin(tauri_plugin_hwinfo::init())
         .plugin(prevent_default_plugin)
         .invoke_handler(tauri::generate_handler![
+            app_arch,
             call_llm,
             download_and_extract,
             check_asset_ready,

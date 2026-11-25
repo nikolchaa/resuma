@@ -27,6 +27,8 @@ export interface RuntimeEntry {
   /** Files that must exist for the install to be usable. */
   requiredFiles?: string[];
   platform: string;
+  /** CPU architecture the build runs on: "x64" or "arm64". */
+  arch?: string;
   backend: string;
   compatibleGpus: CompatibleGpu[];
 }
@@ -73,6 +75,7 @@ export function getRuntimes(system: SystemInfo): {
   status: CompatibilityStatus;
 }[] {
   const platform = normalizePlatform(system.os.name);
+  const arch = system.os.arch;
   const candidates = candidateGpus(system);
   const typedRuntimes = runtimes as RuntimeEntry[];
 
@@ -115,8 +118,10 @@ export function getRuntimes(system: SystemInfo): {
   return typedRuntimes.map((rt) => {
     let status: CompatibilityStatus = "unsupported";
 
-    // ❌ Incompatible platform
-    if (rt.platform !== platform) {
+    // ❌ Incompatible platform, or built for another kind of CPU (an x64
+    // build can't run on an ARM computer). Until the app's architecture is
+    // known, only the platform counts.
+    if (rt.platform !== platform || (arch && rt.arch && rt.arch !== arch)) {
       status = "unsupported";
     }
 

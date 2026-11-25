@@ -12,6 +12,7 @@ import {
   getOsInfo,
 } from "tauri-plugin-hwinfo";
 import { GpuHardwareKind, selectBestGpu } from "@/lib/gpuSelection";
+import { invoke } from "@tauri-apps/api/core";
 
 // Minimal summaries of the plugin's rich per-device data. getCpuInfo returns
 // one entry per socket; getGpuInfo returns every display adapter, so the
@@ -41,7 +42,15 @@ type GpuSummary = {
 
 type RamSummary = { sizeMb: number };
 
-type OsSummary = { name: string; version: string };
+type OsSummary = {
+  name: string;
+  version: string;
+  /**
+   * CPU architecture this build of the app runs as ("x64", "arm64"), or ""
+   * while unknown. Runtimes must match it.
+   */
+  arch: string;
+};
 
 // Type combining all system info
 type SystemInfo = {
@@ -75,7 +84,7 @@ const defaultSystemInfo: SystemInfo = {
   gpus: [],
   gpu: placeholderGpu,
   ram: { sizeMb: 0 },
-  os: { name: "Detecting...", version: "Detecting..." },
+  os: { name: "Detecting...", version: "Detecting...", arch: "" },
 };
 
 const SystemContext = createContext<SystemInfo | null>(null);
@@ -85,11 +94,12 @@ export function SystemProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     async function fetchSystem() {
-      const [cpus, gpus, ram, os] = await Promise.all([
+      const [cpus, gpus, ram, os, arch] = await Promise.all([
         getCpuInfo(),
         getGpuInfo({ detail: "capabilities" }),
         getMemoryInfo(),
         getOsInfo(),
+        invoke<string>("app_arch").catch(() => ""),
       ]);
       const cpu = cpus[0];
 
@@ -121,7 +131,7 @@ export function SystemProvider({ children }: { children: ReactNode }) {
         gpus: summaries,
         gpu: primary,
         ram: { sizeMb: ram.totalMb },
-        os: { name: os.name, version: os.version },
+        os: { name: os.name, version: os.version, arch },
       });
     }
 

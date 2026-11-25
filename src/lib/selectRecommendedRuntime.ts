@@ -14,6 +14,8 @@ export interface RuntimeEntry {
   /** Files that must exist for the install to be usable. */
   requiredFiles?: string[];
   platform: string;
+  /** CPU architecture the build runs on: "x64" or "arm64". */
+  arch?: string;
   backend: string;
   compatibleGpus: {
     model: string;
@@ -26,11 +28,14 @@ interface RuntimeResult {
   status: CompatibilityStatus;
 }
 
+// OpenCL is only offered for Snapdragon (Adreno) GPUs, where llama.cpp's
+// OpenCL backend is tuned and its Vulkan backend is not.
 const RUNTIME_PRIORITY: Record<string, number> = {
   cuda: 1,
   hip: 2,
-  vulkan: 3,
-  cpu: 4,
+  opencl: 3,
+  vulkan: 4,
+  cpu: 5,
 };
 
 /**
