@@ -18,9 +18,11 @@ import { rerankerInstalled } from "./reranker";
 import {
   applyExperienceReply,
   applyProjectReply,
+  entryText,
   experiencePrompt,
   MIN_REWRITE_BILLIONS,
   modelBillions,
+  newTerms,
   projectPrompt,
 } from "./rewrite";
 
@@ -195,6 +197,9 @@ async function run(job: Job, jobDesc: string) {
         showWarning(t("tailor.entryFailed", { entry: label }));
         continue;
       }
+      // Tools or names the rewording added are flagged, so the suggestion
+      // isn't applied with "Apply all without warnings" unchecked.
+      const added = newTerms(entryText(after), entryText(target.entry as Parameters<typeof entryText>[0]));
       // Unchanged and stale results (the user edited the entry meanwhile) just don't become suggestions.
       const r = await appProposals.proposeEntries({
         client,
@@ -202,6 +207,7 @@ async function run(job: Job, jobDesc: string) {
         origin: "app",
         changes: [{ section: target.section, before: target.entry, after }],
         summary: t("tailor.rewrite", { entry: label }),
+        extraWarnings: added.length ? [{ kind: "newTerms", values: added }] : [],
       });
       if (r.ok) suggestions++;
     }

@@ -17,7 +17,9 @@ export type ProposalWarning =
   | EditWarning
   | { kind: "replacesTemplate"; name: string }
   /** Top-level parts of the content the proposal leaves out (they're removed). */
-  | { kind: "partsRemoved"; values: string[] };
+  | { kind: "partsRemoved"; values: string[] }
+  /** Tools or names a reworded entry mentions that it didn't before. */
+  | { kind: "newTerms"; values: string[] };
 
 export type ProposalStatus = "pending" | "applied" | "discarded" | "stale" | "undone";
 
@@ -319,6 +321,8 @@ export class ProposalStore {
     labels?: string[];
     origin?: "app";
     dropRemovalWarning?: boolean;
+    /** Checks only the proposer can make, shown with the others. */
+    extraWarnings?: ProposalWarning[];
   }): Promise<ProposeResult> {
     const data = await this.io.loadResume(input.resumeId);
     if (!data) return { ok: false, reason: "notFound", message: `No resume with id "${input.resumeId}".` };
@@ -332,9 +336,10 @@ export class ProposalStore {
     if (before.trim() === after.trim()) {
       return { ok: false, reason: "unchanged", message: "The proposed entries change nothing." };
     }
-    const warnings: ProposalWarning[] = contentWarnings(before, after).filter(
-      (w) => !(input.dropRemovalWarning && w.kind === "removed")
-    );
+    const warnings: ProposalWarning[] = [
+      ...contentWarnings(before, after).filter((w) => !(input.dropRemovalWarning && w.kind === "removed")),
+      ...(input.extraWarnings ?? []),
+    ];
     const proposal = await this.add({
       id: this.io.newId(),
       client: input.client,

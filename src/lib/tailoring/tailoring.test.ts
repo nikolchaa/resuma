@@ -3,7 +3,7 @@ import type { ResumeContent } from "@/lib/resumesStore";
 import { normalizeResume } from "@/lib/resumeMigration";
 import { sampleResume } from "@/renderer/testing/sample";
 import { leaveOutCandidates, protectedItems, readYesNo, relevanceItems, Verdict } from "./relevance";
-import { applyExperienceReply, applyProjectReply, modelBillions } from "./rewrite";
+import { applyExperienceReply, applyProjectReply, modelBillions, newTerms, switchedLanguage } from "./rewrite";
 
 const content = (): ResumeContent => {
   const c = normalizeResume(sampleResume())!.content;
@@ -101,6 +101,24 @@ describe("rewording", () => {
       name: project.name,
       description: "An open-source resume builder.",
     });
+  });
+
+  // Replies seen from Qwen3 8B and 0.6B on the rewording prompt.
+  it("flags tools the rewording invented, and only those", () => {
+    const original = "Cleaned transaction data and built dashboards for the risk team.\nWrote SQL queries and Python (pandas) scripts";
+    const invented = "Cleaned transaction data and built dashboards for the risk team.\nDesigned and implemented REST API endpoints using Python, aligning with backend development practices";
+    expect(newTerms(invented, original)).toEqual(["REST", "API"]);
+    const faithful = "Automated user setup with PowerShell and Bash scripts to streamline system configuration";
+    expect(newTerms(faithful, "Automated user setup with PowerShell and Bash scripts")).toEqual([]);
+  });
+
+  it("refuses rewording that switches language or repeats the prompt", () => {
+    const serbian = { ...job, description: "Razvijao REST API-je u Djangu i PostgreSQL-u.", notes: ["Prebacio postavljanje servisa na Docker na AWS-u"] };
+    const english = '{"description": "Developed REST APIs using Django and PostgreSQL", "notes": ["Migrated service deployment to Docker on AWS"]}';
+    expect(applyExperienceReply(serbian, english, ad)).toBeNull();
+    expect(switchedLanguage("Razvio i održavao REST API-je u Djangu", "Razvijao REST API-je u Djangu i PostgreSQL-u.")).toBe(false);
+    const echo = `{"description": "IT Support Technician\\nEmployer: City Library\\nDescription: ${job.description}", "notes": []}`;
+    expect(applyExperienceReply(job, echo, ad)).toBeNull();
   });
 
   it("reads a model's size from its name", () => {
