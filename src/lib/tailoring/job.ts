@@ -15,7 +15,14 @@ import { windowSingleton } from "@/lib/singleton";
 import { showError, showSuccess, showWarning } from "@/lib/toastUtils";
 import { judgeRelevance, leaveOutCandidates, relevanceItems, RelevanceMethod } from "./relevance";
 import { rerankerInstalled } from "./reranker";
-import { applyExperienceReply, applyProjectReply, experiencePrompt, projectPrompt } from "./rewrite";
+import {
+  applyExperienceReply,
+  applyProjectReply,
+  experiencePrompt,
+  MIN_REWRITE_BILLIONS,
+  modelBillions,
+  projectPrompt,
+} from "./rewrite";
 
 export type TailorState = {
   resumeId: string;
@@ -92,6 +99,8 @@ async function run(job: Job, jobDesc: string) {
   const client = t("tailor.client");
   const { resumeId } = job.state;
   let suggestions = 0;
+  /** The model's name, when it was too small to reword entries. */
+  let rewriteSkippedFor: string | null = null;
 
   const progress = (phase: TailorState["phase"], done: number, total: number) => {
     job.state = { resumeId, phase, done, total };
@@ -138,11 +147,20 @@ async function run(job: Job, jobDesc: string) {
       if (r.ok) suggestions++;
     }
 
-    // 2. New wording for the entries that stay.
+    // 2. New wording for the entries that stay, unless the model is too
+    // small to reword without mangling them.
+    const modelName = (llm?.provider ?? "local") === "local" ? llm?.model : llm?.remote?.model;
+    const billions = modelBillions(modelName);
+    if (billions !== null && billions < MIN_REWRITE_BILLIONS) rewriteSkippedFor = modelName ?? "";
     const left = new Set(leaveOut.map((i) => `${i.section}:${i.index}`));
-    const targets = REWRITE_SECTIONS.flatMap((section) =>
-      (content[section] as unknown[]).map((entry, index) => ({ section, index, entry })).filter((x) => !left.has(`${x.section}:${x.index}`))
-    );
+    const targets =
+      rewriteSkippedFor !== null
+        ? []
+        : REWRITE_SECTIONS.flatMap((section) =>
+            (content[section] as unknown[])
+              .map((entry, index) => ({ section, index, entry }))
+              .filter((x) => !left.has(`${x.section}:${x.index}`))
+          );
     let failures = 0;
     for (const [n, target] of targets.entries()) {
       if (job.stopped) return;
@@ -171,8 +189,8 @@ async function run(job: Job, jobDesc: string) {
       }
       const after =
         target.section === "experience"
-          ? applyExperienceReply(content.experience[target.index], reply)
-          : applyProjectReply(content.projects[target.index], reply);
+          ? applyExperienceReply(content.experience[target.index], reply, jobDesc)
+          : applyProjectReply(content.projects[target.index], reply, jobDesc);
       if (!after) {
         showWarning(t("tailor.entryFailed", { entry: label }));
         continue;
@@ -199,8 +217,10 @@ async function run(job: Job, jobDesc: string) {
     }
   }
   if (job.stopped) return;
+  const found =
+    suggestions === 0 ? t("tailor.doneNone") : suggestions === 1 ? t("tailor.doneOne") : t("tailor.doneMany", { n: suggestions });
   showSuccess(
     t("tailor.done"),
-    suggestions === 0 ? t("tailor.doneNone") : suggestions === 1 ? t("tailor.doneOne") : t("tailor.doneMany", { n: suggestions })
+    rewriteSkippedFor === null ? found : `${found} ${t("tailor.rewriteSkipped", { model: rewriteSkippedFor })}`
   );
 }

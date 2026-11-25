@@ -661,6 +661,8 @@ const translations: Record<AppLanguage, Record<string, string>> = {
     "tailor.stoppedDesc": "Suggestions made before you stopped are kept.",
     "tailor.failed": "Tailoring failed",
     "tailor.entryFailed": "Couldn't reword {entry}. It's left as it is.",
+    "tailor.rewriteSkipped":
+      "Rewording was skipped: {model} is too small to reword entries without mangling them. A model with 4B or more parameters can.",
     "tailor.leaveOut": "Leave out “{entry}”: it doesn't seem to fit this job",
     "tailor.rewrite": "Reword “{entry}” for this job",
     "tailor.action": "Tailor to this job",
@@ -1342,6 +1344,8 @@ const translations: Record<AppLanguage, Record<string, string>> = {
     "tailor.stoppedDesc": "Predlozi napravljeni pre zaustavljanja su sačuvani.",
     "tailor.failed": "Prilagođavanje nije uspelo",
     "tailor.entryFailed": "Nije uspelo preformulisanje stavke {entry}. Ostavljena je kakva jeste.",
+    "tailor.rewriteSkipped":
+      "Preformulisanje je preskočeno: {model} je premali da bi preformulisao stavke bez grešaka. Model sa 4B ili više parametara to može.",
     "tailor.leaveOut": "Izostavi „{entry}”: izgleda da ne odgovara ovom poslu",
     "tailor.rewrite": "Preformuliši „{entry}” za ovaj posao",
     "tailor.action": "Prilagodi ovom poslu",
