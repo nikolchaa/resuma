@@ -149,3 +149,110 @@ describe("ProposalStore", () => {
     expect(store.pending()).toEqual([]);
   });
 });
+
+describe("ProposalStore entry-level proposals", () => {
+  /** Jane with three jobs, so independent suggestions can touch different ones. */
+  const setup = (opts: Parameters<typeof memoryStore>[0] = {}) => {
+    const m = memoryStore(opts);
+    const jane = m.files.get("jane")!;
+    const acme = jane.content.experience[0];
+    jane.content.experience = [
+      acme,
+      { ...acme, jobTitle: "Barista", company: "Kafeterija", description: "Made coffee.", notes: [] },
+      { ...acme, jobTitle: "Intern", company: "Initech", description: "Wrote tests.", notes: [] },
+    ];
+    return { ...m, jobs: () => m.files.get("jane")!.content.experience };
+  };
+
+  it("applies and undoes several suggestions independently, in any order", async () => {
+    const { store, jobs } = setup();
+    const [acme, barista, intern] = jobs();
+    const drop = await store.proposeEntries({
+      client: "Resuma",
+      resumeId: "jane",
+      changes: [{ section: "experience", before: barista }],
+      summary: "Leave out 1",
+      dropRemovalWarning: true,
+      origin: "app",
+    });
+    const rewrite = await store.proposeEntries({
+      client: "Resuma",
+      resumeId: "jane",
+      changes: [{ section: "experience", before: intern, after: { ...intern, description: "Wrote unit tests." } }],
+      summary: "",
+      origin: "app",
+    });
+    expect(drop).toMatchObject({ ok: true, proposal: { status: "pending", warnings: [] } });
+    expect(rewrite).toMatchObject({ ok: true, proposal: { status: "pending", warnings: [] } });
+
+    // Applying the later one first doesn't make the earlier one stale.
+    expect((await store.apply("p2")).status).toBe("applied");
+    expect((await store.apply("p1")).status).toBe("applied");
+    expect(jobs().map((j) => j.company)).toEqual(["Acme", "Initech"]);
+    expect(jobs()[1].description).toBe("Wrote unit tests.");
+
+    // Undo the removal first: the barista job returns to its place.
+    expect((await store.undo("p1")).status).toBe("undone");
+    expect(jobs().map((j) => j.company)).toEqual(["Acme", "Kafeterija", "Initech"]);
+    expect((await store.undo("p2")).status).toBe("undone");
+    expect(jobs()[2].description).toBe("Wrote tests.");
+    expect(jobs()[0]).toEqual(acme);
+  });
+
+  it("goes stale when its entry was edited, and won't undo over a later edit", async () => {
+    const { store, jobs, files } = setup();
+    // Copies: the test edits the stored entries below.
+    const intern = structuredClone(jobs()[2]);
+    await store.proposeEntries({
+      client: "x",
+      resumeId: "jane",
+      changes: [{ section: "experience", before: intern, after: { ...intern, description: "Wrote unit tests." } }],
+      summary: "",
+    });
+    files.get("jane")!.content.experience[2].company = "Initrode";
+    expect((await store.apply("p1")).status).toBe("stale");
+
+    const barista = structuredClone(jobs()[1]);
+    await store.proposeEntries({
+      client: "x",
+      resumeId: "jane",
+      changes: [{ section: "experience", before: barista, after: { ...barista, description: "Made espresso." } }],
+      summary: "",
+    });
+    await store.apply("p2");
+    files.get("jane")!.content.experience[1].description = "Made espresso and tea.";
+    expect((await store.undo("p2")).message).toMatch(/edited since/);
+    expect(jobs()[1].description).toBe("Made espresso and tea.");
+  });
+
+  it("flags invented facts, and never applies Resuma's own suggestions automatically", async () => {
+    const { store, jobs } = setup({ autoApply: true });
+    const barista = jobs()[1];
+    const quiet = await store.proposeEntries({
+      client: "Resuma",
+      resumeId: "jane",
+      origin: "app",
+      changes: [{ section: "experience", before: barista, after: { ...barista, description: "Made coffee for guests." } }],
+      summary: "",
+    });
+    expect(quiet).toMatchObject({ ok: true, proposal: { status: "pending", warnings: [] } });
+    const loud = await store.proposeEntries({
+      client: "Resuma",
+      resumeId: "jane",
+      origin: "app",
+      changes: [{ section: "experience", before: barista, after: { ...barista, description: "Made 500 coffees a day." } }],
+      summary: "",
+    });
+    expect(loud).toMatchObject({ ok: true, proposal: { warnings: [{ kind: "newNumbers", values: ["500"] }] } });
+    // A removal says so, unless removing is the point of the proposal.
+    const drop = await store.proposeEntries({ client: "x", resumeId: "jane", changes: [{ section: "experience", before: barista }], summary: "" });
+    expect(drop).toMatchObject({ ok: true, proposal: { warnings: [{ kind: "removed", section: "experience", count: 1 }] } });
+    const ghost = await store.proposeEntries({
+      client: "x",
+      resumeId: "jane",
+      changes: [{ section: "experience", before: { jobTitle: "Ghost" } }],
+      summary: "",
+    });
+    expect(ghost).toMatchObject({ ok: false, reason: "stale" });
+  });
+});

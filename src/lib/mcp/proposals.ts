@@ -17,7 +17,9 @@ export type ProposalWarning =
   | EditWarning
   | { kind: "replacesTemplate"; name: string }
   /** Top-level parts of the content the proposal leaves out (they're removed). */
-  | { kind: "partsRemoved"; values: string[] };
+  | { kind: "partsRemoved"; values: string[] }
+  /** Tools or names a reworded entry mentions that it didn't before. */
+  | { kind: "newTerms"; values: string[] };
 
 export type ProposalStatus = "pending" | "applied" | "discarded" | "stale" | "undone";
 
@@ -25,10 +27,32 @@ export type ProposalTarget =
   | { kind: "resume"; resumeId: string; part: ResumePart; /** The resume's title when proposed. */ title: string }
   | { kind: "template"; name: string; libraryId: string };
 
+/** Content sections whose entries an entry-level proposal can change. */
+export type EntrySection = "education" | "experience" | "projects" | "skills" | "awards";
+
+/**
+ * One entry an entry-level proposal changes: `before` as it is in the
+ * resume, and `after` to replace it, or no `after` to remove it.
+ */
+export type EntryChange = { section: EntrySection; before: unknown; after?: unknown };
+
 export type Proposal = {
   id: string;
   /** The connected app's name, as it introduced itself. */
   client: string;
+  /**
+   * "app": made by Resuma itself (job tailoring). Never applied
+   * automatically, and announced by its own job rather than one toast each.
+   */
+  origin?: "app";
+  /**
+   * Entry-level changes. Unlike a text proposal, these apply (and undo)
+   * whenever their entries are still as proposed, so several can be
+   * applied in any order.
+   */
+  entries?: EntryChange[];
+  /** Short labels of the entries changed, for the card ("Barista, Kafeterija"). */
+  labels?: string[];
   summary: string;
   createdAt: string;
   target: ProposalTarget;
@@ -44,7 +68,13 @@ export type Proposal = {
   autoApplied?: boolean;
   /** Why it's stale, or why undo/apply failed. */
   message?: string;
-  undo?: { resume?: ResumeData; afterRevision?: string; template?: string | null };
+  undo?: {
+    resume?: ResumeData;
+    afterRevision?: string;
+    template?: string | null;
+    /** Entry-level: where each change landed, to put the entries back. */
+    entries?: { section: EntrySection; index: number; before: unknown; after?: unknown }[];
+  };
 };
 
 export type ProposalIO = {
@@ -71,10 +101,91 @@ export type ProposeResult =
 
 const KEEP = 50;
 
+/**
+ * Puts entries back as they were before an applied entry-level proposal:
+ * rewritten ones must still read as rewritten, removed ones return to
+ * their old place (or the end, if the section got shorter). Null when a
+ * rewritten entry was edited since.
+ */
+function withoutEntryChanges(
+  data: ResumeData,
+  landed: NonNullable<NonNullable<Proposal["undo"]>["entries"]>
+): ResumeData | null {
+  const next = structuredClone(data);
+  const bySection = new Map<EntrySection, typeof landed>();
+  for (const l of landed) bySection.set(l.section, [...(bySection.get(l.section) ?? []), l]);
+  for (const [section, list] of bySection) {
+    const entries = [...sectionOf(next, section)];
+    const used = new Set<number>();
+    for (const l of list.filter((l) => l.after !== undefined)) {
+      const i = entries.findIndex((e, idx) => !used.has(idx) && sameEntry(e, l.after));
+      if (i === -1) return null;
+      used.add(i);
+      entries[i] = structuredClone(l.before);
+    }
+    for (const l of list.filter((l) => l.after === undefined).sort((a, b) => a.index - b.index)) {
+      entries.splice(Math.min(l.index, entries.length), 0, structuredClone(l.before));
+    }
+    (next.content as unknown as Record<string, unknown>)[section] = entries;
+  }
+  return next;
+}
+
 /** Top-level blocks (sections, custom sections, layout) of `before` that `after` doesn't have. */
 function missingParts(before: string, after: string): string[] {
   const present = new Set(topLevelBlocks(after));
   return topLevelBlocks(before).filter((b) => !present.has(b));
+}
+
+/** JSON with sorted keys, so two entries compare equal whatever their key order. */
+function stableJson(value: unknown): string {
+  return JSON.stringify(value, (_k, v) =>
+    v && typeof v === "object" && !Array.isArray(v)
+      ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, (v as Record<string, unknown>)[k]]))
+      : v
+  );
+}
+
+const sameEntry = (a: unknown, b: unknown) => stableJson(a) === stableJson(b);
+
+function sectionOf(data: ResumeData, section: EntrySection): unknown[] {
+  const list = (data.content as unknown as Record<string, unknown>)[section];
+  return Array.isArray(list) ? list : [];
+}
+
+/**
+ * `data` with entry-level changes made, or null when an entry they change
+ * isn't in the resume (any more). Each change finds its own entry, so
+ * changes made earlier by other proposals don't get in the way.
+ */
+function withEntryChanges(
+  data: ResumeData,
+  changes: EntryChange[]
+): { next: ResumeData; landed: NonNullable<Proposal["undo"]>["entries"] } | null {
+  const next = structuredClone(data);
+  const landed: NonNullable<Proposal["undo"]>["entries"] = [];
+  const bySection = new Map<EntrySection, EntryChange[]>();
+  for (const c of changes) bySection.set(c.section, [...(bySection.get(c.section) ?? []), c]);
+  for (const [section, list] of bySection) {
+    const entries = sectionOf(next, section);
+    const used = new Set<number>();
+    const plan = new Map<number, EntryChange>();
+    for (const c of list) {
+      const i = entries.findIndex((e, idx) => !used.has(idx) && sameEntry(e, c.before));
+      if (i === -1) return null;
+      used.add(i);
+      plan.set(i, c);
+      landed!.push({ section, index: i, before: c.before, after: c.after });
+    }
+    const out: unknown[] = [];
+    entries.forEach((e, i) => {
+      const c = plan.get(i);
+      if (!c) out.push(e);
+      else if (c.after !== undefined) out.push(structuredClone(c.after));
+    });
+    (next.content as unknown as Record<string, unknown>)[section] = out;
+  }
+  return { next, landed };
 }
 
 export class ProposalStore {
@@ -120,8 +231,9 @@ export class ProposalStore {
   private async add(proposal: Proposal): Promise<Proposal> {
     this.proposals = [...this.proposals, proposal];
     this.changed();
-    // Opt-in: changes with no warnings at all are applied at once.
-    if (proposal.warnings.length === 0 && (await this.io.autoApply())) {
+    // Opt-in: changes with no warnings at all are applied at once. The
+    // setting is for connected apps; Resuma's own suggestions always wait.
+    if (proposal.origin !== "app" && proposal.warnings.length === 0 && (await this.io.autoApply())) {
       const applied = await this.apply(proposal.id);
       return applied.status === "applied" ? this.update(proposal.id, { autoApplied: true }) : applied;
     }
@@ -196,6 +308,56 @@ export class ProposalStore {
     return { ok: true, proposal };
   }
 
+  /**
+   * Proposes changes to single entries (rewrite or remove), checked the same
+   * way as a content proposal. `dropRemovalWarning` is for proposals whose
+   * whole point is removing entries, where saying so again isn't a warning.
+   */
+  async proposeEntries(input: {
+    client: string;
+    resumeId: string;
+    changes: EntryChange[];
+    summary: string;
+    labels?: string[];
+    origin?: "app";
+    dropRemovalWarning?: boolean;
+    /** Checks only the proposer can make, shown with the others. */
+    extraWarnings?: ProposalWarning[];
+  }): Promise<ProposeResult> {
+    const data = await this.io.loadResume(input.resumeId);
+    if (!data) return { ok: false, reason: "notFound", message: `No resume with id "${input.resumeId}".` };
+    if (input.changes.length === 0) return { ok: false, reason: "unchanged", message: "No entries to change." };
+    const changed = withEntryChanges(data, input.changes);
+    if (!changed) {
+      return { ok: false, reason: "stale", message: "An entry this would change isn't in the resume any more." };
+    }
+    const before = fullText(data, "content");
+    const after = fullText(changed.next, "content");
+    if (before.trim() === after.trim()) {
+      return { ok: false, reason: "unchanged", message: "The proposed entries change nothing." };
+    }
+    const warnings: ProposalWarning[] = [
+      ...contentWarnings(before, after).filter((w) => !(input.dropRemovalWarning && w.kind === "removed")),
+      ...(input.extraWarnings ?? []),
+    ];
+    const proposal = await this.add({
+      id: this.io.newId(),
+      client: input.client,
+      origin: input.origin,
+      summary: input.summary.trim(),
+      createdAt: this.io.now(),
+      target: { kind: "resume", resumeId: input.resumeId, part: "content", title: data.title?.trim() ?? "" },
+      source: after,
+      entries: input.changes,
+      labels: input.labels,
+      before,
+      after,
+      warnings,
+      status: "pending",
+    });
+    return { ok: true, proposal };
+  }
+
   async proposeTemplate(input: { client: string; name: string; source: string; summary: string }): Promise<ProposeResult> {
     const compiled = compileTemplate(input.source);
     if (!compiled.template) {
@@ -239,6 +401,14 @@ export class ProposalStore {
     const { resumeId, part } = p.target;
     const data = await this.io.loadResume(resumeId);
     if (!data) return this.update(id, { status: "stale", message: "The resume no longer exists." });
+    if (p.entries) {
+      const changed = withEntryChanges(data, p.entries);
+      if (!changed) {
+        return this.update(id, { status: "stale", message: "An entry this changes was edited or removed since." });
+      }
+      await this.io.writeResume(resumeId, changed.next);
+      return this.update(id, { status: "applied", undo: { entries: changed.landed } });
+    }
     const shares = await this.io.sharesPersonal(resumeId);
     // Applying over newer edits would undo them: the resume must still be
     // what the client read.
@@ -251,6 +421,18 @@ export class ProposalStore {
       status: "applied",
       undo: { resume: data, afterRevision: revisionOf(fullText(next, part)) },
     });
+  }
+
+  /** Applies each pending proposal in turn and counts what happened. */
+  async applyAll(ids: string[]): Promise<{ applied: number; stale: number }> {
+    let applied = 0;
+    let stale = 0;
+    for (const id of ids) {
+      const after = await this.apply(id);
+      if (after?.status === "applied") applied++;
+      else if (after?.status === "stale") stale++;
+    }
+    return { applied, stale };
   }
 
   discard(id: string): Proposal | undefined {
@@ -270,6 +452,14 @@ export class ProposalStore {
     }
     const { resumeId, part } = p.target;
     const data = await this.io.loadResume(resumeId);
+    if (data && p.undo.entries) {
+      const restored = withoutEntryChanges(data, p.undo.entries);
+      if (!restored) {
+        return this.update(id, { message: "An entry this changed was edited since, so it can't be undone here." });
+      }
+      await this.io.writeResume(resumeId, restored);
+      return this.update(id, { status: "undone", message: undefined });
+    }
     if (!data || revisionOf(fullText(data, part)) !== p.undo.afterRevision) {
       return this.update(id, { message: "The resume changed after this was applied, so it can't be undone here." });
     }
