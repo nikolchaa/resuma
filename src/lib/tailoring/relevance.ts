@@ -25,22 +25,28 @@ export type Verdict = { item: RelevanceItem; keep: boolean; score?: number };
 /** Sections tailoring looks at, in resume order. */
 export const RELEVANCE_SECTIONS: EntrySection[] = ["experience", "education", "projects", "skills"];
 
-const dateRange = (d?: { from?: string; to?: string }) =>
-  d?.from || d?.to ? ` (${[d?.from, d?.to].filter(Boolean).join(" – ")})` : "";
-
 const sentence = (s?: string) => {
   const v = (s ?? "").trim();
   return v ? (/[.!?…]$/.test(v) ? v : `${v}.`) : "";
 };
 
-/** Every entry tailoring can judge, with its prose and label. */
+/**
+ * Every entry tailoring can judge, with its prose and label. The prose
+ * follows the form the job-matching cut-off was measured on: "Experience:
+ * Backend Developer at Nordlab (2022 – Present). …", "Project: …",
+ * "Skills - Backend: …".
+ */
 export function relevanceItems(content: ResumeContent, language: AppLanguage): RelevanceItem[] {
-  const head = (section: EntrySection) => translate(language, `template.section.${section}`, section);
+  const t = (key: string, values: Record<string, string> = {}) =>
+    translate(language, key).replace(/\{(\w+)\}/g, (m, k) => values[k] ?? m);
+  const dateRange = (d?: { from?: string; to?: string }) =>
+    d?.from || d?.to ? ` (${[d?.from, d?.to?.trim() || (d?.from ? t("common.present") : "")].filter(Boolean).join(" – ")})` : "";
   const items: RelevanceItem[] = [];
   content.experience.forEach((e, index) => {
     const label = [e.jobTitle, e.company].filter(Boolean).join(", ");
+    const role = e.jobTitle && e.company ? t("tailor.entryAt", { title: e.jobTitle, company: e.company }) : label;
     const text = [
-      `${head("experience")}: ${[e.jobTitle, e.company].filter(Boolean).join(" – ")}${dateRange(e.date)}.`,
+      `${t("tailor.kind.experience")}: ${role}${dateRange(e.date)}.`,
       sentence(e.description),
       ...(e.notes ?? []).map(sentence),
     ]
@@ -51,20 +57,20 @@ export function relevanceItems(content: ResumeContent, language: AppLanguage): R
   content.education.forEach((e, index) => {
     const label = [e.degree, e.school].filter(Boolean).join(", ");
     const courses = e.courses?.filter(Boolean).join(", ");
-    const text = [`${head("education")}: ${label}${dateRange(e.date)}.`, courses ? sentence(courses) : ""]
+    const text = [`${t("tailor.kind.education")}: ${label}${dateRange(e.date)}.`, courses ? sentence(courses) : ""]
       .filter(Boolean)
       .join(" ");
     items.push({ section: "education", index, entry: e, text, label });
   });
   content.projects.forEach((p, index) => {
     const tech = p.technologies?.filter(Boolean).join(", ");
-    const text = [`${head("projects")}: ${p.name}.`, sentence(p.description), tech ? sentence(tech) : ""]
+    const text = [`${t("tailor.kind.project")}: ${p.name}.`, sentence(p.description), tech ? sentence(tech) : ""]
       .filter(Boolean)
       .join(" ");
     items.push({ section: "projects", index, entry: p, text, label: p.name });
   });
   content.skills.forEach((s, index) => {
-    const text = `${head("skills")} – ${s.category}: ${s.items.filter(Boolean).join(", ")}.`;
+    const text = `${t("tailor.kind.skills")} - ${s.category}: ${s.items.filter(Boolean).join(", ")}.`;
     items.push({ section: "skills", index, entry: s, text, label: s.category });
   });
   return items.filter((i) => i.text.replace(/[^\p{L}\p{N}]/gu, "").length > 0);

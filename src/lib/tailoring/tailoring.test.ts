@@ -24,11 +24,16 @@ const verdicts = (c: ResumeContent, drop: string[]): Verdict[] =>
   }));
 
 describe("relevance", () => {
-  it("describes entries as prose, with the section name in the app's language", () => {
-    const items = relevanceItems(content(), "rs");
-    const barista = items.find((i) => i.label === "Barista, Kafeterija")!;
-    expect(barista.text).toMatch(/^Iskustvo: Barista – Kafeterija \(2019 – 2021\)\./);
-    expect(items.find((i) => i.section === "skills")!.text).toBe("Veštine – Languages: TypeScript, Rust, Go.");
+  // The same form as the entries the job-matching cut-off was measured on.
+  it("describes entries as prose, in the app's language", () => {
+    const en = relevanceItems(content(), "en");
+    expect(en.find((i) => i.label === "Barista, Kafeterija")!.text).toMatch(/^Experience: Barista at Kafeterija \(2019 – 2021\)\./);
+    expect(en.find((i) => i.label === "Software Engineer, Acme")!.text).toMatch(/^Experience: Software Engineer at Acme \(2022 – Present\)\./);
+    expect(en.find((i) => i.section === "projects")!.text).toMatch(/^Project: Resuma\. /);
+    expect(en.find((i) => i.section === "skills")!.text).toBe("Skills - Languages: TypeScript, Rust, Go.");
+    const rs = relevanceItems(content(), "rs");
+    expect(rs.find((i) => i.label === "Barista, Kafeterija")!.text).toMatch(/^Iskustvo: Barista, Kafeterija \(2019 – 2021\)\./);
+    expect(rs.find((i) => i.section === "skills")!.text).toBe("Veštine - Languages: TypeScript, Rust, Go.");
   });
 
   it("never suggests leaving out the current job or the only degree", () => {
