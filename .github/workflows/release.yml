@@ -1,5 +1,8 @@
 name: Build and Release with Tauri Action
 
+# Builds every platform for a version tag and uploads the installers to a
+# draft release. Nothing is public until the draft is published by hand,
+# after every platform has uploaded.
 on:
   push:
     tags:
@@ -13,11 +16,26 @@ permissions:
 
 jobs:
   build:
+    name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - name: Windows x64
+            os: windows-latest
+          - name: Windows ARM
+            os: windows-11-arm
+          - name: macOS Apple silicon
+            os: macos-latest
+          - name: macOS Intel
+            os: macos-15-intel
+          # The oldest supported Ubuntu, so the packages run on as many
+          # distributions as possible.
+          - name: Linux x64
+            os: ubuntu-22.04
+          - name: Linux ARM
+            os: ubuntu-22.04-arm
 
     steps:
       - uses: actions/checkout@v5
@@ -29,6 +47,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri -> target
+          key: ${{ matrix.os }}
 
       - name: Install Node.js
         uses: actions/setup-node@v5
@@ -37,7 +56,7 @@ jobs:
           cache: npm
 
       - name: Install Linux build dependencies
-        if: matrix.os == 'ubuntu-latest'
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -47,11 +66,12 @@ jobs:
             libgdk-pixbuf-2.0-dev \
             libappindicator3-dev \
             librsvg2-dev \
-            patchelf
+            patchelf \
+            libfuse2
 
       # Also installs the Tauri CLI (a dev dependency), which tauri-action uses.
       - name: Install frontend dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build and release with Tauri
         uses: tauri-apps/tauri-action@v0
@@ -61,5 +81,5 @@ jobs:
           tagName: v__VERSION__
           releaseName: "Resuma v__VERSION__ ✨"
           releaseBody: "See the assets to download this version and install."
-          releaseDraft: false
+          releaseDraft: true
           prerelease: false
