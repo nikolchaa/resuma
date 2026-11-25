@@ -96,32 +96,52 @@ jobs:
             librsvg2-dev \
             patchelf \
             libfuse2 \
+            xdg-utils \
             xvfb
 
       - name: Install frontend dependencies
         run: npm ci
 
       # Each step below publishes the end of its output as an annotation if
-      # it fails (see run-logged.sh), so failures can be read without signing in.
+      # it fails (see run-logged.sh), so failures can be read without signing
+      # in. Once the installers are built, every check runs even if another
+      # one failed, so one failure doesn't hide the rest.
       - name: Build the installers
+        id: build
         shell: bash
         run: .github/scripts/run-logged.sh "Build" npx tauri build
 
+      # The installer names, so the website's download patterns can be checked.
+      - name: List the installers
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        shell: bash
+        run: |
+          shopt -s nullglob
+          cd src-tauri/target/release/bundle
+          names=""
+          for f in nsis/*.exe dmg/*.dmg deb/*.deb rpm/*.rpm appimage/*.AppImage; do names+="$(basename "$f") "; done
+          echo "::notice title=Installers::$names"
+
       - name: Rust tests
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         shell: bash
         working-directory: src-tauri
         run: ../.github/scripts/run-logged.sh "Rust tests" cargo test --lib
 
       - name: Download a llama.cpp build and the light model
+        id: download
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         shell: bash
         run: .github/scripts/run-logged.sh "Local AI download" node .github/scripts/local-ai-check.mjs
 
       - name: Run one local AI request
+        if: ${{ !cancelled() && steps.download.outcome == 'success' }}
         shell: bash
         working-directory: src-tauri
         run: ../.github/scripts/run-logged.sh "Local AI request" cargo test --lib real_local_request -- --ignored --nocapture
 
       - name: Start the app
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         shell: bash
         env:
           RESUMA_SMOKE_TEST: "1"
@@ -133,6 +153,7 @@ jobs:
           fi
 
       - name: Keep the installers
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
           name: resuma-${{ matrix.slug }}

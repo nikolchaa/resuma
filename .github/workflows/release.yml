@@ -67,7 +67,8 @@ jobs:
             libappindicator3-dev \
             librsvg2-dev \
             patchelf \
-            libfuse2
+            libfuse2 \
+            xdg-utils
 
       # Also installs the Tauri CLI (a dev dependency), which tauri-action uses.
       - name: Install frontend dependencies

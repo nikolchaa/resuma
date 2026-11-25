@@ -47,7 +47,9 @@ for (const url of [runtime.download, ...(runtime.extraDownloads ?? [])]) {
   console.log(`Downloading ${url}`);
   await download(url, archive);
   // bsdtar (Windows, macOS) reads zip and tar.gz; Linux builds are tar.gz.
-  execFileSync("tar", ["-xf", archive, "-C", runtimeDir], { stdio: "inherit" });
+  // On Windows, Windows' own tar: Git's GNU tar reads "C:" as a remote host.
+  const tar = platform === "windows" ? join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe") : "tar";
+  execFileSync(tar, ["-xf", archive, "-C", runtimeDir], { stdio: "inherit" });
 }
 
 const modelDir = join(appData, "models", MODEL_ID.replace(/\./g, "_"));
