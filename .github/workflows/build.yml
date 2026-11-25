@@ -101,35 +101,36 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      # Each step below publishes the end of its output as an annotation if
+      # it fails (see run-logged.sh), so failures can be read without signing in.
       - name: Build the installers
-        run: npx tauri build
+        shell: bash
+        run: .github/scripts/run-logged.sh "Build" npx tauri build
 
       - name: Rust tests
+        shell: bash
         working-directory: src-tauri
-        run: cargo test --lib
+        run: ../.github/scripts/run-logged.sh "Rust tests" cargo test --lib
 
       - name: Download a llama.cpp build and the light model
-        run: node .github/scripts/local-ai-check.mjs
+        shell: bash
+        run: .github/scripts/run-logged.sh "Local AI download" node .github/scripts/local-ai-check.mjs
 
       - name: Run one local AI request
+        shell: bash
         working-directory: src-tauri
-        run: cargo test --lib real_local_request -- --ignored --nocapture
+        run: ../.github/scripts/run-logged.sh "Local AI request" cargo test --lib real_local_request -- --ignored --nocapture
 
-      - name: Start the app (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
+      - name: Start the app
+        shell: bash
+        env:
+          RESUMA_SMOKE_TEST: "1"
         run: |
-          $env:RESUMA_SMOKE_TEST = "1"
-          $p = Start-Process -FilePath src-tauri/target/release/Resuma.exe -PassThru -Wait
-          exit $p.ExitCode
-
-      - name: Start the app (macOS)
-        if: runner.os == 'macOS'
-        run: RESUMA_SMOKE_TEST=1 ./src-tauri/target/release/Resuma
-
-      - name: Start the app (Linux)
-        if: runner.os == 'Linux'
-        run: RESUMA_SMOKE_TEST=1 xvfb-run -a ./src-tauri/target/release/Resuma
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            .github/scripts/run-logged.sh "Start-up" xvfb-run -a ./src-tauri/target/release/Resuma
+          else
+            .github/scripts/run-logged.sh "Start-up" ./src-tauri/target/release/Resuma
+          fi
 
       - name: Keep the installers
         uses: actions/upload-artifact@v4
