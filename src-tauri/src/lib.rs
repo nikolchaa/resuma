@@ -383,10 +383,16 @@ async fn asset_disk_usage(asset_type: String, asset_name: String) -> Result<u64,
     Ok(dir_size(&base_dir))
 }
 
+/// Set once the frontend has called in, for the start-up check below.
+static FRONTEND_UP: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 /// The CPU architecture this build of the app runs as: "x64", "arm64", or
 /// Rust's own name for anything else. llama.cpp runtimes must match it.
+/// The frontend asks for it as soon as it starts, so it also marks the
+/// frontend as up.
 #[tauri::command]
 fn app_arch() -> &'static str {
+    FRONTEND_UP.store(true, std::sync::atomic::Ordering::SeqCst);
     match std::env::consts::ARCH {
         "x86_64" => "x64",
         "aarch64" => "arm64",
@@ -431,6 +437,28 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_hwinfo::init())
         .plugin(prevent_default_plugin)
+        .setup(|app| {
+            // Start-up check for CI (RESUMA_SMOKE_TEST set): exit with 0 once
+            // the frontend has loaded and called in, or with 1 if it hasn't
+            // within a minute (a missing library, a WebView that won't start).
+            if std::env::var_os("RESUMA_SMOKE_TEST").is_some() {
+                let handle = app.handle().clone();
+                std::thread::spawn(move || {
+                    let started = std::time::Instant::now();
+                    while started.elapsed() < std::time::Duration::from_secs(60) {
+                        if FRONTEND_UP.load(std::sync::atomic::Ordering::SeqCst) {
+                            println!("[smoke] the frontend started");
+                            handle.exit(0);
+                            return;
+                        }
+                        std::thread::sleep(std::time::Duration::from_millis(200));
+                    }
+                    eprintln!("[smoke] the frontend didn't start within a minute");
+                    handle.exit(1);
+                });
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             app_arch,
             call_llm,
