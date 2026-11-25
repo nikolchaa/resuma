@@ -416,7 +416,7 @@ impl Drop for PromptFile {
 /// Which generation of llama.cpp a runtime folder holds; their command
 /// lines differ.
 #[derive(Debug, Clone, Copy, PartialEq)]
-enum LlamaBuild {
+pub(crate) enum LlamaBuild {
     /// b5588 and similar, as downloaded by earlier app versions: one-shot
     /// `llama-cli`, `--gpu-layers -1` means 0 layers, `--mlock`/`--no-mmap`.
     Legacy,
@@ -429,7 +429,7 @@ enum LlamaBuild {
 /// Finds the one-shot binary in a runtime folder. Windows archives are flat;
 /// Linux/macOS archives have used `build/bin/` and a top-level
 /// `llama-<tag>/` folder, so a couple of levels are searched.
-fn find_runtime_binary(runtime_dir: &Path) -> Option<(PathBuf, LlamaBuild)> {
+pub(crate) fn find_runtime_binary(runtime_dir: &Path) -> Option<(PathBuf, LlamaBuild)> {
     let exe = |name: &str| {
         if cfg!(target_os = "windows") {
             format!("{name}.exe")
@@ -485,7 +485,7 @@ pub(crate) fn llama_command(runtime_path: &Path) -> Command {
 
 /// `<app data>/runtimes`; tests may point at runtimes outside the app's
 /// folder with `RESUMA_TEST_RUNTIMES_DIR`.
-fn runtimes_root(app_data: &Path) -> PathBuf {
+pub(crate) fn runtimes_root(app_data: &Path) -> PathBuf {
     #[cfg(test)]
     if let Ok(dir) = std::env::var("RESUMA_TEST_RUNTIMES_DIR") {
         return PathBuf::from(dir);
@@ -493,7 +493,7 @@ fn runtimes_root(app_data: &Path) -> PathBuf {
     app_data.join("runtimes")
 }
 
-fn get_app_data_path() -> Result<PathBuf, String> {
+pub(crate) fn get_app_data_path() -> Result<PathBuf, String> {
     data_dir()
         .map(|base| base.join("com.resuma.app"))
         .ok_or("Failed to resolve platform-specific app data directory.".to_string())
@@ -502,7 +502,7 @@ fn get_app_data_path() -> Result<PathBuf, String> {
 /// Sharded GGUFs load from their first part ("-00001-of-…"), which sorts
 /// first alphabetically, so the lexicographically smallest file is correct
 /// for both single-file and sharded models.
-fn find_gguf_file(model_dir: &PathBuf) -> Option<PathBuf> {
+pub(crate) fn find_gguf_file(model_dir: &PathBuf) -> Option<PathBuf> {
     let mut ggufs: Vec<PathBuf> = std::fs::read_dir(model_dir)
         .ok()?
         .filter_map(|entry| entry.ok())

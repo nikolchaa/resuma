@@ -18,6 +18,7 @@ mod huggingface;
 mod llm;
 mod mcp;
 mod remote;
+mod reranker;
 mod rpc;
 mod secrets;
 use huggingface::{get_huggingface_files, search_huggingface_models};
@@ -435,6 +436,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             call_llm,
             cancel_llm,
+            reranker::rerank,
+            reranker::reranker_stop,
             download_and_extract,
             check_asset_ready,
             asset_disk_usage,
@@ -473,6 +476,7 @@ pub fn run() {
             // No llama.cpp process may outlive the app.
             if let tauri::RunEvent::Exit = event {
                 llm::cancel_all();
+                reranker::stop();
             }
         });
 }

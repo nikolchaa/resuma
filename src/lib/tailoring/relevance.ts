@@ -8,6 +8,7 @@ import type { ResumeContent } from "@/lib/resumesStore";
 import type { EntrySection } from "@/lib/mcp/proposals";
 import { AiRequest, isAiCancelled, startPrompt } from "@/lib/llmUtils";
 import { t as translate, AppLanguage } from "@/lib/i18n";
+import { LEAVE_OUT_BELOW, rerankScores, stopReranker } from "./reranker";
 
 export type RelevanceItem = {
   section: EntrySection;
@@ -143,7 +144,57 @@ export function readYesNo(answer: string): boolean {
 /** Stops after this many failed calls in a row: the provider is likely down. */
 const MAX_FAILURES_IN_A_ROW = 2;
 
-export async function judgeRelevance(items: RelevanceItem[], jobDesc: string, ctl: RelevanceControl): Promise<Verdict[]> {
+/** How entries are judged: the job-matching model (local AI only), or the chat model. */
+export type RelevanceMethod = { kind: "reranker"; runtime: string } | { kind: "chat" };
+
+/** Entries scored per job-matching request: small enough to stop quickly. */
+const RERANK_BATCH = 4;
+
+export async function judgeRelevance(
+  items: RelevanceItem[],
+  jobDesc: string,
+  ctl: RelevanceControl,
+  method: RelevanceMethod = { kind: "chat" }
+): Promise<Verdict[]> {
+  if (method.kind === "reranker") {
+    const scored = await rerankRelevance(items, jobDesc, ctl, method.runtime);
+    // If the model can't run (an old runtime, say), the chat model judges the rest.
+    if (scored.length === items.length || ctl.stopped()) return scored;
+    const rest = await chatRelevance(items.slice(scored.length), jobDesc, {
+      ...ctl,
+      onProgress: (done) => ctl.onProgress(scored.length + done, items.length),
+    });
+    return [...scored, ...rest];
+  }
+  return chatRelevance(items, jobDesc, ctl);
+}
+
+async function rerankRelevance(items: RelevanceItem[], jobDesc: string, ctl: RelevanceControl, runtime: string): Promise<Verdict[]> {
+  const verdicts: Verdict[] = [];
+  ctl.onProgress(0, items.length);
+  try {
+    for (let i = 0; i < items.length && !ctl.stopped(); i += RERANK_BATCH) {
+      const batch = items.slice(i, i + RERANK_BATCH);
+      const promise = rerankScores(runtime, jobDesc, batch.map((b) => b.text));
+      ctl.track({ promise: promise.then(() => ""), cancel: () => void stopReranker() });
+      try {
+        const scores = await promise;
+        batch.forEach((item, j) => verdicts.push({ item, keep: scores[j] >= LEAVE_OUT_BELOW, score: scores[j] }));
+      } finally {
+        ctl.track(null);
+      }
+      ctl.onProgress(verdicts.length, items.length);
+    }
+  } catch (error) {
+    if (!ctl.stopped() && !isAiCancelled(error)) console.warn("[tailoring] job matching failed, asking the chat model:", error);
+  } finally {
+    // Free its memory before the chat model rewords entries.
+    await stopReranker();
+  }
+  return verdicts;
+}
+
+async function chatRelevance(items: RelevanceItem[], jobDesc: string, ctl: RelevanceControl): Promise<Verdict[]> {
   const verdicts: Verdict[] = [];
   let failures = 0;
   ctl.onProgress(0, items.length);

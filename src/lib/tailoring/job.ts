@@ -7,14 +7,14 @@
  */
 import { useSyncExternalStore } from "react";
 import { appProposals, currentResume } from "@/lib/mcp/app";
-import type { EntryChange } from "@/lib/mcp/proposals";
 import { AiRequest, isAiCancelled, startPrompt } from "@/lib/llmUtils";
 import { getSection } from "@/lib/store";
 import type { SettingsType } from "@/contexts/OnboardingContext";
 import { normalizeLanguage, t as translate, AppLanguage } from "@/lib/i18n";
 import { windowSingleton } from "@/lib/singleton";
 import { showError, showSuccess, showWarning } from "@/lib/toastUtils";
-import { judgeRelevance, leaveOutCandidates, relevanceItems } from "./relevance";
+import { judgeRelevance, leaveOutCandidates, relevanceItems, RelevanceMethod } from "./relevance";
+import { rerankerInstalled } from "./reranker";
 import { applyExperienceReply, applyProjectReply, experiencePrompt, projectPrompt } from "./rewrite";
 
 export type TailorState = {
@@ -103,25 +103,37 @@ async function run(job: Job, jobDesc: string) {
     if (!data) return;
     const content = data.content;
 
-    // 1. Which entries fit the job.
+    // 1. Which entries fit the job: with the job-matching model when local
+    // AI has it, else by asking the chat model.
     const items = relevanceItems(content, lang);
-    const verdicts = await judgeRelevance(items, jobDesc, {
-      onProgress: (done, total) => progress("scoring", done, total),
-      track: (r) => (job.request = r),
-      stopped: () => job.stopped,
-    });
+    const llm = await getSection<SettingsType["llm"]>("llm").catch(() => undefined);
+    const method: RelevanceMethod =
+      (llm?.provider ?? "local") === "local" && llm?.runtime && (await rerankerInstalled())
+        ? { kind: "reranker", runtime: llm.runtime }
+        : { kind: "chat" };
+    const verdicts = await judgeRelevance(
+      items,
+      jobDesc,
+      {
+        onProgress: (done, total) => progress("scoring", done, total),
+        track: (r) => (job.request = r),
+        stopped: () => job.stopped,
+      },
+      method
+    );
     if (job.stopped) return;
 
+    // One suggestion per entry: the judgement isn't perfect, so each can be
+    // discarded on its own.
     const leaveOut = leaveOutCandidates(verdicts, content);
-    if (leaveOut.length) {
+    for (const item of leaveOut) {
       const r = await appProposals.proposeEntries({
         client,
         resumeId,
         origin: "app",
         dropRemovalWarning: true,
-        changes: leaveOut.map((i): EntryChange => ({ section: i.section, before: i.entry })),
-        labels: leaveOut.map((i) => i.label),
-        summary: leaveOut.length === 1 ? t("tailor.leaveOutOne") : t("tailor.leaveOutMany", { n: leaveOut.length }),
+        changes: [{ section: item.section, before: item.entry }],
+        summary: t("tailor.leaveOut", { entry: item.label }),
       });
       if (r.ok) suggestions++;
     }

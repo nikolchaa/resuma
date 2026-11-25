@@ -42,6 +42,7 @@ import {
 import { RemoteProviderSetup } from "@/components/RemoteProviderSetup";
 import { ProviderOption } from "@/components/ProviderOption";
 import { HfModelBrowser } from "@/components/HfModelBrowser";
+import { JobMatchingModel } from "@/components/JobMatchingModel";
 
 type Props = {
   llm: SettingsType["llm"];
@@ -539,6 +540,9 @@ export const ArtificialSettings = ({
 
           {/* Live Hugging Face model browser */}
           <HfModelBrowser onChanged={setDownloadedModels} />
+
+          {/* Optional job-matching model for tailoring */}
+          <JobMatchingModel />
 
           {/* Runtime download lifecycle: status badges + auto-refresh of the
           runtime list once a runtime finishes extracting. */}

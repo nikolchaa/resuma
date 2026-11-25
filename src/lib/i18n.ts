@@ -349,6 +349,11 @@ const translations: Record<AppLanguage, Record<string, string>> = {
     "ai.gpuCompatible": "GPU Compatible",
     "ai.cpuCompatible": "CPU Compatible",
     "ai.downloadErrorPrefix": "Download error for",
+    "ai.matching": "Job matching",
+    "ai.matching.description":
+      "Optional. A small extra model that checks which resume entries fit a job when you tailor a resume. It's faster and more consistent than asking the chat model, and runs only while it checks.",
+    "ai.matching.delete": "Remove the job matching model",
+    "ai.matching.deleteFailed": "Couldn't remove the job matching model",
     "ai.extractErrorPrefix": "Extraction error for",
     "ai.errorReadingRuntimes": "Error reading downloaded runtimes",
     "ai.modelDeleted": "Model deleted",
@@ -656,8 +661,7 @@ const translations: Record<AppLanguage, Record<string, string>> = {
     "tailor.stoppedDesc": "Suggestions made before you stopped are kept.",
     "tailor.failed": "Tailoring failed",
     "tailor.entryFailed": "Couldn't reword {entry}. It's left as it is.",
-    "tailor.leaveOutOne": "Leave out 1 entry that doesn't fit this job",
-    "tailor.leaveOutMany": "Leave out {n} entries that don't fit this job",
+    "tailor.leaveOut": "Leave out “{entry}”: it doesn't seem to fit this job",
     "tailor.rewrite": "Reword “{entry}” for this job",
     "tailor.action": "Tailor to this job",
     "tailor.actionHint":
@@ -1025,6 +1029,11 @@ const translations: Record<AppLanguage, Record<string, string>> = {
     "ai.gpuCompatible": "GPU kompatibilno",
     "ai.cpuCompatible": "CPU kompatibilno",
     "ai.downloadErrorPrefix": "Greška preuzimanja za",
+    "ai.matching": "Poklapanje sa poslom",
+    "ai.matching.description":
+      "Opciono. Mali dodatni model koji proverava koje stavke rezimea odgovaraju poslu kada prilagođavaš rezime. Brži je i dosledniji od pitanja chat modelu, a radi samo dok proverava.",
+    "ai.matching.delete": "Ukloni model za poklapanje sa poslom",
+    "ai.matching.deleteFailed": "Uklanjanje modela za poklapanje sa poslom nije uspelo",
     "ai.extractErrorPrefix": "Greška raspakivanja za",
     "ai.errorReadingRuntimes": "Greška pri čitanju preuzetih runtime-a",
     "ai.modelDeleted": "Model obrisan",
@@ -1333,8 +1342,7 @@ const translations: Record<AppLanguage, Record<string, string>> = {
     "tailor.stoppedDesc": "Predlozi napravljeni pre zaustavljanja su sačuvani.",
     "tailor.failed": "Prilagođavanje nije uspelo",
     "tailor.entryFailed": "Nije uspelo preformulisanje stavke {entry}. Ostavljena je kakva jeste.",
-    "tailor.leaveOutOne": "Izostavi 1 stavku koja ne odgovara ovom poslu",
-    "tailor.leaveOutMany": "Izostavi stavke koje ne odgovaraju ovom poslu ({n})",
+    "tailor.leaveOut": "Izostavi „{entry}”: izgleda da ne odgovara ovom poslu",
     "tailor.rewrite": "Preformuliši „{entry}” za ovaj posao",
     "tailor.action": "Prilagodi ovom poslu",
     "tailor.actionHint":
