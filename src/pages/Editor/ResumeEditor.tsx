@@ -26,6 +26,8 @@ import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { AnimatePresence, motion as m } from "motion/react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAiEnabled } from "@/hooks/useAiEnabled";
+import { startTailoring, useTailoring } from "@/lib/tailoring/job";
 // import { runResumeCleanup, runResumeEnhancement } from "@/lib/llmUtils";
 import {
   Card,
@@ -44,6 +46,8 @@ type Props = {
 
 export const ResumeEditor = ({ draft, setDraft }: Props) => {
   const { t } = useLanguage();
+  const aiEnabled = useAiEnabled();
+  const tailoring = useTailoring(draft?.id);
   const { templates: library } = useTemplateLibrary();
   // Which picker entry the resume's template is: a built-in, a library
   // template (its copy is unchanged), or its own edited copy.
@@ -215,19 +219,36 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
           value={draft?.jobDesc}
           onChange={(e) => setDraft({ ...draft, jobDesc: e.target.value })}
         />
-        <Button
-          variant='outline'
-          className='self-end'
-          onClick={() => {
-            if (!draft?.content || !draft.jobDesc) return;
+        <div className='flex flex-wrap justify-end gap-2'>
+          {aiEnabled === true && (
+            <Button
+              variant='outline'
+              disabled={!draft?.jobDesc?.trim() || tailoring !== undefined}
+              title={!draft?.jobDesc?.trim() ? t("tailor.needsJob") : t("tailor.actionHint")}
+              onClick={() => {
+                if (!draft?.id || !draft.jobDesc?.trim()) return;
+                if (!startTailoring(draft.id, draft.jobDesc)) showWarning(t("tailor.running"));
+              }}
+            >
+              {t("tailor.action")}
+            </Button>
+          )}
+          <Button
+            variant='outline'
+            onClick={() => {
+              if (!draft?.content || !draft.jobDesc) return;
 
-            const results = matchATSKeywords(draft.content, draft.jobDesc);
-            setAtsResults(results);
-            setAtsModalOpen(true);
-          }}
-        >
-          {t("editor.ats.match")}
-        </Button>
+              const results = matchATSKeywords(draft.content, draft.jobDesc);
+              setAtsResults(results);
+              setAtsModalOpen(true);
+            }}
+          >
+            {t("editor.ats.match")}
+          </Button>
+        </div>
+        {aiEnabled === true && (
+          <p className='text-xs text-muted-foreground'>{t("tailor.actionHint")}</p>
+        )}
       </div>
 
       {/* Clean Special Characters */}
@@ -272,59 +293,6 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
           {t("editor.runDetection")}
         </Button>
       </div>
-
-      {/* <Separator /> */}
-
-      {/* Debug */}
-      {/* <div className='flex items-center justify-between'>
-        <Label>Test LLM Trim</Label>
-        <Button
-          variant='outline'
-          className='w-1/2'
-          onClick={async () => {
-            if (!draft) return;
-
-            try {
-              const result = await runResumeCleanup(
-                draft.content.education[1],
-                draft.jobDesc
-              );
-              console.log("LLM result:", result);
-              showSuccess("LLM Cleanup Result", result);
-            } catch (error) {
-              console.error("LLM error:", error);
-              showError("LLM call failed", String(error));
-            }
-          }}
-        >
-          Run Test
-        </Button>
-      </div>
-
-      <div className='flex items-center justify-between'>
-        <Label>Test LLM Enhance</Label>
-        <Button
-          variant='outline'
-          className='w-1/2'
-          onClick={async () => {
-            if (!draft) return;
-
-            try {
-              const result = await runResumeEnhancement(
-                draft.content.experience[0],
-                draft.jobDesc
-              );
-              console.log("LLM result:", result);
-              showSuccess("LLM Enhancement Result", result);
-            } catch (error) {
-              console.error("LLM error:", error);
-              showError("LLM call failed", String(error));
-            }
-          }}
-        >
-          Run Test
-        </Button>
-      </div> */}
 
       {/* ATS Results Modal */}
       <AnimatePresence>

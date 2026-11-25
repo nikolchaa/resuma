@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { registerLiveDraft } from "@/lib/mcp/liveDrafts";
 import { openSuggestions, useProposals } from "@/components/Suggestions";
+import { fill } from "@/components/ChangeReview";
+import { stopTailoring, useTailoring } from "@/lib/tailoring/job";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { loadResume, saveResume } from "@/lib/resumesStore";
 import { ResumeData } from "@/lib/resumesStore";
@@ -128,6 +130,7 @@ export const Editor = () => {
     });
   }, [loaded, id, setDraft]);
 
+  const tailoring = useTailoring(id);
   const proposals = useProposals();
   const waiting = proposals.filter(
     (p) => p.status === "pending" && p.target.kind === "resume" && p.target.resumeId === id
@@ -213,15 +216,38 @@ export const Editor = () => {
         language={language}
       />
 
-      {/* Proposals from connected AI apps waiting for this resume */}
-      {waiting > 0 && (
-        <button
-          className='absolute top-12 z-30 -translate-x-1/2 rounded-full border bg-background px-4 py-1.5 text-sm text-foreground shadow-sm hover:bg-muted'
+      {/* Tailoring in progress, and suggestions waiting for this resume */}
+      {(tailoring || waiting > 0) && (
+        <div
+          className='absolute top-12 z-30 flex -translate-x-1/2 flex-col items-center gap-2'
           style={{ left: `calc(50vw + ${sidebarWidth} / 2)` }}
-          onClick={openSuggestions}
         >
-          {(waiting === 1 ? t("suggest.waitingOne") : t("suggest.waitingMany")).replace("{n}", String(waiting))}
-        </button>
+          {tailoring && (
+            <div
+              className='flex items-center gap-3 rounded-full border bg-background py-1 pl-4 pr-1 text-sm text-foreground shadow-sm'
+              role='status'
+            >
+              <span className='h-2 w-2 shrink-0 animate-pulse rounded-full bg-primary motion-reduce:animate-none' />
+              <span>
+                {fill(t(tailoring.phase === "scoring" ? "tailor.scoring" : "tailor.rewriting"), {
+                  done: tailoring.done,
+                  total: tailoring.total,
+                })}
+              </span>
+              <Button size='sm' variant='ghost' className='h-7 rounded-full' onClick={() => stopTailoring(tailoring.resumeId)}>
+                {t("tailor.stop")}
+              </Button>
+            </div>
+          )}
+          {waiting > 0 && (
+            <button
+              className='rounded-full border bg-background px-4 py-1.5 text-sm text-foreground shadow-sm hover:bg-muted'
+              onClick={openSuggestions}
+            >
+              {(waiting === 1 ? t("suggest.waitingOne") : t("suggest.waitingMany")).replace("{n}", String(waiting))}
+            </button>
+          )}
+        </div>
       )}
 
       {/* PDF Preview */}

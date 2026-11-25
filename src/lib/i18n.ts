@@ -242,7 +242,7 @@ const translations: Record<AppLanguage, Record<string, string>> = {
     "ai.provider.noneHint":
       "AI features are turned off. Nothing is downloaded and no AI requests are made. You can pick a provider later in Settings → AI Settings.",
     "ai.off.wizardHint":
-      "AI features are off, so job tailoring, trimming and enhancement are skipped. Turn them on in Settings → AI Settings.",
+      "AI features are off, so the resume isn't tailored, but the keyword check still works. Turn AI on in Settings → AI Settings.",
     "ai.off.editorHint":
       "AI enhancement is off. Turn it on in Settings → AI Settings.",
     "ai.provider.localHint":
@@ -630,35 +630,40 @@ const translations: Record<AppLanguage, Record<string, string>> = {
     "wizard.nameTitle": "Name Your Resume",
     "wizard.nameDesc":
       "This will be the name of your resume. You can change it later.",
-    "wizard.jobTitle": "Paste Job Description (Optional)",
+    "wizard.jobTitle": "Target a job",
     "wizard.jobDesc":
-      "Not doing this might result in a generic resume that isn't optimized!",
-    "wizard.trimTitle": "Trim Unrelated Content?",
-    "wizard.trimDesc":
-      "AI can remove unrelated content based on the job description.",
-    "wizard.enhanceTitle": "Enhance Resume for ATS?",
-    "wizard.enhanceDesc":
-      "AI can enhance your resume with keywords for better ATS compatibility.",
+      "Optional. Paste the job ad to see how well your profile fits it. You can add or change it later in the Resume tab.",
     "wizard.filename": "Filename:",
     "wizard.next": "Next",
     "wizard.create": "Create resume",
     "wizard.job.placeholder":
       "Paste job description from Indeed, LinkedIn, etc.",
-    "wizard.skip": "Skip",
-    "wizard.job.required": "Job description required",
-    "wizard.continue": "Continue",
-    "wizard.trim.question":
-      "Would you like AI to trim your resume based on the job description?",
-    "wizard.trim.no": "No, skip",
-    "wizard.trim.yes": "Yes, trim it",
-    "wizard.enhance.question":
-      "Would you like AI to enhance your resume for ATS compatibility?",
-    "wizard.enhance.no": "No, keep it simple",
-    "wizard.enhance.yes": "Yes, enhance it",
-    "wizard.enhancing": "Enhancing...",
-    "wizard.status.finalizing": "Finalizing...",
-    "wizard.status.trimming": "Trimming",
-    "wizard.status.enhancingSection": "Enhancing",
+    "wizard.coverage": "Your profile mentions {present} of {total} keywords from this ad.",
+    "wizard.coverageMissing": "Missing: {values}",
+    "wizard.tailor": "Tailor it with AI",
+    "wizard.tailorHint":
+      "The resume opens right away. Resuma then suggests entries to leave out and new wording for the rest, and nothing changes until you apply it.",
+    "tailor.client": "Resuma AI",
+    "tailor.scoring": "Checking which entries fit the job ({done}/{total})",
+    "tailor.rewriting": "Rewording entries for the job ({done}/{total})",
+    "tailor.stop": "Stop",
+    "tailor.done": "Tailoring finished",
+    "tailor.doneMany": "{n} suggestions to review.",
+    "tailor.doneOne": "1 suggestion to review.",
+    "tailor.doneNone": "Nothing to change: your entries already fit this job.",
+    "tailor.review": "Review",
+    "tailor.stopped": "Tailoring stopped",
+    "tailor.stoppedDesc": "Suggestions made before you stopped are kept.",
+    "tailor.failed": "Tailoring failed",
+    "tailor.entryFailed": "Couldn't reword {entry}. It's left as it is.",
+    "tailor.leaveOutOne": "Leave out 1 entry that doesn't fit this job",
+    "tailor.leaveOutMany": "Leave out {n} entries that don't fit this job",
+    "tailor.rewrite": "Reword “{entry}” for this job",
+    "tailor.action": "Tailor to this job",
+    "tailor.actionHint":
+      "Suggests entries to leave out and new wording for the rest, using the job description above. You review every change.",
+    "tailor.needsJob": "Paste a job description first.",
+    "tailor.running": "Tailoring is already running for this resume.",
     "template.document.title": "Resume",
     "template.document.author": "Unknown",
     "template.document.subject": "Resume",
@@ -914,7 +919,7 @@ const translations: Record<AppLanguage, Record<string, string>> = {
     "ai.provider.noneHint":
       "AI funkcije su isključene. Ništa se ne preuzima i ne šalju se AI zahtevi. Provajdera možeš izabrati kasnije u Podešavanja → AI podešavanja.",
     "ai.off.wizardHint":
-      "AI funkcije su isključene, pa se prilagođavanje oglasu, skraćivanje i unapređivanje preskaču. Uključi ih u Podešavanja → AI podešavanja.",
+      "AI funkcije su isključene, pa se rezime ne prilagođava, ali provera ključnih reči i dalje radi. Uključi AI u Podešavanja → AI podešavanja.",
     "ai.off.editorHint":
       "AI unapređivanje je isključeno. Uključi ga u Podešavanja → AI podešavanja.",
     "ai.provider.localHint":
@@ -1302,35 +1307,40 @@ const translations: Record<AppLanguage, Record<string, string>> = {
     "wizard.nameTitle": "Nazovi svoj rezime",
     "wizard.nameDesc":
       "Ovo će biti naziv tvog rezimea. Možeš ga kasnije izmeniti.",
-    "wizard.jobTitle": "Nalepi opis posla (opciono)",
+    "wizard.jobTitle": "Ciljaj posao",
     "wizard.jobDesc":
-      "Ako ovo preskočiš, rezime može biti previše generički i neoptimizovan.",
-    "wizard.trimTitle": "Ukloniti nepovezan sadržaj?",
-    "wizard.trimDesc":
-      "AI može ukloniti nepovezan sadržaj na osnovu opisa posla.",
-    "wizard.enhanceTitle": "Unaprediti rezime za ATS?",
-    "wizard.enhanceDesc":
-      "AI može unaprediti rezime ključnim rečima za bolju ATS kompatibilnost.",
+      "Opciono. Nalepi oglas da vidiš koliko mu tvoj profil odgovara. Možeš ga dodati ili izmeniti kasnije u kartici Rezime.",
     "wizard.filename": "Naziv fajla:",
     "wizard.next": "Dalje",
-    "wizard.create": "Napravi biografiju",
+    "wizard.create": "Napravi rezime",
     "wizard.job.placeholder":
       "Nalepi opis posla sa Indeed-a, LinkedIn-a i slično.",
-    "wizard.skip": "Preskoči",
-    "wizard.job.required": "Opis posla je obavezan",
-    "wizard.continue": "Nastavi",
-    "wizard.trim.question":
-      "Da li želiš da AI skrati rezime na osnovu opisa posla?",
-    "wizard.trim.no": "Ne, preskoči",
-    "wizard.trim.yes": "Da, skrati",
-    "wizard.enhance.question":
-      "Da li želiš da AI unapredi rezime za ATS kompatibilnost?",
-    "wizard.enhance.no": "Ne, jednostavno",
-    "wizard.enhance.yes": "Da, unapredi",
-    "wizard.enhancing": "Unapređivanje...",
-    "wizard.status.finalizing": "Završavanje...",
-    "wizard.status.trimming": "Skraćivanje",
-    "wizard.status.enhancingSection": "Unapređivanje",
+    "wizard.coverage": "Tvoj profil pominje {present} od {total} ključnih reči iz ovog oglasa.",
+    "wizard.coverageMissing": "Nedostaje: {values}",
+    "wizard.tailor": "Prilagodi pomoću AI",
+    "wizard.tailorHint":
+      "Rezime se odmah otvara. Resuma zatim predlaže stavke koje možeš izostaviti i nove formulacije za ostale, a ništa se ne menja dok to ne primeniš.",
+    "tailor.client": "Resuma AI",
+    "tailor.scoring": "Proveravam koje stavke odgovaraju poslu ({done}/{total})",
+    "tailor.rewriting": "Preformulišem stavke za ovaj posao ({done}/{total})",
+    "tailor.stop": "Zaustavi",
+    "tailor.done": "Prilagođavanje je završeno",
+    "tailor.doneMany": "Predloga za pregled: {n}.",
+    "tailor.doneOne": "1 predlog za pregled.",
+    "tailor.doneNone": "Nema izmena: tvoje stavke već odgovaraju ovom poslu.",
+    "tailor.review": "Pregledaj",
+    "tailor.stopped": "Prilagođavanje je zaustavljeno",
+    "tailor.stoppedDesc": "Predlozi napravljeni pre zaustavljanja su sačuvani.",
+    "tailor.failed": "Prilagođavanje nije uspelo",
+    "tailor.entryFailed": "Nije uspelo preformulisanje stavke {entry}. Ostavljena je kakva jeste.",
+    "tailor.leaveOutOne": "Izostavi 1 stavku koja ne odgovara ovom poslu",
+    "tailor.leaveOutMany": "Izostavi stavke koje ne odgovaraju ovom poslu ({n})",
+    "tailor.rewrite": "Preformuliši „{entry}” za ovaj posao",
+    "tailor.action": "Prilagodi ovom poslu",
+    "tailor.actionHint":
+      "Predlaže stavke koje možeš izostaviti i nove formulacije za ostale, na osnovu opisa posla iznad. Svaku izmenu pregledaš.",
+    "tailor.needsJob": "Prvo nalepi opis posla.",
+    "tailor.running": "Prilagođavanje ovog rezimea je već u toku.",
     "template.document.title": "Rezime",
     "template.document.author": "Nepoznato",
     "template.document.subject": "Rezime",
