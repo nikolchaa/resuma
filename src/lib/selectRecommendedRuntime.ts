@@ -39,6 +39,15 @@ const RUNTIME_PRIORITY: Record<string, number> = {
 };
 
 /**
+ * GPU builds for ARM computers (Windows on ARM, Linux on ARM) haven't been
+ * tried on real hardware yet, only built; the CPU build is checked on ARM in
+ * CI. So on ARM the CPU build is recommended and the GPU builds stay
+ * available to pick. Apple silicon's Metal build is the exception: it is
+ * the established one.
+ */
+const untestedGpuBuild = (rt: RuntimeEntry) => rt.arch === "arm64" && rt.backend !== "cpu" && rt.platform !== "macos";
+
+/**
  * Picks the best available runtime from a list of compatibility-checked runtimes.
  */
 export function selectRecommendedRuntime(
@@ -48,11 +57,8 @@ export function selectRecommendedRuntime(
 
   if (confirmed.length === 0) return null;
 
-  confirmed.sort((a, b) => {
-    const aPriority = RUNTIME_PRIORITY[a.runtime.backend] ?? 999;
-    const bPriority = RUNTIME_PRIORITY[b.runtime.backend] ?? 999;
-    return aPriority - bPriority;
-  });
+  const priority = (rt: RuntimeEntry) => (untestedGpuBuild(rt) ? 100 : 0) + (RUNTIME_PRIORITY[rt.backend] ?? 999);
+  confirmed.sort((a, b) => priority(a.runtime) - priority(b.runtime));
 
   return confirmed[0].runtime;
 }

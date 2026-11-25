@@ -30,11 +30,13 @@ const offered = (s: SystemInfo) =>
     .map((r) => r.runtime.name);
 
 describe("runtimes per platform and CPU architecture", () => {
-  it("offers ARM builds on ARM computers, and prefers OpenCL on Snapdragon", () => {
+  it("offers ARM builds on ARM computers, and recommends the CPU build there", () => {
     const adreno = gpu({ manufacturer: "Qualcomm", model: "Qualcomm(R) Adreno(TM) X1-85 GPU", supportsVulkan: true, sharedMemoryMb: 8192 });
     const snapdragon = system("Windows 11 Pro", "arm64", [adreno]);
     expect(offered(snapdragon)).toEqual(["llama-cpu-win-arm64", "llama-vulkan-win-arm64", "llama-opencl-win-arm64"]);
-    expect(selectRecommendedRuntime(getRuntimes(snapdragon))?.name).toBe("llama-opencl-win-arm64");
+    // The GPU builds for ARM are offered, but only the CPU build has run on ARM so far.
+    expect(selectRecommendedRuntime(getRuntimes(snapdragon))?.name).toBe("llama-cpu-win-arm64");
+    expect(selectRecommendedRuntime(getRuntimes(system("macOS", "arm64")))?.name).toBe("llama-metal");
     expect(offered(system("Ubuntu 24.04", "arm64"))).toEqual(["llama-cpu-linux-arm64"]);
   });
 
