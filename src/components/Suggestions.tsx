@@ -88,6 +88,13 @@ const ProposalCard = ({ p }: { p: Proposal }) => {
         </span>
       </div>
       {p.summary && <p className='text-sm'>{p.summary}</p>}
+      {p.labels && p.labels.length > 0 && (
+        <ul className='list-disc pl-5 text-sm text-muted-foreground'>
+          {p.labels.map((label, i) => (
+            <li key={i}>{label}</li>
+          ))}
+        </ul>
+      )}
       <WarningList warnings={p.warnings} />
       {p.message && <p className='text-sm text-destructive'>{p.message}</p>}
       <button className='self-start text-xs underline text-muted-foreground' onClick={() => setShowDiff((v) => !v)}>
@@ -140,6 +147,21 @@ export const Suggestions = () => {
   const open = useSyncExternalStore(subscribePanel, () => panel.open);
   const running = useMcpRunning();
   const pending = proposals.filter((p) => p.status === "pending").length;
+  // Waiting suggestions nothing flagged, for "Apply all without warnings".
+  const quiet = proposals.filter((p) => p.status === "pending" && p.warnings.length === 0);
+  const [applyingAll, setApplyingAll] = useState(false);
+  const applyQuiet = async () => {
+    setApplyingAll(true);
+    try {
+      const { applied, stale } = await appProposals.applyAll(quiet.map((p) => p.id));
+      if (stale > 0) showError(fill(t("suggest.applyQuietStale"), { n: stale }));
+      if (applied > 0) showSuccess(fill(t("suggest.applyQuietDone"), { n: applied }));
+    } catch (e) {
+      showError(t("suggest.failed"), (e as Error).message);
+    } finally {
+      setApplyingAll(false);
+    }
+  };
 
   // Toasts for new proposals (not for ones already there when this mounted).
   const seen = useRef<Set<string> | null>(null);
@@ -151,6 +173,8 @@ export const Suggestions = () => {
     for (const p of proposals) {
       if (seen.current.has(p.id)) continue;
       seen.current.add(p.id);
+      // Resuma's own suggestions arrive in batches; their job announces them.
+      if (p.origin === "app") continue;
       if (p.autoApplied) showSuccess(fill(t("suggest.autoAppliedToast"), { client: p.client }), p.summary || undefined);
       else if (p.status === "pending") showSuccess(fill(t("suggest.newToast"), { client: p.client }), p.summary || undefined);
     }
@@ -191,6 +215,11 @@ export const Suggestions = () => {
               </Button>
             </div>
             <div className='flex flex-1 flex-col gap-3 overflow-y-auto p-4'>
+              {quiet.length > 1 && (
+                <Button size='sm' variant='outline' className='self-start' disabled={applyingAll} onClick={applyQuiet}>
+                  {fill(t("suggest.applyQuiet"), { n: quiet.length })}
+                </Button>
+              )}
               {proposals.length === 0 ? (
                 <p className='text-sm text-muted-foreground'>{t("suggest.empty")}</p>
               ) : (
