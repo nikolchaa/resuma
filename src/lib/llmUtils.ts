@@ -6,26 +6,84 @@ import { isAiDisabled } from "./resolveProvider";
 type LLMSettings = SettingsType["llm"];
 
 // === Internal: LLM Core ===
-const callLLM = async (prompt: string): Promise<string> => {
-  try {
+
+/** The request was stopped (see AiRequest.cancel). */
+export class AiCancelledError extends Error {
+  constructor() {
+    super("cancelled");
+    this.name = "AiCancelledError";
+  }
+}
+
+export const isAiCancelled = (error: unknown): boolean =>
+  error instanceof AiCancelledError || String((error as Error)?.message ?? error) === "cancelled";
+
+export type AiRequest = {
+  promise: Promise<string>;
+  /** Stops the request: a queued one never starts, a running one is killed or dropped. */
+  cancel: () => void;
+};
+
+export type PromptOptions = {
+  /**
+   * Skip the model's thinking step where that's possible (local Qwen3
+   * models): much faster for short, mechanical tasks.
+   */
+  noThink?: boolean;
+};
+
+// Local llama.cpp runs one request at a time: two at once would load the
+// model twice and compete for the same GPU memory.
+let localQueue: Promise<unknown> = Promise.resolve();
+
+const isLocal = (llm: LLMSettings | undefined) => (llm?.provider ?? "local") === "local";
+
+/** Starts a prompt on the configured provider (fails when AI is off). */
+export function startPrompt(prompt: string, opts: PromptOptions = {}): AiRequest {
+  const requestId = crypto.randomUUID();
+  let cancelled = false;
+
+  const execute = async (llmSettings: LLMSettings): Promise<string> => {
+    if (cancelled) throw new AiCancelledError();
+    const text =
+      opts.noThink && isLocal(llmSettings) && /qwen3/i.test(llmSettings?.model ?? "")
+        ? `${prompt}\n/no_think`
+        : prompt;
+    try {
+      return await invoke<string>("call_llm", { prompt: text, llmSettings, requestId });
+    } catch (error) {
+      if (cancelled || isAiCancelled(error)) throw new AiCancelledError();
+      console.error("LLM error:", error);
+      throw error;
+    }
+  };
+
+  const promise = (async () => {
     const settings = await getSettings();
     const llmSettings: LLMSettings = settings.llm;
-
     if (isAiDisabled(llmSettings?.provider)) {
       throw new Error("AI features are turned off (No AI provider).");
     }
+    if (!isLocal(llmSettings)) return execute(llmSettings);
+    const turn = localQueue.then(
+      () => execute(llmSettings),
+      () => execute(llmSettings)
+    );
+    localQueue = turn.catch(() => undefined);
+    return turn;
+  })();
 
-    const result = await invoke<string>("call_llm", {
-      prompt,
-      llmSettings,
-    });
+  return {
+    promise,
+    cancel: () => {
+      if (cancelled) return;
+      cancelled = true;
+      invoke("cancel_llm", { requestId }).catch(() => undefined);
+    },
+  };
+}
 
-    return result;
-  } catch (error) {
-    console.error("LLM error:", error);
-    throw error;
-  }
-};
+const callLLM = (prompt: string, opts?: PromptOptions): Promise<string> => startPrompt(prompt, opts).promise;
 
 /** Sends a raw prompt to the configured provider (throws when AI is off). */
 export const runPrompt = (prompt: string): Promise<string> => callLLM(prompt);

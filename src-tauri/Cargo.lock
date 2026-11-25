@@ -29,6 +29,7 @@ dependencies = [
  "tauri-plugin-opener",
  "tauri-plugin-prevent-default",
  "tiny_http",
+ "tokio",
  "uuid 1.16.0",
  "zip",
 ]

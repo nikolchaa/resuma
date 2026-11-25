@@ -383,8 +383,20 @@ async fn asset_disk_usage(asset_type: String, asset_name: String) -> Result<u64,
     Ok(dir_size(&base_dir))
 }
 
+/// Stops an AI request started with `request_id`: kills the llama.cpp
+/// process or drops the remote request. It then fails with "cancelled".
 #[tauri::command]
-async fn call_llm(prompt: String, llm_settings: serde_json::Value) -> Result<String, String> {
+fn cancel_llm(request_id: String) {
+    llm::cancel(&request_id);
+}
+
+#[tauri::command]
+async fn call_llm(
+    prompt: String,
+    llm_settings: serde_json::Value,
+    // Lets cancel_llm stop this request; requests without one can't be stopped.
+    request_id: Option<String>,
+) -> Result<String, String> {
     // "No AI" provider: refuse outright so nothing is spawned or sent.
     if llm_settings["provider"].as_str() == Some("none") {
         return Err("AI features are turned off (No AI provider).".into());
@@ -395,9 +407,9 @@ async fn call_llm(prompt: String, llm_settings: serde_json::Value) -> Result<Str
     let is_local = llm_settings["provider"].as_str().unwrap_or("local") == "local";
 
     if is_local {
-        llm::call_llm(prompt, llm_settings).await
+        llm::call_llm(prompt, llm_settings, request_id).await
     } else {
-        remote::call_remote(prompt, llm_settings).await
+        llm::run_remote_cancellable(request_id, remote::call_remote(prompt, llm_settings)).await
     }
 }
 
@@ -422,6 +434,7 @@ pub fn run() {
         .plugin(prevent_default_plugin)
         .invoke_handler(tauri::generate_handler![
             call_llm,
+            cancel_llm,
             download_and_extract,
             check_asset_ready,
             asset_disk_usage,
@@ -454,8 +467,14 @@ pub fn run() {
             vault_export_backup,
             vault_import_backup,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while running tauri application")
+        .run(|_app, event| {
+            // No llama.cpp process may outlive the app.
+            if let tauri::RunEvent::Exit = event {
+                llm::cancel_all();
+            }
+        });
 }
 
 #[cfg(test)]
