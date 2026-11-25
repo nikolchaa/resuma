@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { useNavigate } from "react-router-dom";
+import { useMatch, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion as m } from "motion/react";
 import { Inbox, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -147,8 +147,18 @@ export const Suggestions = () => {
   const open = useSyncExternalStore(subscribePanel, () => panel.open);
   const running = useMcpRunning();
   const pending = proposals.filter((p) => p.status === "pending").length;
-  // Waiting suggestions nothing flagged, for "Apply all without warnings".
-  const quiet = proposals.filter((p) => p.status === "pending" && p.warnings.length === 0);
+  // "Apply all without warnings": the open resume's waiting suggestions that
+  // nothing flagged. Suggestions to leave an entry out never go in a bulk
+  // apply: each is a judgement the user makes on its own.
+  const openResume = useMatch("/editor/:id")?.params.id;
+  const quiet = proposals.filter(
+    (p) =>
+      p.status === "pending" &&
+      p.warnings.length === 0 &&
+      p.target.kind === "resume" &&
+      p.target.resumeId === openResume &&
+      !p.entries?.some((c) => c.after === undefined)
+  );
   const [applyingAll, setApplyingAll] = useState(false);
   const applyQuiet = async () => {
     setApplyingAll(true);

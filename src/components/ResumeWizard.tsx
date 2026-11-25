@@ -20,6 +20,7 @@ import { useAiEnabled } from "@/hooks/useAiEnabled";
 import { normalizeResume } from "@/lib/resumeMigration";
 import { startTailoring } from "@/lib/tailoring/job";
 import { fill } from "@/components/ChangeReview";
+import { showWarning } from "@/lib/toastUtils";
 
 type ResumeWizardProps = {
   generateThumbnail: (data: ResumeData) => Promise<string>;
@@ -118,7 +119,7 @@ export const ResumeWizard = ({ generateThumbnail }: ResumeWizardProps) => {
       })!;
       newResume.image = await generateThumbnail(newResume);
       await saveResume(newResume);
-      if (willTailor) startTailoring(newResume.id, jobDesc);
+      if (willTailor && !startTailoring(newResume.id, jobDesc)) showWarning(t("tailor.running"));
       navigate(`/editor/${newResume.id}`);
     } finally {
       setCreating(false);

@@ -78,11 +78,12 @@ const REWRITE_SECTIONS = ["experience", "projects"] as const;
 const REWRITE_NO_THINK = true;
 
 /**
- * Starts tailoring a resume to a job. Returns false when one is already
- * running for it.
+ * Starts tailoring a resume to a job. Returns false when a job is already
+ * running: one at a time, since jobs share the local model and the job
+ * matching model.
  */
 export function startTailoring(resumeId: string, jobDesc: string): boolean {
-  if (jobs.running.has(resumeId) || !jobDesc.trim()) return false;
+  if (jobs.running.size > 0 || !jobDesc.trim()) return false;
   const job: Job = { state: { resumeId, phase: "scoring", done: 0, total: 0 }, stopped: false, request: null };
   jobs.running.set(resumeId, job);
   changed();
