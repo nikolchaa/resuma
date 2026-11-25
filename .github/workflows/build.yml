@@ -109,7 +109,12 @@ jobs:
       - name: Build the installers
         id: build
         shell: bash
-        run: .github/scripts/run-logged.sh "Build" npx tauri build
+        # macOS runners sometimes fail making the .dmg ("hdiutil: resource
+        # busy"); one retry reuses the compiled app.
+        run: |
+          .github/scripts/run-logged.sh "Build" npx tauri build || {
+            [ "$RUNNER_OS" = "macOS" ] && .github/scripts/run-logged.sh "Build (retry)" npx tauri build
+          }
 
       # The installer names, so the website's download patterns can be checked.
       - name: List the installers
