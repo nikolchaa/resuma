@@ -612,8 +612,9 @@ mod tests {
         assert_eq!(result.err().as_deref(), Some(CANCELLED));
     }
 
-    /// One real request against an installed runtime and model, with the
-    /// app's own argument building. Run with:
+    /// Smoke test: one real request against an installed runtime and model,
+    /// with the app's own argument building. It passes when the request
+    /// succeeds, whatever the model answers (printed, not checked). Run with:
     /// `RESUMA_TEST_RUNTIME=llama-vulkan-win RESUMA_TEST_MODEL=<model id>
     /// cargo test real_local_request -- --ignored --nocapture`
     /// and look for "[llm] auto offload" and "offloaded N/M layers".

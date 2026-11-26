@@ -653,15 +653,21 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
     }
 
-    /// Completes a HIP runtime the way a download does, on a real AMD GPU:
-    /// `RESUMA_TEST_HIP_DIR` holds the extracted llama.cpp ROCm zip,
-    /// `RESUMA_TEST_ROCM_WHEEL` the rocm_sdk_libraries wheel. Then run
-    /// llm's `real_local_request` against that folder.
+    /// Completes a HIP runtime the way a download does, on a machine with an
+    /// AMD GPU: `RESUMA_TEST_HIP_DIR` holds the extracted llama.cpp ROCm zip,
+    /// `RESUMA_TEST_ROCM_WHEEL` the rocm_sdk_libraries wheel. Then run llm's
+    /// `real_local_request` against that folder. Run with
+    /// `cargo test hip_kernels_install_on_an_amd_gpu -- --ignored --nocapture`.
+    /// Its name avoids "real_", which CI's local AI step runs on every
+    /// platform; it also skips itself when the folders aren't set.
     #[test]
     #[ignore]
-    fn real_hip_kernel_install() {
-        let dir = PathBuf::from(std::env::var("RESUMA_TEST_HIP_DIR").expect("RESUMA_TEST_HIP_DIR"));
-        let wheel = PathBuf::from(std::env::var("RESUMA_TEST_ROCM_WHEEL").expect("RESUMA_TEST_ROCM_WHEEL"));
+    fn hip_kernels_install_on_an_amd_gpu() {
+        let (Ok(dir), Ok(wheel)) = (std::env::var("RESUMA_TEST_HIP_DIR"), std::env::var("RESUMA_TEST_ROCM_WHEEL")) else {
+            eprintln!("skipped: set RESUMA_TEST_HIP_DIR and RESUMA_TEST_ROCM_WHEEL");
+            return;
+        };
+        let (dir, wheel) = (PathBuf::from(dir), PathBuf::from(wheel));
         let staged = dir.join("libraries.whl");
         fs::copy(&wheel, &staged).unwrap();
         extract_archive(&staged, &dir).unwrap();
