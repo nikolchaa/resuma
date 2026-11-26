@@ -210,7 +210,8 @@ const Artificial = () => {
     assetName: string,
     assetUrls: string[],
     assetType: "runtime" | "model",
-    version?: string
+    version?: string,
+    gpuTargetDownload?: string
   ) => {
     if (!assetName) return;
 
@@ -229,6 +230,7 @@ const Artificial = () => {
         noExtract: assetType === "model",
         assetType,
         version: version ?? null,
+        gpuTargetDownload: gpuTargetDownload ?? null,
       });
     } catch (error) {
       showError(`${t("ai.downloadErrorPrefix")} ${assetName}`, (error as Error).message);
@@ -403,7 +405,8 @@ const Artificial = () => {
                     runtime.name,
                     runtimeDownloadUrls(runtime),
                     "runtime",
-                    runtime.version
+                    runtime.version,
+                    runtime.gpuTargetDownload
                   );
                 }
               }}

@@ -11,6 +11,8 @@ export interface RuntimeEntry {
    * cudart/cuBLAS DLLs, which llama.cpp publishes as a separate zip.
    */
   extraDownloads?: string[];
+  /** See resolveRuntime's RuntimeEntry. */
+  gpuTargetDownload?: string;
   /** Files that must exist for the install to be usable. */
   requiredFiles?: string[];
   platform: string;

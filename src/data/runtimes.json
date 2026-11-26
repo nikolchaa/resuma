@@ -4,6 +4,15 @@
     "label": "AMD HIP (ROCm)",
     "version": "b12675",
     "download": "https://github.com/ggml-org/llama.cpp/releases/download/b12675/llama-b12675-bin-win-rocm-10.0-x64.zip",
+    "extraDownloads": [
+      "https://stable.repo.amd.com/rocm/core/whl-next/rocm-sdk-libraries/rocm_sdk_libraries-10.0.0-py3-none-win_amd64.whl"
+    ],
+    "gpuTargetDownload": "https://stable.repo.amd.com/rocm/core/whl-next/rocm-sdk-device-{target}/rocm_sdk_device_{target}-10.0.0-py3-none-win_amd64.whl",
+    "requiredFiles": [
+      "_rocm_sdk_libraries/bin/hipblas.dll",
+      "_rocm_sdk_libraries/bin/rocblas.dll",
+      "_rocm_sdk_libraries/resuma-gpu-kernels.txt"
+    ],
     "platform": "windows",
 
     "arch": "x64",

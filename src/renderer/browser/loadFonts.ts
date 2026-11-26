@@ -3,22 +3,14 @@
  * (metrics + PDF embedding) and are registered as FontFaces under unique
  * names so the SVG preview and canvas thumbnails draw the very same glyphs.
  */
-import figtreeLight from "@/assets/fonts/Figtree-Light.ttf";
-import figtreeBold from "@/assets/fonts/Figtree-Bold.ttf";
-import interLight from "@/assets/fonts/Inter-Light.ttf";
-import interBold from "@/assets/fonts/Inter-Bold.ttf";
-import spaceGroteskLight from "@/assets/fonts/SpaceGrotesk-Light.ttf";
-import spaceGroteskBold from "@/assets/fonts/SpaceGrotesk-Bold.ttf";
 import { FONT_FILES, FontSet, cssFamily } from "../engine/fonts";
 
-const URLS: Record<string, string> = {
-  "Figtree-Light.ttf": figtreeLight,
-  "Figtree-Bold.ttf": figtreeBold,
-  "Inter-Light.ttf": interLight,
-  "Inter-Bold.ttf": interBold,
-  "SpaceGrotesk-Light.ttf": spaceGroteskLight,
-  "SpaceGrotesk-Bold.ttf": spaceGroteskBold,
-};
+/** Every bundled TTF, by file name. */
+const URLS: Record<string, string> = Object.fromEntries(
+  Object.entries(
+    import.meta.glob<string>("/src/assets/fonts/*.ttf", { eager: true, query: "?url", import: "default" })
+  ).map(([path, url]) => [path.slice(path.lastIndexOf("/") + 1), url])
+);
 
 let pending: Promise<FontSet> | null = null;
 
@@ -28,7 +20,9 @@ export function loadFonts(): Promise<FontSet> {
       const set = new FontSet();
       await Promise.all(
         FONT_FILES.map(async (f) => {
-          const res = await fetch(URLS[f.file]);
+          const url = URLS[f.file];
+          if (!url) throw new Error(`Font ${f.file} isn't bundled`);
+          const res = await fetch(url);
           if (!res.ok) throw new Error(`Could not load font ${f.file} (${res.status})`);
           const bytes = new Uint8Array(await res.arrayBuffer());
           const loaded = set.add(f.family, f.weight, bytes);

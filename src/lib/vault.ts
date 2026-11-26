@@ -26,13 +26,20 @@ export const vaultListResumes = () =>
   invoke<{ name: string; text: string | null; error: string | null }[]>("vault_list_resumes");
 
 /**
- * True for a file copied out of an encrypted data folder. It can't be
- * imported as a plain file: it only opens with that folder's key (use the
- * recovery key, or an encrypted backup, to move data between computers).
+ * Writes a password-protected backup of the chosen parts: the settings
+ * (with the profile) and the resumes with `resumeIds`, or every resume
+ * when it's omitted. Resolves to how many resumes went in.
  */
-export const isEncryptedDataFile = (text: string) => text.startsWith("RSMENC1");
-
-export const vaultExportBackup = (path: string, password: string) =>
-  invoke<number>("vault_export_backup", { path, password });
+export const vaultExportBackup = (
+  path: string,
+  password: string,
+  { includeSettings = true, resumeIds }: { includeSettings?: boolean; resumeIds?: string[] } = {},
+) =>
+  invoke<number>("vault_export_backup", {
+    path,
+    password,
+    includeSettings,
+    resumeIds: resumeIds ?? null,
+  });
 export const vaultImportBackup = (path: string, password: string) =>
   invoke<number>("vault_import_backup", { path, password });

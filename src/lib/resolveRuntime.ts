@@ -24,6 +24,12 @@ export interface RuntimeEntry {
    * cudart/cuBLAS DLLs, which llama.cpp publishes as a separate zip.
    */
   extraDownloads?: string[];
+  /**
+   * Archive needed once per GPU architecture the installed runtime reports,
+   * with "{target}" standing for it (e.g. "gfx1030"): the HIP build's
+   * rocBLAS kernels.
+   */
+  gpuTargetDownload?: string;
   /** Files that must exist for the install to be usable. */
   requiredFiles?: string[];
   platform: string;

@@ -492,20 +492,37 @@ impl Vault {
 
     // ---- backups -------------------------------------------------------------
 
-    /// Writes every resume and the settings to one file protected by `password`.
-    pub fn export_backup(&self, dest: &Path, password: &str) -> Result<usize, String> {
+    /// Writes the chosen parts to one file protected by `password`: the
+    /// settings (with the profile) when `include_settings`, and the resumes
+    /// with the ids in `resume_ids`, or every resume when it's `None`.
+    /// Returns how many resumes went in.
+    pub fn export_backup(
+        &self,
+        dest: &Path,
+        password: &str,
+        include_settings: bool,
+        resume_ids: Option<&[String]>,
+    ) -> Result<usize, String> {
         if password.chars().count() < 8 {
             return Err("Use a password of at least 8 characters.".into());
         }
         let mut resumes = serde_json::Map::new();
         for (name, text) in self.list_resumes()? {
-            resumes.insert(name, Value::String(text?));
+            let id = name.strip_suffix(".resume").unwrap_or(&name);
+            if resume_ids.map_or(true, |ids| ids.iter().any(|wanted| wanted == id)) {
+                resumes.insert(name, Value::String(text?));
+            }
+        }
+        if !include_settings && resumes.is_empty() {
+            return Err("Choose something to back up.".into());
         }
         let count = resumes.len();
+        // Same format as before: a backup without settings (or without
+        // resumes) is one an older Resuma can still import.
         let backup = Backup {
             format: "resuma-backup".into(),
             version: 1,
-            settings: self.read("settings")?,
+            settings: if include_settings { self.read("settings")? } else { None },
             resumes,
         };
         let plain = serde_json::to_vec(&backup).map_err(|e| e.to_string())?;
@@ -643,8 +660,13 @@ pub async fn vault_list_resumes() -> Result<Vec<ListedResume>, String> {
 }
 
 #[tauri::command]
-pub async fn vault_export_backup(path: String, password: String) -> Result<usize, String> {
-    vault()?.export_backup(Path::new(&path), &password)
+pub async fn vault_export_backup(
+    path: String,
+    password: String,
+    include_settings: bool,
+    resume_ids: Option<Vec<String>>,
+) -> Result<usize, String> {
+    vault()?.export_backup(Path::new(&path), &password, include_settings, resume_ids.as_deref())
 }
 
 #[tauri::command]
@@ -849,8 +871,8 @@ mod tests {
         va.write("settings", r#"{"app":{}}"#).unwrap();
         va.write("resumes/cv.resume", "my resume").unwrap();
         let file = a.join("backup.resumabackup");
-        assert!(va.export_backup(&file, "short").is_err());
-        assert_eq!(va.export_backup(&file, "correct horse").unwrap(), 1);
+        assert!(va.export_backup(&file, "short", true, None).is_err());
+        assert_eq!(va.export_backup(&file, "correct horse", true, None).unwrap(), 1);
         assert!(!String::from_utf8_lossy(&fs::read(&file).unwrap()).contains("my resume"));
 
         // Another computer: its own key, then the backup.
@@ -861,6 +883,37 @@ mod tests {
         assert_eq!(vb.import_backup(&file, "correct horse").unwrap(), 1);
         assert_eq!(vb.read("resumes/cv.resume").unwrap().unwrap(), "my resume");
         assert_eq!(vb.read("settings").unwrap().unwrap(), r#"{"app":{}}"#);
+        let _ = fs::remove_dir_all(&a);
+        let _ = fs::remove_dir_all(&b);
+    }
+
+    #[test]
+    fn backups_hold_only_the_chosen_parts() {
+        let a = folder("backup-pick-a");
+        let (va, _) = vault_in(&a);
+        va.init().unwrap();
+        va.write("settings", r#"{"app":{"theme":"dark"}}"#).unwrap();
+        va.write("resumes/cv.resume", "first").unwrap();
+        va.write("resumes/other.resume", "second").unwrap();
+        let file = a.join("pick.resumabackup");
+
+        assert!(va.export_backup(&file, "correct horse", false, Some(&[])).unwrap_err().contains("Choose"));
+
+        // One resume, no settings: importing it leaves the settings alone.
+        assert_eq!(va.export_backup(&file, "correct horse", false, Some(&["other".to_string()])).unwrap(), 1);
+        let b = folder("backup-pick-b");
+        let (vb, _) = vault_in(&b);
+        vb.init().unwrap();
+        vb.write("settings", r#"{"app":{"theme":"light"}}"#).unwrap();
+        assert_eq!(vb.import_backup(&file, "correct horse").unwrap(), 1);
+        assert_eq!(vb.read("resumes/other.resume").unwrap().unwrap(), "second");
+        assert_eq!(vb.read("resumes/cv.resume").unwrap(), None);
+        assert_eq!(vb.read("settings").unwrap().unwrap(), r#"{"app":{"theme":"light"}}"#);
+
+        // Settings only.
+        assert_eq!(va.export_backup(&file, "correct horse", true, Some(&[])).unwrap(), 0);
+        assert_eq!(vb.import_backup(&file, "correct horse").unwrap(), 0);
+        assert_eq!(vb.read("settings").unwrap().unwrap(), r#"{"app":{"theme":"dark"}}"#);
         let _ = fs::remove_dir_all(&a);
         let _ = fs::remove_dir_all(&b);
     }

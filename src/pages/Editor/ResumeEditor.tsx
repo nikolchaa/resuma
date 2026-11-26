@@ -28,6 +28,8 @@ import { AnimatePresence, motion as m } from "motion/react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAiEnabled } from "@/hooks/useAiEnabled";
 import { startTailoring, useTailoring } from "@/lib/tailoring/job";
+import { FONT_CATALOG } from "@/renderer/fontCatalog";
+import { fontPreview } from "@/renderer/engine/fonts";
 // import { runResumeCleanup, runResumeEnhancement } from "@/lib/llmUtils";
 import {
   Card,
@@ -187,9 +189,11 @@ export const ResumeEditor = ({ draft, setDraft }: Props) => {
             <SelectValue placeholder={t("editor.font.select")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value='figtree'>Figtree</SelectItem>
-            <SelectItem value='inter'>Inter</SelectItem>
-            <SelectItem value='spaceGrotesk'>Space Grotesk</SelectItem>
+            {FONT_CATALOG.map((f) => (
+              <SelectItem key={f.setting} value={f.setting}>
+                <span style={{ fontFamily: fontPreview(f.family) }}>{f.family}</span>
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>

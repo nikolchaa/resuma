@@ -1,9 +1,40 @@
-export type AppLanguage = "en" | "rs";
+import { de } from "./locales/de";
+import { es } from "./locales/es";
+import { fr } from "./locales/fr";
+import { pt } from "./locales/pt";
+import { ru } from "./locales/ru";
 
-const translations: Record<AppLanguage, Record<string, string>> = {
+export type AppLanguage = "en" | "rs" | "es" | "ru" | "fr" | "de" | "pt";
+
+/**
+ * Languages the app offers, in menu order. `value` is what settings store
+ * ("rs" predates this list, so Serbian keeps it); `tag` is the BCP 47 tag
+ * written into exported PDFs.
+ */
+export const LANGUAGES: { value: AppLanguage; labelKey: string; tag: string }[] = [
+  { value: "en", labelKey: "common.language.english", tag: "en" },
+  { value: "rs", labelKey: "common.language.serbian", tag: "sr" },
+  { value: "es", labelKey: "common.language.spanish", tag: "es" },
+  { value: "ru", labelKey: "common.language.russian", tag: "ru" },
+  { value: "fr", labelKey: "common.language.french", tag: "fr" },
+  { value: "de", labelKey: "common.language.german", tag: "de" },
+  { value: "pt", labelKey: "common.language.portuguese", tag: "pt" },
+];
+
+export const translations: Record<AppLanguage, Record<string, string>> = {
+  es,
+  ru,
+  fr,
+  de,
+  pt,
   en: {
     "common.language.english": "English (EN)",
     "common.language.serbian": "Serbian (RS)",
+    "common.language.spanish": "Spanish (ES)",
+    "common.language.russian": "Russian (RU)",
+    "common.language.french": "French (FR)",
+    "common.language.german": "German (DE)",
+    "common.language.portuguese": "Portuguese (PT)",
     "common.present": "Present",
     "common.optional": "(optional)",
     "common.apply": "Apply",
@@ -42,11 +73,6 @@ const translations: Record<AppLanguage, Record<string, string>> = {
     "home.toast.deletedTitle": "Resume deleted",
     "home.toast.deletedDesc": "The resume has been permanently removed.",
     "home.toast.deleteFailed": "Failed to delete resume",
-    "home.toast.notFound": "Resume not found",
-    "home.toast.exportSuccess": "Resume exported successfully",
-    "home.toast.importCanceled": "Import canceled",
-    "home.toast.importSuccess": "Resume imported successfully",
-    "home.toast.importFailed": "Failed to import resume",
     "onboarding.welcome.getStarted": "Get Started!",
     "onboarding.basic.title": "Basic Setup",
     "onboarding.basic.description":
@@ -76,8 +102,7 @@ const translations: Record<AppLanguage, Record<string, string>> = {
     "settings.identifier": "Identifier",
     "settings.tauriVersion": "Tauri version",
     "settings.app.heading": "App Settings",
-    "settings.app.description":
-      "Configure your general app preferences. Import and export your application settings.",
+    "settings.app.description": "Configure your general app preferences.",
     "settings.ai.heading": "AI Setup",
     "settings.ai.description":
       "Adjust preferences for AI-powered resume generation, including model selection, runtime options, and LLM parameters.",
@@ -103,15 +128,8 @@ const translations: Record<AppLanguage, Record<string, string>> = {
     "settings.updates.check": "Check for Updates",
     "settings.updates.latest": "You're on the latest version.",
     "settings.updates.checkFailed": "Update check failed",
-    "settings.app.importExportDescription":
-      "Import and export settings along with your data. This will not overwrite your current settings and data. It's a good idea to back up your settings and data before importing.",
-    "settings.app.import": "Import Settings",
-    "settings.app.export": "Export Settings",
     "settings.app.opensource":
       "Resuma is open-source software. Check out the source code on",
-    "settings.app.exportSuccess": "Settings exported successfully",
-    "settings.app.importSuccess": "Settings imported successfully",
-    "settings.app.importCanceled": "Import canceled",
     "settings.error.fetchVersion": "Failed to fetch app version",
     "settings.error.fetchIdentifier": "Failed to fetch identifier",
     "settings.error.fetchTauriVersion": "Failed to fetch Tauri version",
@@ -592,7 +610,7 @@ const translations: Record<AppLanguage, Record<string, string>> = {
     "vault.error.retry": "Try again",
     "vault.failed": "Something went wrong",
     "vault.backup.label": "Encrypted backup",
-    "vault.backup.tip": "One file with all your resumes and your profile, protected by a password you choose. Use it to move to another computer: import it there.",
+    "vault.backup.tip": "One file with the resumes and settings you choose, protected by a password you pick. Keep it as a copy, or use it to move to another computer: import it there.",
     "vault.backup.export": "Export backup…",
     "vault.backup.import": "Import backup…",
     "vault.backup.newPassword": "Backup password (at least 8 characters)",
@@ -600,12 +618,15 @@ const translations: Record<AppLanguage, Record<string, string>> = {
     "vault.backup.password": "The backup's password",
     "vault.backup.exportGo": "Choose where to save",
     "vault.backup.importGo": "Choose a backup",
+    "vault.backup.include": "What to include",
+    "vault.backup.includeSettings": "Settings and profile",
+    "vault.backup.includeResumes": "Resumes ({n})",
+    "vault.backup.nothing": "Choose something to back up",
     "vault.backup.short": "Use a password of at least 8 characters",
     "vault.backup.mismatch": "The passwords don't match",
     "vault.backup.exported": "Backup saved ({n} resumes)",
     "vault.backup.imported": "Backup imported ({n} resumes)",
-    "vault.backup.importConfirm": "Import this backup? Its profile and settings replace yours, and its resumes replace any with the same name.",
-    "vault.importEncrypted": "This file is encrypted with another computer's key. To move data between computers, export an encrypted backup there and use Settings → App Settings → Data protection → Import backup here.",
+    "vault.backup.importConfirm": "Import this backup? If it holds settings and a profile, they replace yours, and its resumes replace any with the same name.",
     "library.title": "My templates",
     "library.description": "Save templates to reuse them in any resume.",
     "library.save": "Save template",
@@ -692,6 +713,11 @@ const translations: Record<AppLanguage, Record<string, string>> = {
   rs: {
     "common.language.english": "Engleski (EN)",
     "common.language.serbian": "Srpski (RS)",
+    "common.language.spanish": "Španski (ES)",
+    "common.language.russian": "Ruski (RU)",
+    "common.language.french": "Francuski (FR)",
+    "common.language.german": "Nemački (DE)",
+    "common.language.portuguese": "Portugalski (PT)",
     "common.present": "Trenutno",
     "common.optional": "(opciono)",
     "common.apply": "Primeni",
@@ -710,7 +736,7 @@ const translations: Record<AppLanguage, Record<string, string>> = {
     "common.downloading": "Preuzimanje...",
     "common.extracting": "Raspakivanje...",
     "common.ready": "Spremno",
-    "common.detecting": "Detektovanje...",
+    "common.detecting": "Prepoznavanje...",
     "common.supported": "Podržano",
     "common.unsupported": "Nije podržano",
     "common.unknown": "Nepoznato",
@@ -730,11 +756,6 @@ const translations: Record<AppLanguage, Record<string, string>> = {
     "home.toast.deletedTitle": "Rezime obrisan",
     "home.toast.deletedDesc": "Rezime je trajno uklonjen.",
     "home.toast.deleteFailed": "Brisanje rezimea nije uspelo",
-    "home.toast.notFound": "Rezime nije pronađen",
-    "home.toast.exportSuccess": "Rezime je uspešno izvezen",
-    "home.toast.importCanceled": "Uvoz je otkazan",
-    "home.toast.importSuccess": "Rezime je uspešno uvezen",
-    "home.toast.importFailed": "Uvoz rezimea nije uspeo",
     "onboarding.welcome.getStarted": "Započni!",
     "onboarding.basic.title": "Osnovna podešavanja",
     "onboarding.basic.description":
@@ -754,8 +775,7 @@ const translations: Record<AppLanguage, Record<string, string>> = {
     "settings.contentSize.normal": "Normalna (100%)",
     "settings.contentSize.large": "Velika (125%)",
     "settings.discordPresence": "Discord prisustvo",
-    "settings.discordPresence.description":
-      "Prikaži na svom Discord profilu da koristiš Resuma. Deli se samo opšti status, nikada nazivi ili sadržaj biografija.",
+    "settings.discordPresence.description": "Prikaži na svom Discord profilu da koristiš Resumu. Deli se samo opšti status, nikada nazivi ili sadržaj rezimea.",
     "settings.unsavedChanges": "Imate nesačuvane izmene.",
     "settings.tab.app": "Podešavanja aplikacije",
     "settings.tab.ai": "AI podešavanja",
@@ -764,8 +784,7 @@ const translations: Record<AppLanguage, Record<string, string>> = {
     "settings.identifier": "Identifikator",
     "settings.tauriVersion": "Tauri verzija",
     "settings.app.heading": "Podešavanja aplikacije",
-    "settings.app.description":
-      "Podesi opšte preference aplikacije. Uvezi i izvezi podešavanja aplikacije.",
+    "settings.app.description": "Podesi opšte preference aplikacije.",
     "settings.ai.heading": "AI podešavanje",
     "settings.ai.description":
       "Podesi opcije za AI generisanje rezimea, uključujući izbor modela, runtime opcije i LLM parametre.",
@@ -774,32 +793,23 @@ const translations: Record<AppLanguage, Record<string, string>> = {
       "Izmeni podatke koji se koriste u svim rezimeima. Ovi podaci će uvek biti prikazani na rezimeu.",
     "settings.education.heading": "Obrazovanje",
     "settings.education.description":
-      "Navedi svoje obrazovanje, uključujući školu, diplomu i relevantne predmete.",
+      "Navedi svoje obrazovanje, uključujući školu, zvanje i relevantne predmete.",
     "settings.experience.heading": "Iskustvo",
     "settings.experience.description":
       "Dodaj svoje radno iskustvo sa ključnim ulogama i postignućima.",
     "settings.projects.heading": "Projekti",
-    "settings.projects.description":
-      "Prikaži svoj najbolji rad. Uključi side projekte, open source ili profesionalne aplikacije.",
+    "settings.projects.description": "Prikaži svoj najbolji rad. Uključi lične projekte, open source ili profesionalne aplikacije.",
     "settings.skills.heading": "Veštine",
     "settings.skills.description":
       "Dodaj profesionalne i tehničke veštine grupisane po kategorijama.",
     "settings.awards.heading": "Nagrade",
-    "settings.awards.description":
-      "Dodaj značajne nagrade ili priznanja koja si dobio/la.",
+    "settings.awards.description": "Dodaj značajne nagrade ili priznanja koja si osvojio/la.",
     "settings.updates.heading": "Ažuriranja aplikacije",
     "settings.updates.check": "Proveri ažuriranja",
     "settings.updates.latest": "Koristiš najnoviju verziju.",
     "settings.updates.checkFailed": "Provera ažuriranja nije uspela",
-    "settings.app.importExportDescription":
-      "Uvezi i izvezi podešavanja zajedno sa podacima. Ovo neće prepisati trenutna podešavanja i podatke. Pre uvoza je preporučljivo napraviti rezervnu kopiju.",
-    "settings.app.import": "Uvezi podešavanja",
-    "settings.app.export": "Izvezi podešavanja",
     "settings.app.opensource":
       "Resuma je softver otvorenog koda. Pogledaj izvorni kod na",
-    "settings.app.exportSuccess": "Podešavanja su uspešno izvezena",
-    "settings.app.importSuccess": "Podešavanja su uspešno uvezena",
-    "settings.app.importCanceled": "Uvoz je otkazan",
     "settings.error.fetchVersion": "Neuspešno preuzimanje verzije aplikacije",
     "settings.error.fetchIdentifier": "Neuspešno preuzimanje identifikatora",
     "settings.error.fetchTauriVersion": "Neuspešno preuzimanje Tauri verzije",
@@ -812,7 +822,7 @@ const translations: Record<AppLanguage, Record<string, string>> = {
     "field.website": "Veb sajt",
     "field.school": "Škola",
     "field.schoolName": "Naziv škole",
-    "field.degree": "Stepen",
+    "field.degree": "Zvanje",
     "field.gpa": "Prosek",
     "field.jobTitle": "Pozicija",
     "field.company": "Kompanija",
@@ -830,7 +840,7 @@ const translations: Record<AppLanguage, Record<string, string>> = {
     "field.template": "Šablon",
     "field.font": "Font",
     "field.exportTxt": "Izvoz kao TXT",
-    "field.detectedSpecs": "Detektovane specifikacije",
+    "field.detectedSpecs": "Prepoznate specifikacije",
     "field.recommendedModel": "Preporučeni model",
     "field.recommendedRuntime": "Preporučeni runtime",
     "daterange.date": "Datum",
@@ -848,12 +858,11 @@ const translations: Record<AppLanguage, Record<string, string>> = {
     "placeholder.website": "https://yourwebsite.com",
     "placeholder.school": "Fakultet tehničkih nauka",
     "placeholder.degree": "Diplomirani inženjer računarstva",
-    "placeholder.gpa": "9.5 / 10",
+    "placeholder.gpa": "9,5 / 10",
     "placeholder.course": "Strukture podataka",
     "placeholder.jobTitle": "Frontend developer",
     "placeholder.company": "Google",
-    "placeholder.workDescription":
-      "Radio na velikom redizajnu korisničkog interfejsa...",
+    "placeholder.workDescription": "Rad na velikom redizajnu korisničkog interfejsa...",
     "placeholder.notePrefix": "Napomena",
     "placeholder.projectName": "Resuma",
     "placeholder.projectLink": "https://github.com/username/project",
@@ -892,12 +901,12 @@ const translations: Record<AppLanguage, Record<string, string>> = {
     "editor.optimizationTools": "Alati za optimizaciju",
     "editor.optimizationTools.desc":
       "Koristi ove alate za unapređenje sadržaja rezimea",
-    "editor.atsMatcher": "ATS matcher ključnih reči",
-    "editor.ats.match": "Upari ključne reči",
+    "editor.atsMatcher": "ATS poređenje ključnih reči",
+    "editor.ats.match": "Uporedi ključne reči",
     "editor.cleanSpecialCharacters": "Očisti specijalne karaktere",
     "editor.clean": "Očisti",
-    "editor.detectBuzzwords": "Detektuj fraze",
-    "editor.runDetection": "Pokreni detekciju",
+    "editor.detectBuzzwords": "Pronađi floskule",
+    "editor.runDetection": "Pokreni proveru",
     "editor.ats.title": "Rezultati ATS ključnih reči",
     "editor.ats.description":
       "Pregledaj ključne reči pronađene u rezimeu u odnosu na opis posla.",
@@ -937,10 +946,8 @@ const translations: Record<AppLanguage, Record<string, string>> = {
     "ai.provider.localHint":
       "Izvršava se u potpunosti na tvom uređaju. Zahteva jednokratno preuzimanje modela i runtime-a.",
     "ai.provider.disclosure.title": "Tvoji podaci napuštaju uređaj.",
-    "ai.provider.disclosure.cloud":
-      "Sadržaj biografije i opisi posla koje obrađuješ pomoću AI-ja šalju se provajderu {provider}. Šta se sa njima dešava tamo uređuju njihova politika privatnosti i uslovi korišćenja - uključujući koliko dugo ih čuvaju i da li smeju da ih koriste za obuku ili unapređenje svojih modela. Pročitaj te uslove pre korišćenja ovog provajdera. Resuma nema kontrolu niti uvid u to kako oni postupaju sa podacima.",
-    "ai.provider.disclosure.server":
-      "Sadržaj biografije se šalje isključivo na adresu navedenu ispod. Ništa ne ide Resumi niti bilo kom trećem licu.",
+    "ai.provider.disclosure.cloud": "Sadržaj rezimea i opisi posla koje obrađuješ pomoću AI-ja šalju se provajderu {provider}. Šta se sa njima dešava tamo uređuju njihova politika privatnosti i uslovi korišćenja - uključujući koliko dugo ih čuvaju i da li smeju da ih koriste za obuku ili unapređenje svojih modela. Pročitaj te uslove pre korišćenja ovog provajdera. Resuma nema kontrolu niti uvid u to kako oni postupaju sa podacima.",
+    "ai.provider.disclosure.server": "Sadržaj rezimea se šalje isključivo na adresu navedenu ispod. Ništa ne ide Resumi niti bilo kom trećem licu.",
     "ai.provider.api": "Format API-ja",
     "ai.provider.api.select": "Izaberi format API-ja",
     "ai.provider.api.openai": "OpenAI kompatibilan",
@@ -1053,30 +1060,27 @@ const translations: Record<AppLanguage, Record<string, string>> = {
       "Dodaj svoje lične podatke. Oni će uvek biti prikazani na rezimeu.",
     "onboarding.education.title": "Obrazovanje",
     "onboarding.education.description":
-      "Navedi svoje obrazovanje, uključujući školu, diplomu i relevantne predmete.",
+      "Navedi svoje obrazovanje, uključujući školu, zvanje i relevantne predmete.",
     "onboarding.experience.title": "Iskustvo",
     "onboarding.experience.description":
       "Dodaj radno iskustvo sa ključnim ulogama i postignućima.",
     "onboarding.projects.title": "Projekti",
-    "onboarding.projects.description":
-      "Prikaži svoj najbolji rad. Uključi side projekte, open source ili profesionalne aplikacije.",
+    "onboarding.projects.description": "Prikaži svoj najbolji rad. Uključi lične projekte, open source ili profesionalne aplikacije.",
     "onboarding.skills.title": "Veštine",
     "onboarding.skills.description":
       "Dodaj profesionalne i tehničke veštine grupisane po kategorijama.",
     "onboarding.awards.title": "Nagrade",
-    "onboarding.awards.description":
-      "Dodaj značajne nagrade ili priznanja koja si dobio/la.",
+    "onboarding.awards.description": "Dodaj značajne nagrade ili priznanja koja si osvojio/la.",
     "onboarding.finish.title": "Sve je spremno!",
-    "onboarding.finish.description":
-      "Tvoje putovanje izrade rezimea počinje sada.",
+    "onboarding.finish.description": "Možeš da počneš sa izradom rezimea.",
     "toast.exportCanceled": "Izvoz je otkazan",
     "toast.noFileSaved": "Nijedan fajl nije sačuvan",
     "toast.txtExported": "TXT uspešno izvezen",
     "toast.exportFailed": "Izvoz nije uspeo",
     "toast.somethingWrong": "Nešto je pošlo po zlu",
     "toast.specialCharsCleaned": "Specijalni karakteri su uspešno očišćeni!",
-    "toast.noBuzzwords": "Nema detektovanih fraza!",
-    "toast.buzzwordsDetected": "Detektovane fraze!",
+    "toast.noBuzzwords": "Nisu pronađene floskule!",
+    "toast.buzzwordsDetected": "Pronađene su floskule!",
     "toast.latestVersion": "Koristiš najnoviju verziju.",
     "toast.updateCheckFailed": "Provera ažuriranja nije uspela",
     "common.continue": "Nastavi",
@@ -1281,7 +1285,7 @@ const translations: Record<AppLanguage, Record<string, string>> = {
     "vault.error.retry": "Pokušaj ponovo",
     "vault.failed": "Nešto nije u redu",
     "vault.backup.label": "Šifrovana rezervna kopija",
-    "vault.backup.tip": "Jedna datoteka sa svim rezimeima i profilom, zaštićena lozinkom koju biraš. Koristi je za prelazak na drugi računar: uvezi je tamo.",
+    "vault.backup.tip": "Jedna datoteka sa rezimeima i podešavanjima koje izabereš, zaštićena lozinkom po tvom izboru. Čuvaj je kao kopiju ili je iskoristi za prelazak na drugi računar: tamo je uvezi.",
     "vault.backup.export": "Izvezi rezervnu kopiju…",
     "vault.backup.import": "Uvezi rezervnu kopiju…",
     "vault.backup.newPassword": "Lozinka za kopiju (najmanje 8 znakova)",
@@ -1289,12 +1293,15 @@ const translations: Record<AppLanguage, Record<string, string>> = {
     "vault.backup.password": "Lozinka rezervne kopije",
     "vault.backup.exportGo": "Izaberi gde da se sačuva",
     "vault.backup.importGo": "Izaberi rezervnu kopiju",
+    "vault.backup.include": "Šta da uključi",
+    "vault.backup.includeSettings": "Podešavanja i profil",
+    "vault.backup.includeResumes": "Rezimei ({n})",
+    "vault.backup.nothing": "Izaberi šta da se sačuva",
     "vault.backup.short": "Koristi lozinku od najmanje 8 znakova",
     "vault.backup.mismatch": "Lozinke se ne poklapaju",
     "vault.backup.exported": "Rezervna kopija je sačuvana (rezimea: {n})",
     "vault.backup.imported": "Rezervna kopija je uvezena (rezimea: {n})",
-    "vault.backup.importConfirm": "Uvesti ovu rezervnu kopiju? Njen profil i podešavanja zamenjuju tvoje, a njeni rezimei zamenjuju one sa istim imenom.",
-    "vault.importEncrypted": "Ova datoteka je šifrovana ključem drugog računara. Za prenos podataka između računara izvezi šifrovanu rezervnu kopiju tamo, pa ovde koristi Podešavanja → Podešavanja aplikacije → Zaštita podataka → Uvezi rezervnu kopiju.",
+    "vault.backup.importConfirm": "Uvesti ovu rezervnu kopiju? Ako sadrži podešavanja i profil, oni zamenjuju tvoje, a njeni rezimei zamenjuju one sa istim imenom.",
     "library.title": "Moji šabloni",
     "library.description": "Sačuvaj šablone da ih koristiš u bilo kom rezimeu.",
     "library.save": "Sačuvaj šablon",
@@ -1381,7 +1388,11 @@ const translations: Record<AppLanguage, Record<string, string>> = {
 };
 
 export const normalizeLanguage = (value?: string): AppLanguage =>
-  value === "rs" ? "rs" : "en";
+  LANGUAGES.find((l) => l.value === value)?.value ?? "en";
+
+/** BCP 47 tag for a language, e.g. "sr" for the stored "rs". */
+export const languageTag = (language: AppLanguage): string =>
+  LANGUAGES.find((l) => l.value === language)?.tag ?? "en";
 
 export const t = (
   language: AppLanguage,

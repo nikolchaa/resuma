@@ -22,6 +22,7 @@ import { ArrowRight } from "lucide-react";
 import { applyContentSizeClass } from "@/lib/ui";
 import { useEffect } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { AppLanguage, LANGUAGES } from "@/lib/i18n";
 
 const Basic = () => {
   const navigate = useNavigate();
@@ -96,16 +97,19 @@ const Basic = () => {
           <Select
             value={language}
             onValueChange={(v) => {
-              update("app", { language: v as "en" | "rs" });
-              setLanguage(v as "en" | "rs");
+              update("app", { language: v as AppLanguage });
+              setLanguage(v as AppLanguage);
             }}
           >
             <SelectTrigger className='w-2/3'>
               <SelectValue placeholder={t("settings.language.select")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value='en'>{t("common.language.english")}</SelectItem>
-              <SelectItem value='rs'>{t("common.language.serbian")}</SelectItem>
+              {LANGUAGES.map((l) => (
+                <SelectItem key={l.value} value={l.value}>
+                  {t(l.labelKey)}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

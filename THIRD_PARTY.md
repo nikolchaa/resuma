@@ -75,8 +75,15 @@ The provider logos are copied unmodified into `src/assets/providers/` and bundle
 | Figtree       | SIL OFL 1.1 | [https://github.com/erikdkennedy/figtree](https://github.com/erikdkennedy/figtree)                 |
 | Inter         | SIL OFL 1.1 | [https://github.com/rsms/inter](https://github.com/rsms/inter)                                     |
 | Space Grotesk | SIL OFL 1.1 | [https://github.com/floriankarsten/space-grotesk](https://github.com/floriankarsten/space-grotesk) |
+| IBM Plex Sans | SIL OFL 1.1 (Reserved Font Name "Plex") | [https://github.com/IBM/plex](https://github.com/IBM/plex) |
+| Montserrat    | SIL OFL 1.1 | [https://github.com/JulietaUla/Montserrat](https://github.com/JulietaUla/Montserrat) |
+| Open Sans     | SIL OFL 1.1 | [https://github.com/googlefonts/opensans](https://github.com/googlefonts/opensans) |
+| Lora          | SIL OFL 1.1 (Reserved Font Name "Lora") | [https://github.com/cyrealtype/Lora-Cyrillic](https://github.com/cyrealtype/Lora-Cyrillic) |
+| PT Serif      | SIL OFL 1.1 (Reserved Font Names "PT Sans", "PT Serif", "ParaType") | [https://github.com/google/fonts/tree/main/ofl/ptserif](https://github.com/google/fonts/tree/main/ofl/ptserif) |
 
 > These fonts are licensed under the [SIL Open Font License, Version 1.1](https://openfontlicense.org/open-font-license-official-text/), which allows embedding, modifying, and redistribution, provided the fonts are not sold by themselves and the license text is included in the distribution.
+>
+> IBM Plex Sans, Montserrat, Open Sans, Lora and PT Serif are bundled as the upstream static TTFs (Light or Regular, and Bold), byte for byte; only the file names differ. Their license texts, with each copyright notice, are in `src/assets/fonts/licenses/`. Because the files are unmodified, the Reserved Font Names stay with the original fonts as the license requires.
 
 ---
 

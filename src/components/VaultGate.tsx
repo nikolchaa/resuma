@@ -3,6 +3,7 @@ import { Copy, KeyRound, Loader2, ShieldCheck } from "lucide-react";
 import { ask, save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { normalizeLanguage } from "@/lib/i18n";
@@ -176,8 +177,8 @@ export const VaultGate = ({ children }: { children: React.ReactNode }) => {
             </div>
             <p className='text-sm text-muted-foreground'>{t("vault.recovery.description")}</p>
             <RecoveryCode />
-            <label className='flex items-center gap-2 text-sm'>
-              <input type='checkbox' checked={saved} onChange={(e) => setSaved(e.target.checked)} />
+            <label className='flex items-center gap-2 text-sm hover:cursor-pointer'>
+              <Checkbox checked={saved} onCheckedChange={(v) => setSaved(v === true)} />
               {t("vault.recovery.confirm")}
             </label>
             <Button

@@ -7,6 +7,7 @@
 import { PDFDocument, PDFFont, PDFName, PDFString, rgb } from "pdf-lib";
 import { FONT_FEATURES, FontSet, fontkit } from "./engine/fonts";
 import type { RenderedDocument } from "./engine/types";
+import { languageTag, normalizeLanguage } from "@/lib/i18n";
 
 const hexToRgb = (hex: string) => {
   let h = hex.replace("#", "");
@@ -24,7 +25,7 @@ export async function writePdf(doc: RenderedDocument, fonts: FontSet): Promise<U
   pdf.setSubject(doc.meta.subject);
   pdf.setCreator("Resuma");
   pdf.setProducer("Resuma PDF Renderer");
-  pdf.setLanguage(doc.meta.language === "rs" ? "sr" : "en");
+  pdf.setLanguage(languageTag(normalizeLanguage(doc.meta.language)));
   const now = new Date();
   pdf.setCreationDate(now);
   pdf.setModificationDate(now);

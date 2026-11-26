@@ -270,7 +270,8 @@ jobs:
 
   # One llama.cpp request with the light model and one job matching request,
   # through the app's own code, on the llama.cpp build the app picks for each
-  # platform.
+  # platform. A smoke test: it checks that local AI runs and answers, not
+  # what it answers, which varies with the hardware and the build.
   local-ai:
     name: Local AI on ${{ matrix.name }}
     needs: scope

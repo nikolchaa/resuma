@@ -7,6 +7,7 @@
  */
 import * as fontkitModule from "@pdf-lib/fontkit";
 import type { Weight } from "../template/styles";
+import { FONT_CATALOG } from "../fontCatalog";
 
 /**
  * The ES build of @pdf-lib/fontkit only has a default export, while Node
@@ -27,20 +28,23 @@ export const FALLBACK_FAMILY = "Figtree";
 /** Family used for characters the chosen font lacks; Inter covers Cyrillic and Greek. */
 export const FALLBACK_COVERAGE_FAMILY = "Inter";
 
-/** Font files shipped with the app. "normal" is the Light cut (as before). */
-export const FONT_FILES: { family: string; weight: Weight; file: string }[] = [
-  { family: "Figtree", weight: "normal", file: "Figtree-Light.ttf" },
-  { family: "Figtree", weight: "bold", file: "Figtree-Bold.ttf" },
-  { family: "Inter", weight: "normal", file: "Inter-Light.ttf" },
-  { family: "Inter", weight: "bold", file: "Inter-Bold.ttf" },
-  { family: "Space Grotesk", weight: "normal", file: "SpaceGrotesk-Light.ttf" },
-  { family: "Space Grotesk", weight: "bold", file: "SpaceGrotesk-Bold.ttf" },
-];
+/** Font files shipped with the app, two weights per family in FONT_CATALOG. */
+export const FONT_FILES: { family: string; weight: Weight; file: string }[] = FONT_CATALOG.flatMap((f) => [
+  { family: f.family, weight: "normal" as Weight, file: f.files.normal },
+  { family: f.family, weight: "bold" as Weight, file: f.files.bold },
+]);
 
 export const fontKey = (family: string, weight: Weight) => `${family}|${weight}`;
 
 /** Unique, CSS-safe family name used for DOM/canvas painting. */
 export const cssFamily = (key: string) => "rsm-" + key.replace(/[^A-Za-z0-9]+/g, "-").toLowerCase();
+
+/**
+ * CSS font-family that shows a family in its own face in font pickers, once
+ * `loadFonts` has registered it (the editor's preview does that); until
+ * then it falls back to the app font.
+ */
+export const fontPreview = (family: string) => `"${cssFamily(fontKey(family, "normal"))}", inherit`;
 
 export type LoadedFont = {
   key: string;
