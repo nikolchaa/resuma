@@ -6,18 +6,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
 import { useTheme } from "@/contexts/ThemeContext";
 import { applyContentSizeClass } from "@/lib/ui";
 import { useEffect, useState } from "react";
 import { SettingsType } from "@/contexts/OnboardingContext";
-import { open, save } from "@tauri-apps/plugin-dialog";
-import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
-import { isEncryptedDataFile } from "@/lib/vault";
 import { updateSection } from "@/lib/store";
-import { showError, showSuccess, showWarning } from "@/lib/toastUtils";
+import { showError } from "@/lib/toastUtils";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { AppLanguage } from "@/lib/i18n";
+import { AppLanguage, LANGUAGES } from "@/lib/i18n";
 import { Switch } from "@/components/ui/switch";
 import { InfoTip } from "@/components/InfoTip";
 import { setDiscordPresenceEnabled } from "@/lib/discord";
@@ -83,95 +79,6 @@ export const BasicSettings = ({
     }
   };
 
-  const handleExport = async () => {
-    try {
-      const filePath = await save({
-        filters: [{ name: "Resuma Settings", extensions: ["resuma"] }],
-        defaultPath: "settings.resuma",
-      });
-
-      if (!filePath) {
-        showWarning(t("toast.exportCanceled"));
-        return;
-      }
-
-      const { llm, ...rest } = draftSettings;
-      const exportData = {
-        ...rest,
-        llm: {
-          ...llm,
-          model: "",
-          runtime: "",
-        },
-      };
-      const content = JSON.stringify(exportData, null, 2);
-      await writeTextFile(filePath, content);
-
-      showSuccess(t("settings.app.exportSuccess"), `Saved at: ${filePath}`);
-    } catch (error) {
-      showError(
-        "Export failed",
-        (error as Error).message || "An unexpected error occurred.",
-      );
-    }
-  };
-
-  const handleImport = async () => {
-    try {
-      const selected = await open({
-        filters: [{ name: "Resuma Settings", extensions: ["resuma"] }],
-        multiple: false,
-      });
-
-      if (!selected) {
-        showWarning(t("settings.app.importCanceled"));
-        return;
-      }
-
-      if (typeof selected === "string") {
-        const content = await readTextFile(selected);
-        if (isEncryptedDataFile(content)) throw new Error(t("vault.importEncrypted"));
-        const parsed = JSON.parse(content);
-
-        setDraftSettings((prev) => {
-          const parsedSettings = {
-            ...prev,
-            llm: {
-              ...prev.llm,
-              ...parsed.llm,
-              // Downloaded assets belong to this machine, not the export.
-              model: prev.llm.model,
-              runtime: prev.llm.runtime,
-              settings: {
-                ...prev.llm.settings,
-                ...(parsed.llm?.settings ?? {}),
-                gpuLayers: Math.max(0, Number(parsed.llm?.settings?.gpuLayers) || 0),
-              },
-              // Provider choice and model id travel; the API key does not -
-              // it stays in the OS credential store of the original machine.
-              remote: {
-                ...prev.llm.remote,
-                ...(parsed.llm?.remote ?? {}),
-              },
-            },
-          };
-
-          return { ...prev, ...parsedSettings };
-        });
-
-        showSuccess(
-          t("settings.app.importSuccess"),
-          `Imported from: ${selected}`,
-        );
-      }
-    } catch (error) {
-      showError(
-        "Import failed",
-        (error as Error).message || "An unexpected error occurred.",
-      );
-    }
-  };
-
   return (
     <div className='flex flex-col gap-4'>
       {/* Theme */}
@@ -217,8 +124,11 @@ export const BasicSettings = ({
             <SelectValue placeholder={t("settings.language.select")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value='en'>{t("common.language.english")}</SelectItem>
-            <SelectItem value='rs'>{t("common.language.serbian")}</SelectItem>
+            {LANGUAGES.map((l) => (
+              <SelectItem key={l.value} value={l.value}>
+                {t(l.labelKey)}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -276,20 +186,6 @@ export const BasicSettings = ({
           checked={discordPresence ?? false}
           onCheckedChange={(v) => handleChange("discordPresence", v)}
         />
-      </div>
-
-      <span className='text-sm text-muted-foreground'>
-        {t("settings.app.importExportDescription")}
-      </span>
-
-      {/* Import/Export Buttons */}
-      <div className='flex gap-4'>
-        <Button variant='outline' onClick={handleImport}>
-          {t("settings.app.import")}
-        </Button>
-        <Button variant='default' onClick={handleExport}>
-          {t("settings.app.export")}
-        </Button>
       </div>
 
       <span className='text-sm text-muted-foreground'>

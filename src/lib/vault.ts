@@ -32,7 +32,21 @@ export const vaultListResumes = () =>
  */
 export const isEncryptedDataFile = (text: string) => text.startsWith("RSMENC1");
 
-export const vaultExportBackup = (path: string, password: string) =>
-  invoke<number>("vault_export_backup", { path, password });
+/**
+ * Writes a password-protected backup of the chosen parts: the settings
+ * (with the profile) and the resumes with `resumeIds`, or every resume
+ * when it's omitted. Resolves to how many resumes went in.
+ */
+export const vaultExportBackup = (
+  path: string,
+  password: string,
+  { includeSettings = true, resumeIds }: { includeSettings?: boolean; resumeIds?: string[] } = {},
+) =>
+  invoke<number>("vault_export_backup", {
+    path,
+    password,
+    includeSettings,
+    resumeIds: resumeIds ?? null,
+  });
 export const vaultImportBackup = (path: string, password: string) =>
   invoke<number>("vault_import_backup", { path, password });

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
+import { PDFDocument, PDFName } from "pdf-lib";
 import { renderResume } from ".";
 import { writePdf } from "./pdf";
 import { loadTestFonts, sampleResume } from "./testing/fixtures";
@@ -46,6 +47,17 @@ describe("writePdf", () => {
     const doc = renderResume(data, { format: "A4", language: "rs", fonts });
     const { pages } = await readPdf(await writePdf(doc, fonts));
     expect(pages[0].text).toContain("ЂОРЂЕ ЋИРИЋ");
+  });
+
+  it("writes Russian section headings in a Latin-only font and tags the PDF", async () => {
+    // Figtree has no Cyrillic; the headings come from the Russian strings.
+    const data = { ...sampleResume(), font: "figtree" };
+    const doc = renderResume(data, { format: "A4", language: "ru", fonts });
+    const bytes = await writePdf(doc, fonts);
+    const { pages } = await readPdf(bytes);
+    expect(pages[0].text.toUpperCase()).toContain("ОПЫТ РАБОТЫ");
+    const pdf = await PDFDocument.load(bytes);
+    expect(String(pdf.catalog.get(PDFName.of("Lang")))).toContain("ru");
   });
 
   it("writes one PDF page per laid-out page", async () => {

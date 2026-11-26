@@ -17,17 +17,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Download, Plus, SquarePen, Trash, Upload } from "lucide-react";
+import { Plus, SquarePen, Trash, Upload } from "lucide-react";
 import {
   deleteResume,
   listResumes,
-  loadResume,
   ResumeData,
   saveResume,
 } from "@/lib/resumesStore";
-import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
+import { readTextFile } from "@tauri-apps/plugin-fs";
 import { isEncryptedDataFile } from "@/lib/vault";
-import { open, save } from "@tauri-apps/plugin-dialog";
+import { open } from "@tauri-apps/plugin-dialog";
 import { showError, showSuccess, showWarning } from "@/lib/toastUtils";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -64,36 +63,6 @@ export const Home = () => {
       showSuccess(t("home.toast.deletedTitle"), t("home.toast.deletedDesc"));
     } catch (error) {
       showError(t("home.toast.deleteFailed"), (error as Error).message);
-    }
-  };
-
-  const handleExport = async (id: string) => {
-    try {
-      const resume = await loadResume(id);
-      if (!resume) {
-        showError(t("home.toast.notFound"));
-        return;
-      }
-
-      const filePath = await save({
-        defaultPath: `${resume.id}.resume`,
-        filters: [{ name: "Resume File", extensions: ["resume"] }],
-      });
-
-      if (!filePath) {
-        showWarning("Export canceled", "No file was saved");
-        return;
-      }
-
-      const content = JSON.stringify(resume, null, 2);
-      await writeTextFile(filePath, content);
-
-      showSuccess(t("home.toast.exportSuccess"), `Saved at: ${filePath}`);
-    } catch (error) {
-      showError(
-        "Export failed",
-        (error as Error).message || "An unexpected error occurred."
-      );
     }
   };
 
@@ -246,14 +215,6 @@ export const Home = () => {
                   >
                     <SquarePen className='h-4 w-4' />
                     {t("home.edit")}
-                  </Button>
-
-                  <Button
-                    size='icon'
-                    variant='ghost'
-                    onClick={() => handleExport(res.id)}
-                  >
-                    <Download className='w-4 h-4' />
                   </Button>
 
                   <Button

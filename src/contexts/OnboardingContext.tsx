@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { getSection, updateSection } from "@/lib/store";
+import type { AppLanguage } from "@/lib/i18n";
 import {
   defaultRemoteSettings,
   getProvider,
@@ -17,7 +18,7 @@ export type SettingsType = {
   app: {
     theme: "light" | "dark" | "system";
     paperSize: "A4" | "US";
-    language: "en" | "rs";
+    language: AppLanguage;
     contentSize: "md" | "lg";
     /** Opt-in Discord Rich Presence (generic text only). Off by default. */
     discordPresence: boolean;
