@@ -38,7 +38,7 @@ jobs:
             os: ubuntu-22.04-arm
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -50,7 +50,7 @@ jobs:
           key: ${{ matrix.os }}
 
       - name: Install Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v7
         with:
           node-version: lts/*
           cache: npm
@@ -75,7 +75,7 @@ jobs:
         run: npm ci
 
       - name: Build and release with Tauri
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -84,3 +84,5 @@ jobs:
           releaseBody: "See the assets to download this version and install."
           releaseDraft: true
           prerelease: false
+          # macOS runners sometimes fail making the .dmg ("hdiutil: resource busy").
+          retryAttempts: 1
