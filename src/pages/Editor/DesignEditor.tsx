@@ -16,6 +16,7 @@ import type { CustomSection, ResumeData, ResumeLayout, SectionKey } from "@/lib/
 import { resolveTemplate } from "@/renderer";
 import { resolveOptionValues, sectionColumn, sectionOrder } from "@/renderer/engine/compile";
 import { FONT_FAMILIES } from "@/renderer/template/schema";
+import { fontPreview } from "@/renderer/engine/fonts";
 import type { TemplateOption } from "@/renderer/template/template";
 import { newCustomSection } from "@/lib/customSections";
 
@@ -158,7 +159,7 @@ export const DesignEditor = ({ draft, setDraft, onEditCustom }: Props) => {
             <SelectContent>
               {Object.keys(FONT_FAMILIES).map((f) => (
                 <SelectItem key={f} value={f}>
-                  {f}
+                  <span style={{ fontFamily: fontPreview(f) }}>{f}</span>
                 </SelectItem>
               ))}
             </SelectContent>

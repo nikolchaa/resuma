@@ -31,7 +31,7 @@ export type CompileInput = {
   template: Template;
   content: ResumeContent;
   language: AppLanguage;
-  /** Resume `font` setting (figtree | inter | spaceGrotesk). */
+  /** Resume `font` setting: a `setting` from FONT_CATALOG (figtree, inter, ptSerif …). */
   font?: string;
   /** Overrides for the template's `\option`s. */
   options?: Record<string, string>;

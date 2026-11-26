@@ -4,8 +4,9 @@
  * against this so a typo (or an AI hallucination) is reported instead of
  * silently rendering nothing.
  */
+import { FONT_CATALOG } from "../fontCatalog";
 
-export type FieldKind = "text" | "email" | "phone" | "url" | "date" | "list";
+export type FieldKind ="text" | "email" | "phone" | "url" | "date" | "list";
 
 export const SECTION_KINDS = [
   "education",
@@ -104,17 +105,13 @@ export const LABELS: Record<string, string> = {
 };
 
 /** Families a template may use; keys are the names written in templates. */
-export const FONT_FAMILIES: Record<string, string> = {
-  Figtree: "Figtree",
-  Inter: "Inter",
-  "Space Grotesk": "Space Grotesk",
-};
+export const FONT_FAMILIES: Record<string, string> = Object.fromEntries(
+  FONT_CATALOG.map((f) => [f.family, f.family]),
+);
 
 /** Resume `font` setting → family. */
-export const RESUME_FONTS: Record<string, string> = {
-  figtree: "Figtree",
-  inter: "Inter",
-  spaceGrotesk: "Space Grotesk",
-};
+export const RESUME_FONTS: Record<string, string> = Object.fromEntries(
+  FONT_CATALOG.map((f) => [f.setting, f.family]),
+);
 
 export type OptionType = "color" | "size" | "font" | "choice";

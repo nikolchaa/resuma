@@ -4,6 +4,7 @@ import { PDFDocument, PDFName } from "pdf-lib";
 import { renderResume } from ".";
 import { writePdf } from "./pdf";
 import { loadTestFonts, sampleResume } from "./testing/fixtures";
+import { FONT_CATALOG } from "./fontCatalog";
 
 const fonts = loadTestFonts();
 
@@ -58,6 +59,16 @@ describe("writePdf", () => {
     expect(pages[0].text.toUpperCase()).toContain("ОПЫТ РАБОТЫ");
     const pdf = await PDFDocument.load(bytes);
     expect(String(pdf.catalog.get(PDFName.of("Lang")))).toContain("ru");
+  });
+
+  it("writes Latin and Cyrillic text in each font with Cyrillic", async () => {
+    for (const f of FONT_CATALOG.filter((f) => f.cyrillic)) {
+      const data = { ...sampleResume(), font: f.setting };
+      data.content.personal.fullName = "Željko Ђорђевић";
+      const doc = renderResume(data, { format: "A4", language: "rs", fonts });
+      const { pages } = await readPdf(await writePdf(doc, fonts));
+      expect(pages[0].text.toUpperCase(), f.family).toContain("ŽELJKO ЂОРЂЕВИЋ");
+    }
   });
 
   it("writes one PDF page per laid-out page", async () => {

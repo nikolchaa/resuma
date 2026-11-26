@@ -3,6 +3,7 @@ import { renderResume } from "..";
 import { PAPER, RenderedDocument } from "./types";
 import { loadTestFonts, sampleResume } from "../testing/fixtures";
 import { BUILTIN_TEMPLATES } from "@/templates";
+import { FONT_CATALOG } from "../fontCatalog";
 
 const fonts = loadTestFonts();
 
@@ -76,6 +77,18 @@ describe("renderResume", () => {
     const doc = renderResume({ ...sampleResume(), font: "inter" }, { format: "A4", language: "en", fonts });
     const keys = new Set(doc.pages[0].items.flatMap((i) => (i.type === "text" ? [i.fontKey] : [])));
     expect([...keys].sort()).toEqual(["Inter|bold", "Inter|normal"]);
+  });
+
+  it("draws Cyrillic in every font that has it, and in Inter for the two that don't", () => {
+    for (const f of FONT_CATALOG) {
+      const data = { ...sampleResume(), font: f.setting };
+      data.content.personal.fullName = "Ђорђе Ћирић";
+      const doc = renderResume(data, { format: "A4", language: "ru", fonts });
+      const families = new Set(
+        doc.pages[0].items.flatMap((i) => (i.type === "text" ? [i.fontKey.split("|")[0]] : []))
+      );
+      expect([...families].sort(), f.family).toEqual(f.cyrillic ? [f.family] : [f.family, "Inter"].sort());
+    }
   });
 
   it("links emails, phones and URLs", () => {

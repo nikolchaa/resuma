@@ -9,7 +9,7 @@
 import type { Diagnostic } from "@/renderer/rsm/parse";
 import { parseContent, printContent, topLevelBlocks } from "@/renderer/rsm/content";
 import { compileTemplate } from "@/renderer/template/template";
-import { ENTRY_FIELDS, LABELS, PERSONAL_FIELDS, SECTION_KINDS } from "@/renderer/template/schema";
+import { ENTRY_FIELDS, FONT_FAMILIES, LABELS, PERSONAL_FIELDS, SECTION_KINDS } from "@/renderer/template/schema";
 import { PAGE_PROPERTIES, PROPERTIES } from "@/renderer/template/styles";
 import type { RenderIssue } from "@/renderer/check";
 import { BUILTIN_TEMPLATES } from "@/templates";
@@ -54,11 +54,15 @@ export const CONTENT_GUIDE = `Resuma Markup content format:
 - \\layout{\\order{\\item{skills}...} \\hidden{\\item{awards}} \\titles{\\title[section="skills"]{New title}}} arranges sections; custom section keys are custom:<id>.
 - Only \\, { and } are special characters; write \\\\, \\{ and \\} to use them literally. % at the start of a line starts a comment. Do not use any other LaTeX commands.`;
 
+const FONT_NAMES = Object.keys(FONT_FAMILIES)
+  .map((f) => (f.includes(" ") ? `"${f}"` : f))
+  .join(", ");
+
 export const TEMPLATE_GUIDE = `Resuma Markup template format (declarative; no scripting):
 - Start with \\template[id=..., name=..., version=1]. Optional \\option[name, type=color|size|font|choice, default=..., label="..."] values are used in styles as @name; a choice option also needs choices="a|b|c" including its default. @font is built in (the font the user picks): use it, never declare an option called font.
 - Write one command per line and indent nested blocks like the example, so every { has its matching }.
 - \\page{margin: 40; font-family: @font; font-size: 11; color: #1f2937} sets page styles. \\style[heading]{font-size: 12; font-weight: bold} defines a style class called heading (the name goes alone in the brackets); use it as \\p[heading]{...}.
-- Style properties: ${Object.keys(PROPERTIES).join(", ")}. Page properties: ${Object.keys(PAGE_PROPERTIES).join(", ")}. Numbers are points, colours are hex, fonts are Figtree, Inter or "Space Grotesk", font-weight is normal or bold, border-bottom is "<width> <colour>", keep is together or with-next.
+- Style properties: ${Object.keys(PROPERTIES).join(", ")}. Page properties: ${Object.keys(PAGE_PROPERTIES).join(", ")}. Numbers are points, colours are hex, fonts are ${FONT_NAMES} (quote names with spaces), font-weight is normal or bold, border-bottom is "<width> <colour>", keep is together or with-next.
 - \\header{...} renders personal fields: ${Object.keys(PERSONAL_FIELDS).join(", ")}.
 - \\section[kind]{...} for kind in ${SECTION_KINDS.join(", ")}, or * for custom sections. Inside, \\entries[style]{...} repeats per entry.
 - Two columns: \\cols[widths="32,68", gap=20, left=styleName, right=styleName]{left column}{right column}. Each column holds \\header{...} and \\section[...]{...} blocks; with \\cols every \\section must be inside a column, and only a \\header written before \\cols spans the full width. A column style may set background (fills the column to the page edge and full page height), color, font properties, and padding-left, padding-right, padding-top and padding-bottom (space inside the column, on every page); background works only on column styles. Give a column with a background some padding-top (and the other column the same, so the first headings line up). Lay it out like this:
