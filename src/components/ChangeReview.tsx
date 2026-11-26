@@ -60,6 +60,8 @@ export function useWarningText() {
         return fill(t("ai.edit.warn.replacesTemplate"), { name: w.name });
       case "partsRemoved":
         return fill(t("ai.edit.warn.partsRemoved"), { values: w.values.map(sectionName).join(", ") });
+      case "newTerms":
+        return fill(t("ai.edit.warn.newTerms"), { values: w.values.join(", ") });
       case "render":
         return issueText(w.issue);
     }

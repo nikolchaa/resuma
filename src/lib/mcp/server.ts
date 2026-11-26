@@ -86,6 +86,8 @@ function describeWarning(w: ProposalWarning): string {
       return `Replaces the saved template "${w.name}".`;
     case "partsRemoved":
       return `Removes: ${w.values.join(", ")}.`;
+    case "newTerms":
+      return `Mentions what the entry didn't before: ${w.values.join(", ")}.`;
     case "render":
       return `Render check: ${w.issue.kind}.`;
   }

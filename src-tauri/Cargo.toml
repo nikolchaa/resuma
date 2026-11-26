@@ -1,6 +1,6 @@
 [package]
 name = "Resuma"
-version = "1.1.0"
+version = "1.1.1"
 description = "Resuma is an open-source desktop application for building beautiful, professional resumes using local AI models. Your data never leaves your device."
 authors = ["Nikola Ranđelović <contact@nikolchaa.com>"]
 edition = "2021"
@@ -30,6 +30,9 @@ flate2 = "1"
 tar = "0.4"
 reqwest = {version = "0.12.15", features= ["stream", "json"] }
 futures-util = "0.3.31"
+# Stopping AI requests mid-flight (src/llm.rs) and waiting for the job
+# matching model to start (src/reranker.rs); already in the tree through Tauri.
+tokio = { version = "1", features = ["sync", "time"] }
 dirs = "6.0.0"
 discord-rich-presence = "0.2.5"
 lazy_static = "1.5.0"

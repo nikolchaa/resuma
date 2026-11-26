@@ -1,7 +1,13 @@
-use std::process::Command;
+use std::collections::{HashMap, HashSet};
+use std::io::Read;
+use std::pin::pin;
+use std::process::{Child, Command, Output, Stdio};
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex, OnceLock};
+use futures_util::future::{select, Either};
 use serde_json::Value;
 use dirs_next::data_dir;
+use tokio::sync::Notify;
 
 use crate::gpu_offload;
 
@@ -14,7 +20,167 @@ use std::os::windows::process::CommandExt;
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
-pub async fn call_llm(prompt: String, llm_settings: Value) -> Result<String, String> {
+/// The error a stopped request ends with; the frontend matches it.
+pub const CANCELLED: &str = "cancelled";
+
+/// Requests that can be stopped, by the id the frontend gave them.
+enum Running {
+    /// A llama.cpp process; `kill` ends it.
+    Process(Arc<Mutex<Child>>),
+    /// A remote request; notifying it drops the request mid-flight.
+    Remote(Arc<Notify>),
+}
+
+#[derive(Default)]
+struct Registry {
+    running: HashMap<String, Running>,
+    /// Ids stopped before (or between) their runs, so a run that starts
+    /// afterwards ends at once instead of slipping through.
+    cancelled: HashSet<String>,
+}
+
+fn registry() -> &'static Mutex<Registry> {
+    static REGISTRY: OnceLock<Mutex<Registry>> = OnceLock::new();
+    REGISTRY.get_or_init(|| Mutex::new(Registry::default()))
+}
+
+fn lock_registry() -> std::sync::MutexGuard<'static, Registry> {
+    registry().lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
+pub fn is_cancelled(request_id: Option<&str>) -> bool {
+    request_id.map_or(false, |id| lock_registry().cancelled.contains(id))
+}
+
+/// Stops a request: kills its process or aborts its task. Also marks the
+/// id, so a run it hasn't started yet (a CPU retry) won't start.
+pub fn cancel(request_id: &str) {
+    let mut reg = lock_registry();
+    reg.cancelled.insert(request_id.to_string());
+    match reg.running.remove(request_id) {
+        Some(Running::Process(child)) => {
+            let _ = child.lock().map(|mut c| c.kill());
+        }
+        // notify_one keeps a permit, so a request that starts waiting
+        // after this still ends at once.
+        Some(Running::Remote(stop)) => stop.notify_one(),
+        None => {}
+    }
+}
+
+/// Stops every request, e.g. when the app quits, so no llama.cpp process
+/// outlives it.
+pub fn cancel_all() {
+    let ids: Vec<String> = lock_registry().running.keys().cloned().collect();
+    for id in ids {
+        cancel(&id);
+    }
+}
+
+/// Forgets a finished request's id.
+pub fn finish(request_id: Option<&str>) {
+    if let Some(id) = request_id {
+        let mut reg = lock_registry();
+        reg.running.remove(id);
+        reg.cancelled.remove(id);
+    }
+}
+
+/// Runs a remote request that `cancel` can stop: the request future is
+/// dropped, which closes its connection.
+pub async fn run_remote_cancellable<F>(request_id: Option<String>, request: F) -> Result<String, String>
+where
+    F: std::future::Future<Output = Result<String, String>>,
+{
+    let Some(id) = request_id else {
+        return request.await;
+    };
+    let stop = Arc::new(Notify::new());
+    {
+        let mut reg = lock_registry();
+        if reg.cancelled.contains(&id) {
+            reg.cancelled.remove(&id);
+            return Err(CANCELLED.into());
+        }
+        reg.running.insert(id.clone(), Running::Remote(stop.clone()));
+    }
+    let stopped = stop.notified();
+    let result = match select(pin!(request), pin!(stopped)).await {
+        Either::Left((result, _)) => result,
+        Either::Right(_) => Err(CANCELLED.into()),
+    };
+    finish(Some(&id));
+    result
+}
+
+/// Runs llama.cpp and collects its output, while `cancel` can kill it.
+async fn run_cancellable(runtime_path: &Path, args: &[String], request_id: Option<&str>) -> Result<Output, String> {
+    if is_cancelled(request_id) {
+        return Err(CANCELLED.into());
+    }
+    let mut child = llama_command(runtime_path)
+        .args(args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("Failed to execute process: {}", e))?;
+
+    // Read both pipes on their own threads, so a full pipe never stalls the process.
+    let read = |pipe: Option<Box<dyn Read + Send>>| {
+        std::thread::spawn(move || {
+            let mut buf = Vec::new();
+            if let Some(mut p) = pipe {
+                let _ = p.read_to_end(&mut buf);
+            }
+            buf
+        })
+    };
+    let stdout = read(child.stdout.take().map(|p| Box::new(p) as Box<dyn Read + Send>));
+    let stderr = read(child.stderr.take().map(|p| Box::new(p) as Box<dyn Read + Send>));
+
+    let child = Arc::new(Mutex::new(child));
+    if let Some(id) = request_id {
+        let mut reg = lock_registry();
+        if reg.cancelled.contains(id) {
+            let _ = child.lock().map(|mut c| c.kill());
+        }
+        reg.running.insert(id.to_string(), Running::Process(child.clone()));
+    }
+
+    let waiting = child.clone();
+    let status = tauri::async_runtime::spawn_blocking(move || loop {
+        let polled = waiting.lock().map_err(|_| "lost the llama.cpp process".to_string())?.try_wait();
+        match polled {
+            Ok(Some(status)) => return Ok::<_, String>(status),
+            Ok(None) => std::thread::sleep(std::time::Duration::from_millis(50)),
+            Err(e) => return Err(format!("Failed to wait for the process: {e}")),
+        }
+    })
+    .await
+    .map_err(|e| format!("Failed to wait for the process: {e}"))??;
+
+    let output = Output {
+        status,
+        stdout: stdout.join().unwrap_or_default(),
+        stderr: stderr.join().unwrap_or_default(),
+    };
+    if let Some(id) = request_id {
+        lock_registry().running.remove(id);
+    }
+    if is_cancelled(request_id) {
+        return Err(CANCELLED.into());
+    }
+    Ok(output)
+}
+
+pub async fn call_llm(prompt: String, llm_settings: Value, request_id: Option<String>) -> Result<String, String> {
+    let result = call_llm_inner(prompt, llm_settings, request_id.clone()).await;
+    finish(request_id.as_deref());
+    result
+}
+
+async fn call_llm_inner(prompt: String, llm_settings: Value, request_id: Option<String>) -> Result<String, String> {
     let model = llm_settings["model"]
         .as_str()
         .ok_or("Missing model")?;
@@ -176,13 +342,11 @@ pub async fn call_llm(prompt: String, llm_settings: Value) -> Result<String, Str
         }
     }
 
-    let mut output = llama_command(&runtime_path)
-        .args(&args)
-        .output()
-        .map_err(|e| format!("Failed to execute process: {}", e))?;
+    let mut output = run_cancellable(&runtime_path, &args, request_id.as_deref()).await?;
 
     // Auto offload is an estimate; if the GPU still ran out of memory, the
-    // request must not fail where a CPU run would have worked.
+    // request must not fail where a CPU run would have worked. A run the
+    // user stopped isn't a failure to retry.
     if let Some(index) = auto_layers_arg {
         if !output.status.success() && args[index] != "0" {
             eprintln!(
@@ -190,10 +354,7 @@ pub async fn call_llm(prompt: String, llm_settings: Value) -> Result<String, Str
                 args[index]
             );
             args[index] = "0".to_string();
-            output = llama_command(&runtime_path)
-                .args(&args)
-                .output()
-                .map_err(|e| format!("Failed to execute process: {}", e))?;
+            output = run_cancellable(&runtime_path, &args, request_id.as_deref()).await?;
         }
     }
 
@@ -255,7 +416,7 @@ impl Drop for PromptFile {
 /// Which generation of llama.cpp a runtime folder holds; their command
 /// lines differ.
 #[derive(Debug, Clone, Copy, PartialEq)]
-enum LlamaBuild {
+pub(crate) enum LlamaBuild {
     /// b5588 and similar, as downloaded by earlier app versions: one-shot
     /// `llama-cli`, `--gpu-layers -1` means 0 layers, `--mlock`/`--no-mmap`.
     Legacy,
@@ -268,7 +429,7 @@ enum LlamaBuild {
 /// Finds the one-shot binary in a runtime folder. Windows archives are flat;
 /// Linux/macOS archives have used `build/bin/` and a top-level
 /// `llama-<tag>/` folder, so a couple of levels are searched.
-fn find_runtime_binary(runtime_dir: &Path) -> Option<(PathBuf, LlamaBuild)> {
+pub(crate) fn find_runtime_binary(runtime_dir: &Path) -> Option<(PathBuf, LlamaBuild)> {
     let exe = |name: &str| {
         if cfg!(target_os = "windows") {
             format!("{name}.exe")
@@ -324,7 +485,7 @@ pub(crate) fn llama_command(runtime_path: &Path) -> Command {
 
 /// `<app data>/runtimes`; tests may point at runtimes outside the app's
 /// folder with `RESUMA_TEST_RUNTIMES_DIR`.
-fn runtimes_root(app_data: &Path) -> PathBuf {
+pub(crate) fn runtimes_root(app_data: &Path) -> PathBuf {
     #[cfg(test)]
     if let Ok(dir) = std::env::var("RESUMA_TEST_RUNTIMES_DIR") {
         return PathBuf::from(dir);
@@ -332,7 +493,7 @@ fn runtimes_root(app_data: &Path) -> PathBuf {
     app_data.join("runtimes")
 }
 
-fn get_app_data_path() -> Result<PathBuf, String> {
+pub(crate) fn get_app_data_path() -> Result<PathBuf, String> {
     data_dir()
         .map(|base| base.join("com.resuma.app"))
         .ok_or("Failed to resolve platform-specific app data directory.".to_string())
@@ -341,7 +502,7 @@ fn get_app_data_path() -> Result<PathBuf, String> {
 /// Sharded GGUFs load from their first part ("-00001-of-…"), which sorts
 /// first alphabetically, so the lexicographically smallest file is correct
 /// for both single-file and sharded models.
-fn find_gguf_file(model_dir: &PathBuf) -> Option<PathBuf> {
+pub(crate) fn find_gguf_file(model_dir: &PathBuf) -> Option<PathBuf> {
     let mut ggufs: Vec<PathBuf> = std::fs::read_dir(model_dir)
         .ok()?
         .filter_map(|entry| entry.ok())
@@ -374,6 +535,63 @@ pub fn extract_think_to_end(text: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A long-running process, standing in for llama.cpp.
+    fn sleeper() -> (PathBuf, Vec<String>) {
+        if cfg!(target_os = "windows") {
+            (PathBuf::from("powershell"), vec!["-NoProfile".into(), "-Command".into(), "Start-Sleep -Seconds 20".into()])
+        } else {
+            (PathBuf::from("sleep"), vec!["20".into()])
+        }
+    }
+
+    #[test]
+    fn cancel_kills_a_running_process() {
+        let (exe, args) = sleeper();
+        let id = "test-cancel-running";
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(500));
+            cancel(id);
+        });
+        let started = std::time::Instant::now();
+        let result = tauri::async_runtime::block_on(run_cancellable(&exe, &args, Some(id)));
+        assert_eq!(result.err().as_deref(), Some(CANCELLED));
+        assert!(started.elapsed() < std::time::Duration::from_secs(10), "the process wasn't killed");
+        finish(Some(id));
+        assert!(lock_registry().running.is_empty());
+    }
+
+    #[test]
+    fn a_request_stopped_before_it_starts_never_runs() {
+        let (exe, args) = sleeper();
+        let id = "test-cancel-early";
+        cancel(id);
+        let started = std::time::Instant::now();
+        let result = tauri::async_runtime::block_on(run_cancellable(&exe, &args, Some(id)));
+        assert_eq!(result.err().as_deref(), Some(CANCELLED));
+        assert!(started.elapsed() < std::time::Duration::from_secs(2));
+        // A remote request stopped early ends without being sent.
+        cancel("test-cancel-remote");
+        let remote = tauri::async_runtime::block_on(run_remote_cancellable(Some("test-cancel-remote".into()), async {
+            panic!("the request was sent");
+        }));
+        assert_eq!(remote.err().as_deref(), Some(CANCELLED));
+        finish(Some(id));
+    }
+
+    #[test]
+    fn cancel_stops_a_remote_request_in_flight() {
+        let id = "test-cancel-remote-flight";
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(300));
+            cancel(id);
+        });
+        let result = tauri::async_runtime::block_on(run_remote_cancellable(Some(id.into()), async {
+            futures_util::future::pending::<()>().await;
+            Ok("never".to_string())
+        }));
+        assert_eq!(result.err().as_deref(), Some(CANCELLED));
+    }
 
     /// One real request against an installed runtime and model, with the
     /// app's own argument building. Run with:
@@ -413,6 +631,7 @@ mod tests {
         let result = tauri::async_runtime::block_on(call_llm(
             "Reply with the single word: ready /no_think".to_string(),
             settings,
+            None,
         ));
         eprintln!("took {:?}: {:?}", started.elapsed(), result);
         result.expect("request failed");

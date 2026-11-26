@@ -430,23 +430,25 @@ export const RemoteProviderSetup = ({
         </div>
       )}
 
-      {/* Temperature */}
-      <div className='flex items-center justify-between h-9'>
-        <Label className='w-1/3'>{t("ai.provider.temperature")}</Label>
-        <Input
-          type='number'
-          min={0}
-          max={2}
-          step={0.1}
-          value={remote.temperature}
-          onChange={(e) =>
-            onChange({
-              temperature: Math.min(2, Math.max(0, Number(e.target.value))),
-            })
-          }
-          className='w-2/3 text-right'
-        />
-      </div>
+      {/* Temperature. The Claude API no longer takes one, so it's hidden there. */}
+      {remote.api !== "anthropic" && (
+        <div className='flex items-center justify-between h-9'>
+          <Label className='w-1/3'>{t("ai.provider.temperature")}</Label>
+          <Input
+            type='number'
+            min={0}
+            max={2}
+            step={0.1}
+            value={remote.temperature}
+            onChange={(e) =>
+              onChange({
+                temperature: Math.min(2, Math.max(0, Number(e.target.value))),
+              })
+            }
+            className='w-2/3 text-right'
+          />
+        </div>
+      )}
 
       {/* Max tokens */}
       <div className='flex items-center justify-between h-9'>

@@ -5,6 +5,8 @@
     "version": "b12675",
     "download": "https://github.com/ggml-org/llama.cpp/releases/download/b12675/llama-b12675-bin-win-rocm-10.0-x64.zip",
     "platform": "windows",
+
+    "arch": "x64",
     "backend": "hip",
     "compatibleGpus": [
       { "model": "V620", "status": "confirmed" },
@@ -60,6 +62,8 @@
     ],
     "requiredFiles": ["cudart64_12.dll", "cublas64_12.dll", "cublasLt64_12.dll"],
     "platform": "windows",
+
+    "arch": "x64",
     "backend": "cuda",
     "compatibleGpus": [
       { "model": "NVIDIA RTX-series cards", "status": "confirmed" }
@@ -71,6 +75,8 @@
     "version": "b12675",
     "download": "https://github.com/ggml-org/llama.cpp/releases/download/b12675/llama-b12675-bin-win-vulkan-x64.zip",
     "platform": "windows",
+
+    "arch": "x64",
     "backend": "vulkan",
     "compatibleGpus": [
       { "model": "Any NVIDIA", "status": "confirmed" },
@@ -84,6 +90,8 @@
     "version": "b12675",
     "download": "https://github.com/ggml-org/llama.cpp/releases/download/b12675/llama-b12675-bin-ubuntu-vulkan-x64.tar.gz",
     "platform": "linux",
+
+    "arch": "x64",
     "backend": "vulkan",
     "compatibleGpus": [
       { "model": "Any NVIDIA", "status": "confirmed" },
@@ -97,6 +105,8 @@
     "version": "b12675",
     "download": "https://github.com/ggml-org/llama.cpp/releases/download/b12675/llama-b12675-bin-win-cpu-x64.zip",
     "platform": "windows",
+
+    "arch": "x64",
     "backend": "cpu",
     "compatibleGpus": []
   },
@@ -106,6 +116,8 @@
     "version": "b12675",
     "download": "https://github.com/ggml-org/llama.cpp/releases/download/b12675/llama-b12675-bin-ubuntu-x64.tar.gz",
     "platform": "linux",
+
+    "arch": "x64",
     "backend": "cpu",
     "compatibleGpus": []
   },
@@ -115,7 +127,81 @@
     "version": "b12675",
     "download": "https://github.com/ggml-org/llama.cpp/releases/download/b12675/llama-b12675-bin-macos-arm64.tar.gz",
     "platform": "macos",
+
+    "arch": "arm64",
     "backend": "cpu",
     "compatibleGpus": []
+  },
+  {
+    "name": "llama-cpu-mac-x64",
+    "label": "CPU macOS (Intel)",
+    "version": "b12675",
+    "download": "https://github.com/ggml-org/llama.cpp/releases/download/b12675/llama-b12675-bin-macos-x64.tar.gz",
+    "platform": "macos",
+    "arch": "x64",
+    "backend": "cpu",
+    "compatibleGpus": []
+  },
+  {
+    "name": "llama-cpu-win-arm64",
+    "label": "CPU Windows (ARM)",
+    "version": "b12675",
+    "download": "https://github.com/ggml-org/llama.cpp/releases/download/b12675/llama-b12675-bin-win-cpu-arm64.zip",
+    "platform": "windows",
+    "arch": "arm64",
+    "backend": "cpu",
+    "compatibleGpus": []
+  },
+  {
+    "name": "llama-vulkan-win-arm64",
+    "label": "Vulkan Windows (ARM)",
+    "version": "b12675",
+    "download": "https://github.com/ggml-org/llama.cpp/releases/download/b12675/llama-b12675-bin-win-vulkan-arm64.zip",
+    "platform": "windows",
+    "arch": "arm64",
+    "backend": "vulkan",
+    "compatibleGpus": [
+      { "model": "Any NVIDIA", "status": "confirmed" },
+      { "model": "Any AMD", "status": "confirmed" },
+      { "model": "Any Intel", "status": "confirmed" },
+      { "model": "Any Qualcomm", "status": "confirmed" }
+    ]
+  },
+  {
+    "name": "llama-opencl-win-arm64",
+    "label": "OpenCL Snapdragon (Adreno)",
+    "version": "b12675",
+    "download": "https://github.com/ggml-org/llama.cpp/releases/download/b12675/llama-b12675-bin-win-opencl-adreno-arm64.zip",
+    "platform": "windows",
+    "arch": "arm64",
+    "backend": "opencl",
+    "compatibleGpus": [
+      { "model": "Adreno", "status": "confirmed" }
+    ]
+  },
+  {
+    "name": "llama-cpu-linux-arm64",
+    "label": "CPU Linux (ARM)",
+    "version": "b12675",
+    "download": "https://github.com/ggml-org/llama.cpp/releases/download/b12675/llama-b12675-bin-ubuntu-arm64.tar.gz",
+    "platform": "linux",
+    "arch": "arm64",
+    "backend": "cpu",
+    "compatibleGpus": []
+  },
+  {
+    "name": "llama-vulkan-linux-arm64",
+    "label": "Vulkan Linux (ARM)",
+    "version": "b12675",
+    "download": "https://github.com/ggml-org/llama.cpp/releases/download/b12675/llama-b12675-bin-ubuntu-vulkan-arm64.tar.gz",
+    "platform": "linux",
+    "arch": "arm64",
+    "backend": "vulkan",
+    "compatibleGpus": [
+      { "model": "Any NVIDIA", "status": "confirmed" },
+      { "model": "Any AMD", "status": "confirmed" },
+      { "model": "Any Intel", "status": "confirmed" },
+      { "model": "Any Qualcomm", "status": "confirmed" }
+    ]
   }
 ]

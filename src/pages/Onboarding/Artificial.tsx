@@ -72,6 +72,7 @@ import {
 } from "@/lib/resolveProvider";
 import { RemoteProviderSetup } from "@/components/RemoteProviderSetup";
 import { ProviderOption } from "@/components/ProviderOption";
+import { JobMatchingModel } from "@/components/JobMatchingModel";
 
 const safeName = (name: string) => name.replace(/\./g, "_");
 
@@ -609,6 +610,9 @@ const Artificial = () => {
             </Button>
           </div>
         )}
+
+            {/* Optional job-matching model for tailoring */}
+            <JobMatchingModel />
           </>
         ) : (
           <RemoteProviderSetup
