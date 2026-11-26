@@ -291,14 +291,16 @@ mod tests {
         stop();
         let scores = scores.expect("scoring failed");
         eprintln!("scored {} entries in {:?}: {:?}", entries.len(), started.elapsed(), scores);
-        // The scores the cut-off was measured with: the backend job and the
-        // degree stay above it, the cafe and the social media job fall below.
-        let measured = [0.9988, 0.000393, 0.0353, 0.0000698];
-        for (got, want) in scores.iter().zip(measured) {
-            // Batches of another size shift the scores slightly; the side of the cut-off is what matters.
-            assert!((got - want).abs() <= want * 0.3 + 0.0002, "scored {got}, measured {want}");
-        }
-        assert!(scores[0] >= 0.001 && scores[2] >= 0.001 && scores[1] < 0.001 && scores[3] < 0.001);
+        // What tailoring relies on, as measured (0.9988, 0.00039, 0.035,
+        // 0.00007): the backend job and the degree stay above the 0.001
+        // cut-off, the cafe and the social media job fall below it, in that
+        // order. The exact small scores vary with the hardware (Metal on
+        // Apple silicon scores the degree at 0.05) and the batch size.
+        let [backend, cafe, degree, social] = [scores[0], scores[1], scores[2], scores[3]];
+        assert!(backend > 0.9, "the backend job scored {backend}");
+        assert!(degree >= 0.005, "the degree scored {degree}, too close to the cut-off");
+        assert!(cafe < 0.001 && social < 0.001, "the unrelated jobs scored {cafe} and {social}");
+        assert!(backend > degree && degree > cafe && cafe > social, "out of order: {scores:?}");
         // After stop(), the next request starts the server again.
         let again = tauri::async_runtime::block_on(rerank(runtime, model, job.to_string(), entries[..1].to_vec()));
         stop();
