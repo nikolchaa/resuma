@@ -73,7 +73,8 @@ export function defaultRemoteSettings(
     baseUrl: provider.baseUrl,
     model: "",
     temperature: previous?.temperature ?? 0.7,
-    maxTokens: previous?.maxTokens ?? 4096,
+    // Room for the answer and the thinking that current models count toward it.
+    maxTokens: previous?.maxTokens ?? 16000,
   };
 }
 

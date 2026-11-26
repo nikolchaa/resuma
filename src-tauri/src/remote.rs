@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
 use reqwest::{Client, RequestBuilder, Response};
@@ -8,7 +10,15 @@ use crate::secrets::get_api_key;
 
 const GENERATION_TIMEOUT_SECS: u64 = 600;
 const LISTING_TIMEOUT_SECS: u64 = 20;
-const DEFAULT_MAX_TOKENS: u64 = 4096;
+/// Room for the answer and, on models that think first (current Claude,
+/// OpenAI reasoning and Gemini models), the thinking that counts toward it.
+const DEFAULT_MAX_TOKENS: u64 = 16_000;
+/// The Claude API version. From 2026-10-21 on, `temperature`, `top_p` and
+/// `top_k` are rejected, so no Anthropic request sends them.
+const ANTHROPIC_VERSION: &str = "2026-10-21";
+/// Shown when a model used its whole output limit before answering.
+const OUT_OF_TOKENS: &str =
+    "The model used up its output limit before it answered. Raise Max Tokens in Settings → AI Settings.";
 
 /// Wire format of a provider. Several providers share one flavor:
 /// DeepSeek, Kimi and LM Studio all speak the OpenAI chat-completions API.
@@ -115,7 +125,7 @@ fn authenticate(
         ApiFlavor::OpenAi => request.header("Authorization", format!("Bearer {key}")),
         ApiFlavor::Anthropic => request
             .header("x-api-key", key.as_str())
-            .header("anthropic-version", "2023-06-01"),
+            .header("anthropic-version", ANTHROPIC_VERSION),
         ApiFlavor::Gemini => request.header("x-goog-api-key", key.as_str()),
         ApiFlavor::Ollama => request.header("Authorization", format!("Bearer {key}")),
     }
@@ -184,6 +194,69 @@ pub async fn call_remote(prompt: String, llm_settings: Value) -> Result<String, 
     }
 }
 
+/// What an OpenAI-style endpoint turned out to need, learned from a rejected
+/// request: OpenAI's own API wants `max_completion_tokens` (`max_tokens` is
+/// deprecated there, and its reasoning models reject it), many compatible
+/// servers only know `max_tokens`, and reasoning models reject any
+/// temperature but the default.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+struct OpenAiQuirks {
+    completion_tokens: bool,
+    no_temperature: bool,
+}
+
+/// Quirks learned this session, per endpoint and model, so later requests
+/// don't pay for a rejected first try again.
+fn learned_quirks() -> &'static Mutex<HashMap<String, OpenAiQuirks>> {
+    static LEARNED: OnceLock<Mutex<HashMap<String, OpenAiQuirks>>> = OnceLock::new();
+    LEARNED.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn quirks_key(config: &RemoteConfig) -> String {
+    format!("{}|{}", config.base_url, config.model)
+}
+
+fn starting_quirks(config: &RemoteConfig) -> OpenAiQuirks {
+    let learned = learned_quirks().lock().ok().and_then(|map| map.get(&quirks_key(config)).copied());
+    learned.unwrap_or(OpenAiQuirks {
+        completion_tokens: config.provider == "openai",
+        no_temperature: false,
+    })
+}
+
+fn openai_body(config: &RemoteConfig, prompt: &str, quirks: OpenAiQuirks) -> Value {
+    let mut body = json!({
+        "model": config.model,
+        "messages": [{ "role": "user", "content": prompt }],
+        "stream": false,
+    });
+    let limit_field = if quirks.completion_tokens { "max_completion_tokens" } else { "max_tokens" };
+    body[limit_field] = json!(config.max_tokens);
+    if !quirks.no_temperature {
+        body["temperature"] = json!(config.temperature);
+    }
+    body
+}
+
+/// The quirks a 400 error message points at, or None if it's about
+/// something else. The message is judged against the field that was sent:
+/// OpenAI's "'max_tokens' is not supported … Use 'max_completion_tokens'
+/// instead" names both.
+fn quirks_after_rejection(quirks: OpenAiQuirks, message: &str) -> Option<OpenAiQuirks> {
+    let mut next = quirks;
+    if quirks.completion_tokens {
+        if message.contains("max_completion_tokens") {
+            next.completion_tokens = false;
+        }
+    } else if message.contains("max_tokens") {
+        next.completion_tokens = true;
+    }
+    if message.contains("temperature") {
+        next.no_temperature = true;
+    }
+    (next != quirks).then_some(next)
+}
+
 async fn call_openai(
     client: &Client,
     config: &RemoteConfig,
@@ -191,23 +264,15 @@ async fn call_openai(
     prompt: &str,
 ) -> Result<String, String> {
     let url = format!("{}/chat/completions", config.base_url);
-
-    let mut body = json!({
-        "model": config.model,
-        "messages": [{ "role": "user", "content": prompt }],
-        "temperature": config.temperature,
-        "max_tokens": config.max_tokens,
-        "stream": false,
-    });
+    let mut quirks = starting_quirks(config);
 
     let mut response = authenticate(client.post(&url), config.api, key)
-        .json(&body)
+        .json(&openai_body(config, prompt, quirks))
         .send()
         .await
         .map_err(|e| format!("Request failed: {e}"))?;
 
-    // Reasoning models on OpenAI reject `max_tokens` and any temperature other
-    // than the default, so retry once with those replaced/dropped.
+    // One retry with what the rejection asked for, remembered for next time.
     if response.status() == reqwest::StatusCode::BAD_REQUEST {
         let message = response
             .text()
@@ -215,45 +280,57 @@ async fn call_openai(
             .map(|text| describe_error(&text))
             .unwrap_or_default();
 
-        let mut retry = false;
-
-        if message.contains("max_tokens") {
-            body["max_completion_tokens"] = json!(config.max_tokens);
-            if let Some(object) = body.as_object_mut() {
-                object.remove("max_tokens");
-            }
-            retry = true;
-        }
-
-        if message.contains("temperature") {
-            if let Some(object) = body.as_object_mut() {
-                object.remove("temperature");
-            }
-            retry = true;
-        }
-
-        if !retry {
+        let Some(next) = quirks_after_rejection(quirks, &message) else {
             return Err(format!("Request failed (400 Bad Request): {message}"));
-        }
+        };
+        quirks = next;
 
         response = authenticate(client.post(&url), config.api, key)
-            .json(&body)
+            .json(&openai_body(config, prompt, quirks))
             .send()
             .await
             .map_err(|e| format!("Request failed: {e}"))?;
+        if response.status().is_success() {
+            if let Ok(mut map) = learned_quirks().lock() {
+                map.insert(quirks_key(config), quirks);
+            }
+        }
     }
 
-    let json = read_json(response).await?;
-    let message = &json["choices"][0]["message"];
+    openai_text(&read_json(response).await?)
+}
+
+/// The answer from a chat-completions reply; a refusal or an answer cut off
+/// by the output limit become errors that say so.
+fn openai_text(json: &Value) -> Result<String, String> {
+    let choice = &json["choices"][0];
+    let message = &choice["message"];
+
+    if let Some(refusal) = message["refusal"].as_str().filter(|r| !r.trim().is_empty()) {
+        return Err(format!("The model declined this request: {refusal}"));
+    }
 
     let text = message["content"]
         .as_str()
         .map(|text| text.to_string())
         .or_else(|| collect_text_parts(&message["content"]))
-        .or_else(|| json["choices"][0]["text"].as_str().map(|t| t.to_string()))
+        .or_else(|| choice["text"].as_str().map(|t| t.to_string()))
         .ok_or("Unexpected response shape from the provider")?;
 
+    if text.trim().is_empty() && choice["finish_reason"].as_str() == Some("length") {
+        return Err(OUT_OF_TOKENS.to_string());
+    }
     Ok(text)
+}
+
+/// No sampling parameters: Claude 4.7 and later accept only the defaults,
+/// and API version 2026-10-21 removes them for every model.
+fn anthropic_body(config: &RemoteConfig, prompt: &str) -> Value {
+    json!({
+        "model": config.model,
+        "max_tokens": config.max_tokens,
+        "messages": [{ "role": "user", "content": prompt }],
+    })
 }
 
 async fn call_anthropic(
@@ -264,24 +341,38 @@ async fn call_anthropic(
 ) -> Result<String, String> {
     let url = format!("{}/messages", config.base_url);
 
-    let body = json!({
-        "model": config.model,
-        "max_tokens": config.max_tokens,
-        "temperature": config.temperature,
-        "messages": [{ "role": "user", "content": prompt }],
-    });
-
     let response = authenticate(client.post(&url), config.api, key)
-        .json(&body)
+        .json(&anthropic_body(config, prompt))
         .send()
         .await
         .map_err(|e| format!("Request failed: {e}"))?;
 
-    let json = read_json(response).await?;
+    anthropic_text(&read_json(response).await?)
+}
 
-    collect_text_parts(&json["content"]).ok_or_else(|| {
-        "Unexpected response shape from the provider".to_string()
-    })
+/// The text blocks of a Messages reply (thinking blocks are left out). A
+/// refusal, or an answer cut off by the output limit, become errors.
+fn anthropic_text(json: &Value) -> Result<String, String> {
+    let blocks = json["content"].as_array().ok_or("Unexpected response shape from the provider")?;
+    let text = blocks
+        .iter()
+        .filter(|block| block["type"].as_str() == Some("text"))
+        .filter_map(|block| block["text"].as_str())
+        .collect::<Vec<_>>()
+        .join("");
+
+    match json["stop_reason"].as_str() {
+        Some("refusal") => {
+            let why = json["stop_details"]["explanation"].as_str().unwrap_or("").trim();
+            Err(if why.is_empty() {
+                "The model declined this request.".to_string()
+            } else {
+                format!("The model declined this request: {why}")
+            })
+        }
+        Some("max_tokens") if text.trim().is_empty() => Err(OUT_OF_TOKENS.to_string()),
+        _ => Ok(text),
+    }
 }
 
 async fn call_gemini(
@@ -309,15 +400,39 @@ async fn call_gemini(
         .await
         .map_err(|e| format!("Request failed: {e}"))?;
 
-    let json = read_json(response).await?;
+    gemini_text(&read_json(response).await?)
+}
 
-    collect_text_parts(&json["candidates"][0]["content"]["parts"]).ok_or_else(|| {
-        // A blocked prompt comes back with no candidate at all.
-        json["promptFeedback"]["blockReason"]
-            .as_str()
-            .map(|reason| format!("The provider blocked this request: {reason}"))
-            .unwrap_or_else(|| "Unexpected response shape from the provider".to_string())
-    })
+/// The answer parts of a generateContent reply (thought summaries are left
+/// out). A blocked prompt or answer, or one cut off by the output limit,
+/// become errors that say so.
+fn gemini_text(json: &Value) -> Result<String, String> {
+    let candidate = &json["candidates"][0];
+    let Some(parts) = candidate["content"]["parts"].as_array() else {
+        if let Some(reason) = json["promptFeedback"]["blockReason"].as_str() {
+            return Err(format!("The provider blocked this request: {reason}"));
+        }
+        return match candidate["finishReason"].as_str() {
+            Some("MAX_TOKENS") => Err(OUT_OF_TOKENS.to_string()),
+            Some(reason) if reason != "STOP" => Err(format!("The provider stopped the answer: {reason}")),
+            _ => Err("Unexpected response shape from the provider".to_string()),
+        };
+    };
+    let text = parts
+        .iter()
+        .filter(|part| part["thought"].as_bool() != Some(true))
+        .filter_map(|part| part["text"].as_str())
+        .collect::<Vec<_>>()
+        .join("");
+
+    if text.trim().is_empty() {
+        match candidate["finishReason"].as_str() {
+            Some("MAX_TOKENS") => return Err(OUT_OF_TOKENS.to_string()),
+            Some(reason) if reason != "STOP" => return Err(format!("The provider stopped the answer: {reason}")),
+            _ => {}
+        }
+    }
+    Ok(text)
 }
 
 async fn call_ollama(
@@ -344,16 +459,20 @@ async fn call_ollama(
         .await
         .map_err(|e| format!("Request failed: {e}"))?;
 
-    let json = read_json(response).await?;
-
-    json["message"]["content"]
-        .as_str()
-        .map(|text| text.to_string())
-        .ok_or_else(|| "Unexpected response shape from the provider".to_string())
+    ollama_text(&read_json(response).await?)
 }
 
-/// Anthropic content blocks, Gemini parts and OpenAI's array-form content all
-/// share the same `[{ "text": "..." }]` shape.
+fn ollama_text(json: &Value) -> Result<String, String> {
+    let text = json["message"]["content"]
+        .as_str()
+        .ok_or("Unexpected response shape from the provider")?;
+    if text.trim().is_empty() && json["done_reason"].as_str() == Some("length") {
+        return Err(OUT_OF_TOKENS.to_string());
+    }
+    Ok(text.to_string())
+}
+
+/// OpenAI's array-form message content: `[{ "type": "text", "text": "..." }]`.
 fn collect_text_parts(value: &Value) -> Option<String> {
     let parts = value.as_array()?;
 
@@ -408,7 +527,9 @@ pub async fn list_remote_models(
     let client = client(LISTING_TIMEOUT_SECS)?;
 
     let url = match api {
-        ApiFlavor::OpenAi | ApiFlavor::Anthropic => format!("{base_url}/models"),
+        ApiFlavor::OpenAi => format!("{base_url}/models"),
+        // Twenty models a page by default; there are more than that now.
+        ApiFlavor::Anthropic => format!("{base_url}/models?limit=1000"),
         ApiFlavor::Gemini => format!("{base_url}/models?pageSize=200"),
         ApiFlavor::Ollama => format!("{base_url}/api/tags"),
     };
@@ -512,4 +633,97 @@ fn parse_ollama_models(json: &Value) -> Vec<RemoteModel> {
                 .collect()
         })
         .unwrap_or_default()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn config(provider: &str, api: ApiFlavor, model: &str) -> RemoteConfig {
+        RemoteConfig {
+            provider: provider.into(),
+            api,
+            base_url: "https://example.test/v1".into(),
+            model: model.into(),
+            temperature: 0.7,
+            max_tokens: DEFAULT_MAX_TOKENS,
+        }
+    }
+
+    #[test]
+    fn openai_gets_max_completion_tokens_and_compatible_servers_max_tokens() {
+        let openai = config("openai", ApiFlavor::OpenAi, "gpt-test");
+        let body = openai_body(&openai, "hi", starting_quirks(&openai));
+        assert_eq!(body["max_completion_tokens"], 16_000);
+        assert!(body.get("max_tokens").is_none());
+        assert_eq!(body["temperature"], 0.7);
+
+        let deepseek = config("deepseek", ApiFlavor::OpenAi, "deepseek-test");
+        let body = openai_body(&deepseek, "hi", starting_quirks(&deepseek));
+        assert_eq!(body["max_tokens"], 16_000);
+        assert!(body.get("max_completion_tokens").is_none());
+    }
+
+    #[test]
+    fn rejections_switch_only_what_they_name() {
+        let sent_max_tokens = OpenAiQuirks { completion_tokens: false, no_temperature: false };
+        // OpenAI's wording names both fields.
+        let openai = "Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.";
+        assert_eq!(
+            quirks_after_rejection(sent_max_tokens, openai),
+            Some(OpenAiQuirks { completion_tokens: true, no_temperature: false })
+        );
+        // A compatible server that doesn't know the newer field.
+        let sent_completion = OpenAiQuirks { completion_tokens: true, no_temperature: false };
+        assert_eq!(
+            quirks_after_rejection(sent_completion, "Unrecognized request argument supplied: max_completion_tokens"),
+            Some(OpenAiQuirks { completion_tokens: false, no_temperature: false })
+        );
+        let temperature = "Unsupported value: 'temperature' does not support 0.7 with this model. Only the default (1) value is supported.";
+        assert_eq!(
+            quirks_after_rejection(sent_completion, temperature),
+            Some(OpenAiQuirks { completion_tokens: true, no_temperature: true })
+        );
+        assert_eq!(quirks_after_rejection(sent_completion, "Invalid model name"), None);
+        let body = openai_body(&config("openai", ApiFlavor::OpenAi, "m"), "hi", OpenAiQuirks { completion_tokens: true, no_temperature: true });
+        assert!(body.get("temperature").is_none());
+    }
+
+    #[test]
+    fn anthropic_requests_send_no_sampling_parameters() {
+        let body = anthropic_body(&config("anthropic", ApiFlavor::Anthropic, "claude-opus-5-5"), "hi");
+        assert!(body.get("temperature").is_none());
+        assert!(body.get("top_p").is_none() && body.get("top_k").is_none());
+        assert_eq!(body["max_tokens"], 16_000);
+    }
+
+    #[test]
+    fn reads_answers_and_explains_refusals_and_cut_off_answers() {
+        // Claude: thinking blocks are skipped.
+        let ok = json!({"content": [{"type": "thinking", "thinking": ""}, {"type": "text", "text": "Hello"}], "stop_reason": "end_turn"});
+        assert_eq!(anthropic_text(&ok).unwrap(), "Hello");
+        let refused = json!({"content": [], "stop_reason": "refusal", "stop_details": {"type": "refusal", "category": null, "explanation": "Not allowed."}});
+        assert!(anthropic_text(&refused).unwrap_err().contains("Not allowed."));
+        let cut = json!({"content": [{"type": "thinking", "thinking": ""}], "stop_reason": "max_tokens"});
+        assert_eq!(anthropic_text(&cut).unwrap_err(), OUT_OF_TOKENS);
+
+        // OpenAI-style.
+        assert_eq!(openai_text(&json!({"choices": [{"message": {"content": "Hi"}, "finish_reason": "stop"}]})).unwrap(), "Hi");
+        let refusal = json!({"choices": [{"message": {"content": null, "refusal": "I can't help with that."}}]});
+        assert!(openai_text(&refusal).unwrap_err().contains("can't help"));
+        let length = json!({"choices": [{"message": {"content": ""}, "finish_reason": "length"}]});
+        assert_eq!(openai_text(&length).unwrap_err(), OUT_OF_TOKENS);
+
+        // Gemini: thought summaries are skipped.
+        let gemini = json!({"candidates": [{"content": {"parts": [{"text": "plan", "thought": true}, {"text": "Answer"}]}, "finishReason": "STOP"}]});
+        assert_eq!(gemini_text(&gemini).unwrap(), "Answer");
+        let no_parts = json!({"candidates": [{"content": {"role": "model"}, "finishReason": "MAX_TOKENS"}]});
+        assert_eq!(gemini_text(&no_parts).unwrap_err(), OUT_OF_TOKENS);
+        let blocked = json!({"promptFeedback": {"blockReason": "SAFETY"}});
+        assert!(gemini_text(&blocked).unwrap_err().contains("SAFETY"));
+
+        // Ollama.
+        assert_eq!(ollama_text(&json!({"message": {"content": "Yo"}, "done_reason": "stop"})).unwrap(), "Yo");
+        assert_eq!(ollama_text(&json!({"message": {"content": ""}, "done_reason": "length"})).unwrap_err(), OUT_OF_TOKENS);
+    }
 }
