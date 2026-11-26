@@ -21,9 +21,9 @@ jobs:
     name: Frontend tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: lts/*
           cache: npm
@@ -70,7 +70,7 @@ jobs:
             local-ai: false
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -82,7 +82,7 @@ jobs:
           key: ${{ matrix.slug }}
 
       - name: Install Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v7
         with:
           node-version: lts/*
           cache: npm
@@ -163,7 +163,7 @@ jobs:
 
       - name: Keep the installers
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: resuma-${{ matrix.slug }}
           retention-days: 14
@@ -181,7 +181,7 @@ jobs:
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -193,7 +193,7 @@ jobs:
           key: linux-arm64-local-ai
 
       - name: Install Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v7
         with:
           node-version: lts/*
           cache: npm
