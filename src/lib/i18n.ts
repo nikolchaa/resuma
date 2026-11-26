@@ -1,7 +1,10 @@
+import { de } from "./locales/de";
 import { es } from "./locales/es";
+import { fr } from "./locales/fr";
+import { pt } from "./locales/pt";
 import { ru } from "./locales/ru";
 
-export type AppLanguage = "en" | "rs" | "es" | "ru";
+export type AppLanguage = "en" | "rs" | "es" | "ru" | "fr" | "de" | "pt";
 
 /**
  * Languages the app offers, in menu order. `value` is what settings store
@@ -13,16 +16,25 @@ export const LANGUAGES: { value: AppLanguage; labelKey: string; tag: string }[] 
   { value: "rs", labelKey: "common.language.serbian", tag: "sr" },
   { value: "es", labelKey: "common.language.spanish", tag: "es" },
   { value: "ru", labelKey: "common.language.russian", tag: "ru" },
+  { value: "fr", labelKey: "common.language.french", tag: "fr" },
+  { value: "de", labelKey: "common.language.german", tag: "de" },
+  { value: "pt", labelKey: "common.language.portuguese", tag: "pt" },
 ];
 
 export const translations: Record<AppLanguage, Record<string, string>> = {
   es,
   ru,
+  fr,
+  de,
+  pt,
   en: {
     "common.language.english": "English (EN)",
     "common.language.serbian": "Serbian (RS)",
     "common.language.spanish": "Spanish (ES)",
     "common.language.russian": "Russian (RU)",
+    "common.language.french": "French (FR)",
+    "common.language.german": "German (DE)",
+    "common.language.portuguese": "Portuguese (PT)",
     "common.present": "Present",
     "common.optional": "(optional)",
     "common.apply": "Apply",
@@ -61,9 +73,6 @@ export const translations: Record<AppLanguage, Record<string, string>> = {
     "home.toast.deletedTitle": "Resume deleted",
     "home.toast.deletedDesc": "The resume has been permanently removed.",
     "home.toast.deleteFailed": "Failed to delete resume",
-    "home.toast.importCanceled": "Import canceled",
-    "home.toast.importSuccess": "Resume imported successfully",
-    "home.toast.importFailed": "Failed to import resume",
     "onboarding.welcome.getStarted": "Get Started!",
     "onboarding.basic.title": "Basic Setup",
     "onboarding.basic.description":
@@ -618,7 +627,6 @@ export const translations: Record<AppLanguage, Record<string, string>> = {
     "vault.backup.exported": "Backup saved ({n} resumes)",
     "vault.backup.imported": "Backup imported ({n} resumes)",
     "vault.backup.importConfirm": "Import this backup? If it holds settings and a profile, they replace yours, and its resumes replace any with the same name.",
-    "vault.importEncrypted": "This file is encrypted with another computer's key. To move data between computers, export an encrypted backup there and use Settings → App Settings → Data protection → Import backup here.",
     "library.title": "My templates",
     "library.description": "Save templates to reuse them in any resume.",
     "library.save": "Save template",
@@ -707,6 +715,9 @@ export const translations: Record<AppLanguage, Record<string, string>> = {
     "common.language.serbian": "Srpski (RS)",
     "common.language.spanish": "Španski (ES)",
     "common.language.russian": "Ruski (RU)",
+    "common.language.french": "Francuski (FR)",
+    "common.language.german": "Nemački (DE)",
+    "common.language.portuguese": "Portugalski (PT)",
     "common.present": "Trenutno",
     "common.optional": "(opciono)",
     "common.apply": "Primeni",
@@ -745,9 +756,6 @@ export const translations: Record<AppLanguage, Record<string, string>> = {
     "home.toast.deletedTitle": "Rezime obrisan",
     "home.toast.deletedDesc": "Rezime je trajno uklonjen.",
     "home.toast.deleteFailed": "Brisanje rezimea nije uspelo",
-    "home.toast.importCanceled": "Uvoz je otkazan",
-    "home.toast.importSuccess": "Rezime je uspešno uvezen",
-    "home.toast.importFailed": "Uvoz rezimea nije uspeo",
     "onboarding.welcome.getStarted": "Započni!",
     "onboarding.basic.title": "Osnovna podešavanja",
     "onboarding.basic.description":
@@ -1294,7 +1302,6 @@ export const translations: Record<AppLanguage, Record<string, string>> = {
     "vault.backup.exported": "Rezervna kopija je sačuvana (rezimea: {n})",
     "vault.backup.imported": "Rezervna kopija je uvezena (rezimea: {n})",
     "vault.backup.importConfirm": "Uvesti ovu rezervnu kopiju? Ako sadrži podešavanja i profil, oni zamenjuju tvoje, a njeni rezimei zamenjuju one sa istim imenom.",
-    "vault.importEncrypted": "Ova datoteka je šifrovana ključem drugog računara. Za prenos podataka između računara izvezi šifrovanu rezervnu kopiju tamo, pa ovde koristi Podešavanja → Podešavanja aplikacije → Zaštita podataka → Uvezi rezervnu kopiju.",
     "library.title": "Moji šabloni",
     "library.description": "Sačuvaj šablone da ih koristiš u bilo kom rezimeu.",
     "library.save": "Sačuvaj šablon",

@@ -27,7 +27,8 @@ describe("translations", () => {
   it("reads stored languages and tags PDFs", () => {
     expect(normalizeLanguage("ru")).toBe("ru");
     expect(normalizeLanguage("es")).toBe("es");
-    expect(normalizeLanguage("de")).toBe("en");
+    expect(normalizeLanguage("de")).toBe("de");
+    expect(normalizeLanguage("xx")).toBe("en");
     expect(normalizeLanguage(undefined)).toBe("en");
     // Serbian is stored as "rs" (a country code) but is "sr" in documents.
     expect(languageTag("rs")).toBe("sr");
