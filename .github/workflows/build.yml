@@ -61,9 +61,13 @@ jobs:
           - name: Linux x64
             os: ubuntu-22.04
             slug: linux-x64
+          # llama.cpp's Linux ARM build needs glibc 2.38+, newer than this
+          # runner has; its local AI check runs on Ubuntu 24.04 instead
+          # (the linux-arm-local-ai job below).
           - name: Linux ARM
             os: ubuntu-22.04-arm
             slug: linux-arm64
+            local-ai: false
 
     steps:
       - uses: actions/checkout@v5
@@ -135,7 +139,7 @@ jobs:
 
       - name: Download a llama.cpp build and the light model
         id: download
-        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.build.outcome == 'success' && matrix.local-ai != false }}
         shell: bash
         run: .github/scripts/run-logged.sh "Local AI download" node .github/scripts/local-ai-check.mjs
 
@@ -169,3 +173,53 @@ jobs:
             src-tauri/target/release/bundle/deb/*.deb
             src-tauri/target/release/bundle/rpm/*.rpm
             src-tauri/target/release/bundle/appimage/*.AppImage
+
+  # Local AI on Linux ARM, on a runner new enough for llama.cpp's ARM build
+  # (glibc 2.38+). The installers themselves are built on Ubuntu 22.04 above.
+  linux-arm-local-ai:
+    name: Linux ARM local AI
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          key: linux-arm64-local-ai
+
+      - name: Install Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libglib2.0-dev \
+            libgdk-pixbuf-2.0-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+
+      # The Rust crate embeds the built frontend.
+      - name: Build the frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Download a llama.cpp build and the light model
+        shell: bash
+        run: .github/scripts/run-logged.sh "Local AI download" node .github/scripts/local-ai-check.mjs
+
+      - name: Run one local AI request
+        shell: bash
+        working-directory: src-tauri
+        run: ../.github/scripts/run-logged.sh "Local AI request" cargo test --lib real_local_request -- --ignored --nocapture
