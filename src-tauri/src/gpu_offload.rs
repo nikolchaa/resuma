@@ -163,9 +163,32 @@ pub enum AutoLayers {
 /// an NVIDIA driver too old for CUDA 12.
 pub const CUDA_NO_DEVICE_ERROR: &str = "The NVIDIA CUDA runtime found no usable GPU, so the AI would run on the CPU only. Its CUDA libraries are probably missing: re-download the NVIDIA CUDA runtime in Settings > AI, update the NVIDIA driver, or switch the runtime to Vulkan.";
 
+/// The same for the AMD HIP (ROCm) runtime: llama.cpp's ROCm archive leaves
+/// out hipBLAS/rocBLAS, which the app downloads alongside it since 1.1.2.
+pub const HIP_NO_DEVICE_ERROR: &str = "The AMD HIP runtime found no usable GPU, so the AI would run on the CPU only. Its ROCm libraries are probably missing: re-download the AMD HIP runtime in Settings > AI, update the AMD driver, or switch the runtime to Vulkan.";
+
+/// GPU architectures (`gfx1030`, …) in `--verbose --list-devices` output
+/// (`--list-devices` exits where it's parsed, so `--verbose` goes first),
+/// whose ROCm backend logs one line per device on stderr:
+///
+/// ```text
+/// 0.00.059.445 I   Device 0: AMD Radeon RX 6950 XT, gfx1030 (0x1030), VMM: no, Wave Size: 32
+/// ```
+pub fn parse_gpu_targets(output: &str) -> Vec<String> {
+    let mut targets: Vec<String> = Vec::new();
+    for line in output.lines().filter(|line| line.contains("Device ")) {
+        let Some(start) = line.find(", gfx") else { continue };
+        let target: String = line[start + 2..].chars().take_while(|c| c.is_ascii_alphanumeric()).collect();
+        if !targets.contains(&target) {
+            targets.push(target);
+        }
+    }
+    targets
+}
+
 /// Resolves "auto" for one request. `self_fitting` builds (the pinned
 /// b12675 and newer) size the offload themselves with `--fit`, so they only
-/// get the CUDA device check; older builds get the estimate below.
+/// get the CUDA/HIP device check; older builds get the estimate below.
 pub fn resolve_auto(
     runtime: &str,
     runtime_path: &Path,
@@ -175,8 +198,9 @@ pub fn resolve_auto(
     self_fitting: bool,
 ) -> Result<AutoLayers, String> {
     let is_cuda = runtime.to_lowercase().contains("cuda");
+    let is_hip = runtime.to_lowercase().contains("hip");
 
-    if self_fitting && !is_cuda {
+    if self_fitting && !is_cuda && !is_hip {
         return Ok(AutoLayers::Fit);
     }
 
@@ -204,6 +228,9 @@ pub fn resolve_auto(
     if devices.is_empty() {
         if is_cuda {
             return Err(CUDA_NO_DEVICE_ERROR.to_string());
+        }
+        if is_hip {
+            return Err(HIP_NO_DEVICE_ERROR.to_string());
         }
         return Ok(AutoLayers::LlamaDefault);
     }
@@ -298,6 +325,16 @@ mod tests {
         let out = "Available devices:\n";
         assert!(parse_devices(out).is_empty());
         assert!(parse_devices("").is_empty());
+    }
+
+    #[test]
+    fn reads_gpu_architectures_from_the_rocm_device_log() {
+        // `llama-completion --verbose --list-devices` from the b12675 ROCm
+        // build; the console log and the timestamped one written to a pipe.
+        let out = "Available devices:\n  ROCm0: AMD Radeon RX 6950 XT (16368 MiB, 16226 MiB free)\nggml_cuda_init: found 2 ROCm devices (Total VRAM: 18416 MiB):\n0.00.059.445 I   Device 0: AMD Radeon RX 6950 XT, gfx1030 (0x1030), VMM: no, Wave Size: 32, VRAM: 16368 MiB\n  Device 1: AMD Radeon(TM) Graphics, gfx1036 (0x1036), VMM: no, Wave Size: 32, VRAM: 2048 MiB\n  Device 2: AMD Radeon RX 6950 XT, gfx1030 (0x1030), VMM: no, Wave Size: 32, VRAM: 16368 MiB\n";
+        assert_eq!(parse_gpu_targets(out), vec!["gfx1030", "gfx1036"]);
+        // A ROCm build whose backend failed to load.
+        assert!(parse_gpu_targets("Available devices:\n  (none)\n").is_empty());
     }
 
     #[test]

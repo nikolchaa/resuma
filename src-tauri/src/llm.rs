@@ -467,6 +467,10 @@ pub(crate) fn find_runtime_binary(runtime_dir: &Path) -> Option<(PathBuf, LlamaB
     None
 }
 
+/// Folder in the HIP runtime holding AMD's ROCm libraries (hipBLAS,
+/// rocBLAS and their GPU kernels), laid out as in AMD's wheels.
+pub(crate) const ROCM_LIBS_DIR: &str = "_rocm_sdk_libraries";
+
 /// A `llama-cli` invocation with the runtime's own libraries on the search
 /// path and, on Windows, no console window.
 pub(crate) fn llama_command(runtime_path: &Path) -> Command {
@@ -474,6 +478,21 @@ pub(crate) fn llama_command(runtime_path: &Path) -> Command {
 
     #[cfg(target_os = "windows")]
     command.creation_flags(0x08000000); // CREATE_NO_WINDOW
+
+    // llama.cpp's ROCm build ships without hipBLAS/rocBLAS and expects them
+    // on PATH; without them its GPU backend silently doesn't load.
+    #[cfg(target_os = "windows")]
+    if let Some(rocm_bin) = runtime_path
+        .parent()
+        .map(|dir| dir.join(ROCM_LIBS_DIR).join("bin"))
+        .filter(|dir| dir.is_dir())
+    {
+        let current = std::env::var_os("PATH").unwrap_or_default();
+        let paths = std::iter::once(rocm_bin).chain(std::env::split_paths(&current));
+        if let Ok(joined) = std::env::join_paths(paths) {
+            command.env("PATH", joined);
+        }
+    }
 
     #[cfg(not(target_os = "windows"))]
     if let Some(lib_dir) = runtime_path.parent() {
@@ -627,9 +646,14 @@ mod tests {
             },
         });
 
+        // A prompt of over a thousand tokens is evaluated in batches, which
+        // go through the BLAS library (hipBLAS/rocBLAS on the HIP build).
+        let filler = "Senior engineer with ten years building distributed systems. ".repeat(100);
+        let prompt = format!("{filler}\nReply with the single word: ready /no_think");
+
         let started = std::time::Instant::now();
         let result = tauri::async_runtime::block_on(call_llm(
-            "Reply with the single word: ready /no_think".to_string(),
+            prompt,
             settings,
             None,
         ));

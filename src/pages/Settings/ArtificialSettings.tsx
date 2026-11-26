@@ -237,6 +237,7 @@ export const ArtificialSettings = ({
     assetUrls: string[],
     assetType: "runtime" | "model",
     version?: string,
+    gpuTargetDownload?: string,
   ) => {
     if (!assetName) return;
 
@@ -255,6 +256,7 @@ export const ArtificialSettings = ({
         noExtract: assetType === "model",
         assetType,
         version: version ?? null,
+        gpuTargetDownload: gpuTargetDownload ?? null,
       });
     } catch (err) {
       showError(
@@ -641,6 +643,7 @@ export const ArtificialSettings = ({
                           runtimeDownloadUrls(entry.runtime),
                           "runtime",
                           entry.runtime.version,
+                          entry.runtime.gpuTargetDownload,
                         )
                       }
                     >

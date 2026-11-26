@@ -41,6 +41,9 @@ async fn download_and_extract(
     asset_type: String, // e.g., "runtimes", "models", etc.
     // Build tag recorded after extraction, e.g. "b12675" for runtimes.
     version: Option<String>,
+    // Per-GPU-architecture archive, with "{target}" standing for e.g.
+    // "gfx1030"; fetched for each GPU the extracted runtime lists.
+    gpu_target_download: Option<String>,
 ) -> Result<(), String> {
     spawn(async move {
         if asset_urls.is_empty() {
@@ -235,6 +238,15 @@ async fn download_and_extract(
                     return;
                 }
             }
+            // The ROCm build needs rocBLAS kernels for the GPU's own
+            // architecture, which only the installed runtime can tell.
+            if let Some(template) = &gpu_target_download {
+                if let Err(e) = install_gpu_kernels(&client, &base_dir, &download_dir, template).await {
+                    discard_staging();
+                    let _ = window.emit(&format!("extract_error:{}", asset_name), e);
+                    return;
+                }
+            }
             discard_staging();
             // Lets check_asset_ready tell a current install from one made
             // with an older llama.cpp build.
@@ -271,6 +283,8 @@ fn extract_archive(archive_path: &PathBuf, extract_to: &PathBuf) -> io::Result<(
 
     if name.ends_with(".zip") {
         extract_zip(archive_path, extract_to)
+    } else if name.ends_with(".whl") {
+        extract_rocm_wheel(archive_path, extract_to)
     } else if name.ends_with(".tar.gz") || name.ends_with(".tgz") {
         extract_tar_gz(archive_path, extract_to)
     } else {
@@ -316,6 +330,92 @@ fn extract_zip(zip_path: &PathBuf, extract_to: &PathBuf) -> io::Result<()> {
     fs::remove_file(zip_path)?;
 
     Ok(())
+}
+
+/// The parts of AMD's ROCm wheels llama.cpp's HIP backend needs:
+/// `ggml-hip.dll` links hipBLAS, which pulls in rocSOLVER, rocBLAS,
+/// hipBLASLt and origami, and rocBLAS/hipBLASLt load their GPU kernels from
+/// `library/` folders and `.kpack` archives next to them. Everything else
+/// (MIOpen alone is several hundred MB) is left out.
+fn keep_rocm_wheel_entry(path: &str) -> bool {
+    const DLLS: [&str; 5] = ["hipblas.dll", "rocblas.dll", "rocsolver.dll", "libhipblaslt.dll", "origami.dll"];
+    let Some(rest) = path.strip_prefix(&format!("{}/", llm::ROCM_LIBS_DIR)) else {
+        return false;
+    };
+    if let Some(file) = rest.strip_prefix("bin/") {
+        return DLLS.contains(&file) || file.starts_with("rocblas/library/") || file.starts_with("hipblaslt/library/");
+    }
+    rest.strip_prefix(".kpack/").map_or(false, |file| file.starts_with("blas_lib_"))
+}
+
+/// Extracts the needed parts of a ROCm wheel (a zip), keeping its
+/// `_rocm_sdk_libraries/` layout: rocBLAS finds its kernels relative to
+/// its own DLL. `llm::llama_command` puts the DLL folder on PATH.
+fn extract_rocm_wheel(wheel_path: &PathBuf, extract_to: &PathBuf) -> io::Result<()> {
+    let mut archive = ZipArchive::new(File::open(wheel_path)?)?;
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i)?;
+        if file.is_dir() || !keep_rocm_wheel_entry(file.name()) {
+            continue;
+        }
+        let Some(path) = file.enclosed_name() else { continue };
+        let outpath = extract_to.join(path);
+        if let Some(parent) = outpath.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        io::copy(&mut file, &mut File::create(&outpath)?)?;
+    }
+    fs::remove_file(wheel_path)?;
+    Ok(())
+}
+
+/// Written once the GPU kernels are in place; the HIP runtime lists it in
+/// `requiredFiles`, so an install whose kernels failed reads as incomplete.
+const GPU_KERNELS_MARKER: &str = "resuma-gpu-kernels.txt";
+
+/// Asks the freshly extracted runtime which GPU architectures it sees and
+/// installs the kernel archive for each one.
+async fn install_gpu_kernels(client: &Client, base_dir: &PathBuf, download_dir: &PathBuf, template: &str) -> Result<(), String> {
+    let (binary, _) = llm::find_runtime_binary(base_dir).ok_or("The downloaded runtime has no llama.cpp binary.")?;
+    let output = tauri::async_runtime::spawn_blocking(move || llm::llama_command(&binary).args(["--verbose", "--list-devices"]).output())
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| format!("Could not start the downloaded runtime: {e}"))?;
+    let listing = format!("{}\n{}", String::from_utf8_lossy(&output.stdout), String::from_utf8_lossy(&output.stderr));
+    let targets = gpu_offload::parse_gpu_targets(&listing);
+    if targets.is_empty() {
+        return Err(gpu_offload::HIP_NO_DEVICE_ERROR.to_string());
+    }
+
+    let mut installed = Vec::new();
+    for target in &targets {
+        let url = template.replace("{target}", target);
+        let file = download_dir.join(url.rsplit('/').next().unwrap_or("kernels.whl"));
+        let response = client.get(&url).send().await.map_err(|e| format!("Download failed: {e}"))?;
+        // An architecture AMD publishes no kernels for (another GPU in the
+        // computer, say) is skipped; one is enough.
+        if response.status() == reqwest::StatusCode::NOT_FOUND {
+            eprintln!("[runtime] no GPU kernels published for {target}");
+            continue;
+        }
+        let bytes = response
+            .error_for_status()
+            .map_err(|e| format!("Download failed: {e}"))?
+            .bytes()
+            .await
+            .map_err(|e| format!("Download failed: {e}"))?;
+        fs::write(&file, &bytes).map_err(|e| format!("Failed writing file: {e}"))?;
+        extract_archive(&file, base_dir).map_err(|e| format!("Extraction failed: {e}"))?;
+        installed.push(target.clone());
+    }
+    if installed.is_empty() {
+        return Err(format!(
+            "AMD publishes no ROCm kernels for this GPU ({}). Use the Vulkan runtime instead.",
+            targets.join(", ")
+        ));
+    }
+    fs::write(base_dir.join(llm::ROCM_LIBS_DIR).join(GPU_KERNELS_MARKER), installed.join("\n"))
+        .map_err(|e| format!("Failed to record the GPU kernels: {e}"))
 }
 
 /// True when the asset folder exists and holds every `required_files` entry
@@ -551,5 +651,50 @@ mod tests {
         assert!(dir.join("llama-b12675").join("llama-completion").is_file());
         assert!(!archive.exists());
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// Completes a HIP runtime the way a download does, on a real AMD GPU:
+    /// `RESUMA_TEST_HIP_DIR` holds the extracted llama.cpp ROCm zip,
+    /// `RESUMA_TEST_ROCM_WHEEL` the rocm_sdk_libraries wheel. Then run
+    /// llm's `real_local_request` against that folder.
+    #[test]
+    #[ignore]
+    fn real_hip_kernel_install() {
+        let dir = PathBuf::from(std::env::var("RESUMA_TEST_HIP_DIR").expect("RESUMA_TEST_HIP_DIR"));
+        let wheel = PathBuf::from(std::env::var("RESUMA_TEST_ROCM_WHEEL").expect("RESUMA_TEST_ROCM_WHEEL"));
+        let staged = dir.join("libraries.whl");
+        fs::copy(&wheel, &staged).unwrap();
+        extract_archive(&staged, &dir).unwrap();
+        let template = "https://stable.repo.amd.com/rocm/core/whl-next/rocm-sdk-device-{target}/rocm_sdk_device_{target}-10.0.0-py3-none-win_amd64.whl";
+        tauri::async_runtime::block_on(install_gpu_kernels(&Client::new(), &dir, &dir, template)).unwrap();
+        let marker = fs::read_to_string(dir.join(llm::ROCM_LIBS_DIR).join(GPU_KERNELS_MARKER)).unwrap();
+        eprintln!("installed kernels for: {marker}");
+    }
+
+    #[test]
+    fn rocm_wheels_keep_only_what_the_hip_backend_loads() {
+        for kept in [
+            "_rocm_sdk_libraries/bin/hipblas.dll",
+            "_rocm_sdk_libraries/bin/rocblas.dll",
+            "_rocm_sdk_libraries/bin/rocsolver.dll",
+            "_rocm_sdk_libraries/bin/libhipblaslt.dll",
+            "_rocm_sdk_libraries/bin/origami.dll",
+            "_rocm_sdk_libraries/bin/rocblas/library/TensileLibrary_lazy_gfx1030.dat",
+            "_rocm_sdk_libraries/bin/hipblaslt/library/gfx1201/TensileLibrary_lazy_gfx1201.dat",
+            "_rocm_sdk_libraries/.kpack/blas_lib_gfx1030.kpack",
+        ] {
+            assert!(keep_rocm_wheel_entry(kept), "{kept}");
+        }
+        for dropped in [
+            "_rocm_sdk_libraries/bin/MIOpen.dll",
+            "_rocm_sdk_libraries/bin/MIOpenCKGroupedConv_gfx1100.dll",
+            "_rocm_sdk_libraries/bin/test_plugins/hipdnn_test_plugin1.dll",
+            "_rocm_sdk_libraries/.kpack/fft_lib_gfx1030.kpack",
+            "_rocm_sdk_libraries/.devel_links/gfx1030.json",
+            "rocm_sdk_libraries/_dist_info.py",
+            "rocm_sdk_libraries-10.0.0.dist-info/RECORD",
+        ] {
+            assert!(!keep_rocm_wheel_entry(dropped), "{dropped}");
+        }
     }
 }
