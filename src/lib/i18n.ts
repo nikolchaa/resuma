@@ -793,7 +793,7 @@ export const translations: Record<AppLanguage, Record<string, string>> = {
       "Izmeni podatke koji se koriste u svim rezimeima. Ovi podaci će uvek biti prikazani na rezimeu.",
     "settings.education.heading": "Obrazovanje",
     "settings.education.description":
-      "Navedi svoje obrazovanje, uključujući školu, smer i relevantne predmete.",
+      "Navedi svoje obrazovanje, uključujući školu, zvanje i relevantne predmete.",
     "settings.experience.heading": "Iskustvo",
     "settings.experience.description":
       "Dodaj svoje radno iskustvo sa ključnim ulogama i postignućima.",
@@ -822,7 +822,7 @@ export const translations: Record<AppLanguage, Record<string, string>> = {
     "field.website": "Veb sajt",
     "field.school": "Škola",
     "field.schoolName": "Naziv škole",
-    "field.degree": "Smer / studijski program / diploma",
+    "field.degree": "Zvanje",
     "field.gpa": "Prosek",
     "field.jobTitle": "Pozicija",
     "field.company": "Kompanija",
@@ -857,7 +857,7 @@ export const translations: Record<AppLanguage, Record<string, string>> = {
     "placeholder.github": "https://github.com/username",
     "placeholder.website": "https://yourwebsite.com",
     "placeholder.school": "Fakultet tehničkih nauka",
-    "placeholder.degree": "Računarstvo i automatika",
+    "placeholder.degree": "Diplomirani inženjer računarstva",
     "placeholder.gpa": "9,5 / 10",
     "placeholder.course": "Strukture podataka",
     "placeholder.jobTitle": "Frontend developer",
@@ -1060,7 +1060,7 @@ export const translations: Record<AppLanguage, Record<string, string>> = {
       "Dodaj svoje lične podatke. Oni će uvek biti prikazani na rezimeu.",
     "onboarding.education.title": "Obrazovanje",
     "onboarding.education.description":
-      "Navedi svoje obrazovanje, uključujući školu, smer i relevantne predmete.",
+      "Navedi svoje obrazovanje, uključujući školu, zvanje i relevantne predmete.",
     "onboarding.experience.title": "Iskustvo",
     "onboarding.experience.description":
       "Dodaj radno iskustvo sa ključnim ulogama i postignućima.",
