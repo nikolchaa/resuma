@@ -1,8 +1,9 @@
 // Prepares a local AI request on a CI runner, the way the app would: picks
 // the CPU llama.cpp build for this platform and architecture from
 // runtimes.json, extracts it into a runtimes folder, and puts the light
-// starter model where the app keeps models. The Rust test
-// `real_local_request` then makes one real request with them.
+// starter model where the app keeps models, plus the job matching model.
+// The Rust tests `real_local_request` and `real_rerank` then make one real
+// request each.
 import { execFileSync } from "node:child_process";
 import { appendFileSync, createWriteStream, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
@@ -57,6 +58,16 @@ mkdirSync(modelDir, { recursive: true });
 console.log(`Downloading ${MODEL_URL}`);
 await download(MODEL_URL, join(modelDir, MODEL_URL.split("/").pop()));
 
-const env = `RESUMA_TEST_RUNTIMES_DIR=${runtimesDir}\nRESUMA_TEST_RUNTIME=${runtime.name}\nRESUMA_TEST_MODEL=${MODEL_ID}\n`;
+// The job matching model, for the Rust test `real_rerank`.
+const RERANKER_ID = "qwen3-reranker-0_6b-q8_0";
+const RERANKER_URL = "https://huggingface.co/ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/resolve/main/qwen3-reranker-0.6b-q8_0.gguf";
+const rerankersDir = join(tmpdir(), "resuma-rerankers");
+mkdirSync(join(rerankersDir, RERANKER_ID), { recursive: true });
+console.log(`Downloading ${RERANKER_URL}`);
+await download(RERANKER_URL, join(rerankersDir, RERANKER_ID, RERANKER_URL.split("/").pop()));
+
+const env =
+  `RESUMA_TEST_RUNTIMES_DIR=${runtimesDir}\nRESUMA_TEST_RUNTIME=${runtime.name}\nRESUMA_TEST_MODEL=${MODEL_ID}\n` +
+  `RESUMA_TEST_RERANKERS_DIR=${rerankersDir}\nRESUMA_TEST_RERANKER=${RERANKER_ID}\n`;
 if (process.env.GITHUB_ENV) appendFileSync(process.env.GITHUB_ENV, env);
-console.log(`Runtime ${runtime.name} (${platform}/${arch}) and ${MODEL_ID} are ready.\n${env}`);
+console.log(`Runtime ${runtime.name} (${platform}/${arch}), ${MODEL_ID} and ${RERANKER_ID} are ready.\n${env}`);

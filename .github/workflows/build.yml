@@ -1,19 +1,36 @@
 name: Build and check
 
-# Builds the installers for every platform and checks that each one starts
-# and can run local AI, without publishing anything. The installers are kept
-# as workflow artifacts for testing.
+# Three levels of checks, by cost:
+# - Every push and pull request: frontend and Rust tests on Linux.
+# - Pull requests to main, pushes to release/* branches and manual runs:
+#   the installers for all six platforms, each started once.
+# - Local AI on all six platforms (one llama.cpp request and one job
+#   matching request through the app's own code): on release/* pushes,
+#   on pull requests that change the code or runtimes behind those
+#   requests, and on manual runs that ask for it.
+# The installers are kept as workflow artifacts for testing. Releases
+# themselves are built by release.yml.
 on:
   push:
     branches: ["**"]
   pull_request:
+    branches: [main]
   workflow_dispatch:
+    inputs:
+      platforms:
+        description: Build the installers on all six platforms
+        type: boolean
+        default: true
+      local-ai:
+        description: Run local AI and job matching on all six platforms
+        type: boolean
+        default: true
 
 permissions:
   contents: read
 
 concurrency:
-  group: build-${{ github.ref }}
+  group: build-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -36,8 +53,100 @@ jobs:
       - name: Tests
         run: npm test
 
+  rust:
+    name: Rust tests
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          key: rust-tests
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libglib2.0-dev \
+            libgdk-pixbuf-2.0-dev \
+            libappindicator3-dev \
+            librsvg2-dev
+
+      # The Rust crate embeds the built frontend.
+      - name: Build the frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Rust tests
+        shell: bash
+        working-directory: src-tauri
+        run: ../.github/scripts/run-logged.sh "Rust tests" cargo test --lib
+
+  # Decides which of the costly checks below this run needs.
+  scope:
+    name: Choose checks
+    runs-on: ubuntu-latest
+    outputs:
+      platforms: ${{ steps.scope.outputs.platforms }}
+      local-ai: ${{ steps.scope.outputs.local-ai }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - id: scope
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          WANT_PLATFORMS: ${{ inputs.platforms }}
+          WANT_LOCAL_AI: ${{ inputs.local-ai }}
+        run: |
+          platforms=false
+          local_ai=false
+          case "$EVENT" in
+            workflow_dispatch)
+              platforms="$WANT_PLATFORMS"
+              local_ai="$WANT_LOCAL_AI"
+              ;;
+            pull_request)
+              platforms=true
+              # The code and data behind a local AI request, and these checks.
+              if git diff --name-only "$BASE" HEAD | grep -qE '^(src-tauri/src/(llm|reranker|gpu_offload|gguf)\.rs|src-tauri/Cargo\.(toml|lock)|src/data/runtimes\.json|\.github/)'; then
+                local_ai=true
+              fi
+              ;;
+            push)
+              case "$REF" in
+                refs/heads/release/*)
+                  platforms=true
+                  local_ai=true
+                  ;;
+              esac
+              ;;
+          esac
+          echo "platforms=$platforms" >> "$GITHUB_OUTPUT"
+          echo "local-ai=$local_ai" >> "$GITHUB_OUTPUT"
+          echo "::notice title=Checks::installers on all platforms: $platforms, local AI on all platforms: $local_ai"
+
   build:
     name: ${{ matrix.name }}
+    needs: scope
+    if: needs.scope.outputs.platforms == 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     strategy:
@@ -61,13 +170,9 @@ jobs:
           - name: Linux x64
             os: ubuntu-22.04
             slug: linux-x64
-          # llama.cpp's Linux ARM build needs glibc 2.38+, newer than this
-          # runner has; its local AI check runs on Ubuntu 24.04 instead
-          # (the linux-arm-local-ai job below).
           - name: Linux ARM
             os: ubuntu-22.04-arm
             slug: linux-arm64
-            local-ai: false
 
     steps:
       - uses: actions/checkout@v7
@@ -131,23 +236,12 @@ jobs:
           for f in nsis/*.exe dmg/*.dmg deb/*.deb rpm/*.rpm appimage/*.AppImage; do names+="$(basename "$f") "; done
           echo "::notice title=Installers::$names"
 
+      # Platform-specific code (processes, paths) beyond Linux.
       - name: Rust tests
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         shell: bash
         working-directory: src-tauri
         run: ../.github/scripts/run-logged.sh "Rust tests" cargo test --lib
-
-      - name: Download a llama.cpp build and the light model
-        id: download
-        if: ${{ !cancelled() && steps.build.outcome == 'success' && matrix.local-ai != false }}
-        shell: bash
-        run: .github/scripts/run-logged.sh "Local AI download" node .github/scripts/local-ai-check.mjs
-
-      - name: Run one local AI request
-        if: ${{ !cancelled() && steps.download.outcome == 'success' }}
-        shell: bash
-        working-directory: src-tauri
-        run: ../.github/scripts/run-logged.sh "Local AI request" cargo test --lib real_local_request -- --ignored --nocapture
 
       - name: Start the app
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
@@ -174,12 +268,33 @@ jobs:
             src-tauri/target/release/bundle/rpm/*.rpm
             src-tauri/target/release/bundle/appimage/*.AppImage
 
-  # Local AI on Linux ARM, on a runner new enough for llama.cpp's ARM build
-  # (glibc 2.38+). The installers themselves are built on Ubuntu 22.04 above.
-  linux-arm-local-ai:
-    name: Linux ARM local AI
-    runs-on: ubuntu-24.04-arm
+  # One llama.cpp request with the light model and one job matching request,
+  # through the app's own code, on the llama.cpp build the app picks for each
+  # platform.
+  local-ai:
+    name: Local AI on ${{ matrix.name }}
+    needs: scope
+    if: needs.scope.outputs.local-ai == 'true'
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64
+            os: windows-latest
+          - name: Windows ARM
+            os: windows-11-arm
+          - name: macOS Apple silicon
+            os: macos-latest
+          - name: macOS Intel
+            os: macos-15-intel
+          - name: Linux x64
+            os: ubuntu-22.04
+          # llama.cpp's Linux ARM build needs glibc 2.38 or newer.
+          - name: Linux ARM
+            os: ubuntu-24.04-arm
+
     steps:
       - uses: actions/checkout@v7
 
@@ -190,15 +305,15 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri -> target
-          key: linux-arm64-local-ai
+          key: local-ai-${{ matrix.os }}
 
-      - name: Install Node.js
-        uses: actions/setup-node@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: lts/*
           cache: npm
 
       - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -206,8 +321,9 @@ jobs:
             libgtk-3-dev \
             libglib2.0-dev \
             libgdk-pixbuf-2.0-dev \
-            libayatana-appindicator3-dev \
             librsvg2-dev
+          # Ubuntu 24.04 replaced libappindicator with the Ayatana fork.
+          sudo apt-get install -y libappindicator3-dev || sudo apt-get install -y libayatana-appindicator3-dev
 
       # The Rust crate embeds the built frontend.
       - name: Build the frontend
@@ -215,11 +331,11 @@ jobs:
           npm ci
           npm run build
 
-      - name: Download a llama.cpp build and the light model
+      - name: Download a llama.cpp build, the light model and the job matching model
         shell: bash
         run: .github/scripts/run-logged.sh "Local AI download" node .github/scripts/local-ai-check.mjs
 
-      - name: Run one local AI request
+      - name: Run one local AI request and one job matching request
         shell: bash
         working-directory: src-tauri
-        run: ../.github/scripts/run-logged.sh "Local AI request" cargo test --lib real_local_request -- --ignored --nocapture
+        run: ../.github/scripts/run-logged.sh "Local AI requests" cargo test --lib real_ -- --ignored --nocapture --test-threads=1
