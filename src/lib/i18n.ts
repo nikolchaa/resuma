@@ -822,7 +822,7 @@ export const translations: Record<AppLanguage, Record<string, string>> = {
     "field.website": "Veb sajt",
     "field.school": "Škola",
     "field.schoolName": "Naziv škole",
-    "field.degree": "Smer",
+    "field.degree": "Smer / studijski program / diploma",
     "field.gpa": "Prosek",
     "field.jobTitle": "Pozicija",
     "field.company": "Kompanija",
