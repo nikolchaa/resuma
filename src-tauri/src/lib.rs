@@ -11,6 +11,9 @@ use tauri_plugin_prevent_default::Builder as PreventDefaultBuilder;
 #[cfg(target_os = "windows")]
 use tauri_plugin_prevent_default::PlatformOptions;
 
+// Linux only, but its tests run everywhere.
+#[cfg(any(target_os = "linux", test))]
+mod appimage;
 mod datavault;
 mod gguf;
 mod gpu_offload;
@@ -551,6 +554,11 @@ pub fn run() {
         .plugin(tauri_plugin_hwinfo::init())
         .plugin(prevent_default_plugin)
         .setup(|app| {
+            // From an AppImage, add Resuma to the app menu, which also gives
+            // its window an icon on Wayland (see appimage.rs).
+            #[cfg(target_os = "linux")]
+            std::thread::spawn(appimage::integrate);
+
             // Start-up check for CI (RESUMA_SMOKE_TEST set): exit with 0 once
             // the frontend has loaded and called in, or with 1 if it hasn't
             // within a minute (a missing library, a WebView that won't start).
