@@ -1,6 +1,6 @@
 import { useLocation, useNavigate, useOutlet } from "react-router-dom";
 import { AnimatePresence, motion as m } from "motion/react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { getSection } from "./lib/store";
 import { applyContentSizeClass } from "./lib/ui";
 import { useTheme } from "./contexts/ThemeContext";
@@ -11,6 +11,27 @@ import {
 import { SettingsType } from "./contexts/OnboardingContext";
 import { McpBridge } from "./components/McpBridge";
 import { Suggestions } from "./components/Suggestions";
+import { useLanguage } from "./contexts/LanguageContext";
+import { checkForUpdate, updateMessage } from "./lib/updates";
+import { showUpdateAvailable } from "./lib/toastUtils";
+
+/** Set once the start-up update check has run, so it runs once per launch. */
+let checkedForUpdate = false;
+
+/**
+ * Looks for a newer release a few seconds after start-up, once onboarding is
+ * done and unless turned off in Settings. Offline or on any error it stays
+ * quiet: the manual check in Settings reports failures.
+ */
+function checkForUpdateOnStart(t: () => (key: string) => string) {
+  if (checkedForUpdate) return;
+  checkedForUpdate = true;
+  setTimeout(() => {
+    checkForUpdate()
+      .then((check) => check.newer && showUpdateAvailable(updateMessage(check, t())))
+      .catch((e) => console.warn("Start-up update check failed:", e));
+  }, 3000);
+}
 
 export default function App() {
   const location = useLocation();
@@ -18,6 +39,10 @@ export default function App() {
   const navigate = useNavigate();
 
   const { setTheme: setThemeContext } = useTheme();
+  // The language can settle after start-up, so the toast reads it when shown.
+  const { t } = useLanguage();
+  const tRef = useRef(t);
+  tRef.current = t;
 
   useEffect(() => {
     const requiredSections: (keyof SettingsType)[] = [
@@ -44,7 +69,8 @@ export default function App() {
         (sectionData) => sectionData !== undefined
       );
 
-      !allExist && navigate("/onboarding");
+      if (!allExist) navigate("/onboarding");
+      else if (app?.updateCheck !== false) checkForUpdateOnStart(() => tRef.current);
     };
 
     checkSections();

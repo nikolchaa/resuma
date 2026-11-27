@@ -128,6 +128,13 @@ export const translations: Record<AppLanguage, Record<string, string>> = {
     "settings.updates.check": "Check for Updates",
     "settings.updates.latest": "You're on the latest version.",
     "settings.updates.checkFailed": "Update check failed",
+    "settings.updates.onStart": "Check when Resuma starts",
+    "settings.updates.onStart.description":
+      "When Resuma starts, it asks GitHub whether a newer version is out. Nothing about you or your resumes is sent.",
+    "settings.updates.available": "Resuma {version} is available",
+    "settings.updates.availableBody":
+      "You have {current}. Download the new version from its release page.",
+    "settings.updates.view": "View release",
     "settings.app.opensource":
       "Resuma is open-source software. Check out the source code on",
     "settings.error.fetchVersion": "Failed to fetch app version",
@@ -808,6 +815,13 @@ export const translations: Record<AppLanguage, Record<string, string>> = {
     "settings.updates.check": "Proveri ažuriranja",
     "settings.updates.latest": "Koristiš najnoviju verziju.",
     "settings.updates.checkFailed": "Provera ažuriranja nije uspela",
+    "settings.updates.onStart": "Proveri pri pokretanju",
+    "settings.updates.onStart.description":
+      "Kada se Resuma pokrene, pita GitHub da li postoji novija verzija. Ništa o tebi ni tvojim rezimeima se ne šalje.",
+    "settings.updates.available": "Dostupna je Resuma {version}",
+    "settings.updates.availableBody":
+      "Imaš verziju {current}. Novu verziju preuzmi sa stranice izdanja.",
+    "settings.updates.view": "Pogledaj izdanje",
     "settings.app.opensource":
       "Resuma je softver otvorenog koda. Pogledaj izvorni kod na",
     "settings.error.fetchVersion": "Neuspešno preuzimanje verzije aplikacije",

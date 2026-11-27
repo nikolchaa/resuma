@@ -1,6 +1,6 @@
 # Privacy Policy
 
-Effective Date: November 24, 2026 (previously August 4, 2026)
+Effective Date: November 27, 2026 (previously November 24, 2026)
 
 This Privacy Policy describes how Resuma handles your data.
 
@@ -8,7 +8,7 @@ This Privacy Policy describes how Resuma handles your data.
 
 ## 1. Data Collection
 
-Resuma is a local-first application. By default, **no personal data is collected, transmitted, or stored on external servers**. Sending resume content to an external AI provider is possible, but only after you explicitly configure one - see [Section 3](#3-optional-ai-providers). Showing a generic status on your Discord profile is likewise opt-in - see [Section 4](#4-optional-discord-presence) - and so is letting other AI apps on your computer read your resumes - see [Section 5](#5-optional-connection-for-other-ai-apps).
+Resuma is a local-first application. By default, **no personal data is collected, transmitted, or stored on external servers**. Sending resume content to an external AI provider is possible, but only after you explicitly configure one - see [Section 3](#3-optional-ai-providers). Showing a generic status on your Discord profile is likewise opt-in - see [Section 4](#4-optional-discord-presence) - and so is letting other AI apps on your computer read your resumes - see [Section 5](#5-optional-connection-for-other-ai-apps). When it starts, Resuma asks GitHub whether a newer version is out, without sending anything about you - see [Section 6](#6-update-check).
 
 All resume content, settings, model files, and AI runtime binaries are stored locally on your device:
 
@@ -33,9 +33,9 @@ The following data is stored **locally only**:
 
 Resume files and the settings file are encrypted with AES-256-GCM. The key is created on your computer the first time Resuma runs and is kept in your operating system's credential manager (or, where none is reachable, in the encrypted file described below), so Resuma opens your data without a password. This protects copies of your data folder, such as backups, cloud-synced folders or a lost disk. It does not protect against programs running under your own account, which can unlock the data the same way Resuma does.
 
-When encryption is set up, Resuma shows a **recovery key** once (you can show it again in **Settings → App Settings → Data protection**). With it your data folder opens on another computer, or here if the credential manager loses the key. Without it, a lost key means the data can't be opened. You can also export an **encrypted backup**: one file with your resumes and profile, protected by a password you choose (derived with Argon2id), to import on another computer. Files you export yourself (PDF, TXT, `.resume`, settings exports) are written as normal, unencrypted files wherever you save them.
+When encryption is set up, Resuma shows a **recovery key** once (you can show it again in **Settings → App Settings → Data protection**). With it your data folder opens on another computer, or here if the credential manager loses the key. Without it, a lost key means the data can't be opened. To move data to another computer, export an **encrypted backup**: one file with the resumes you pick and, if you want, your profile and settings, protected by a password you choose (derived with Argon2id). Backups are the only way Resuma exports resumes and settings, and they are always encrypted. The PDF and TXT files you export are written as normal, unencrypted files wherever you save them.
 
-API keys for external providers are **not** kept in `settings.resuma`. They are stored in your operating system's credential manager (Windows Credential Manager, macOS Keychain, or the Linux Secret Service) and are read only when a request to that provider is made. They are never included in exported settings files.
+API keys for external providers are **not** kept in `settings.resuma`. They are stored in your operating system's credential manager (Windows Credential Manager, macOS Keychain, or the Linux Secret Service) and are read only when a request to that provider is made. They are never included in backups.
 
 On systems where no credential manager is reachable - most often a headless Linux setup with no Secret Service daemon - Resuma falls back to an encrypted file (`secrets.enc`) in the same app data directory, and tells you so in the AI settings. That file is encrypted with a key derived from your machine and user account, which protects it if the file is copied or ends up in a backup, but not from someone who can already run programs as you.
 
@@ -91,19 +91,27 @@ What a connected app does with what it reads is up to that app and, if it uses a
 
 ---
 
-## 6. Third-Party Libraries
+## 6. Update Check
+
+A few seconds after it starts, Resuma asks GitHub for the version number of its latest release and, if it's newer than yours, tells you. The request goes straight to GitHub's public API (`api.github.com`) and carries nothing about you, your settings, or your resumes. Like any request, it shows GitHub your IP address, under [GitHub's privacy statement](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement). Resuma doesn't install anything itself: you download the new version yourself.
+
+You can turn this off in **Settings → App Settings → App Updates**, and still check by hand with **Check for Updates**. Without an internet connection, the start-up check stays quiet.
+
+---
+
+## 7. Third-Party Libraries
 
 Resuma uses various open-source libraries and tools listed in [THIRD_PARTY.md](./THIRD_PARTY.md). These tools do **not** collect data unless explicitly stated.
 
 ---
 
-## 7. Your Control
+## 8. Your Control
 
 You have full control over all your data. You may delete files, settings, or models at any time using your file system or the in-app UI.
 
 ---
 
-## 8. Contact
+## 9. Contact
 
 For questions or privacy-related concerns, contact: [contact@nikolchaa.com](mailto:contact@nikolchaa.com)
 

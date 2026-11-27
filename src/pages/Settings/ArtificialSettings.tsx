@@ -2,13 +2,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { RotateCcw, Info, Download, Check, Trash2, X } from "lucide-react";
+import { InfoTip } from "@/components/InfoTip";
+import { RotateCcw, Download, Check, Trash2, X } from "lucide-react";
 import { SettingsType } from "@/contexts/OnboardingContext";
 import { useSystem } from "@/contexts/SystemContext";
 import { CardDescription, CardTitle } from "@/components/ui/card";
@@ -275,18 +270,7 @@ export const ArtificialSettings = ({
   };
 
   const renderParamTooltip = (label: string, desc: string) => (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className='text-muted-foreground cursor-help flex items-center gap-1'>
-            ({label}) <Info className='h-4 w-4' />
-          </span>
-        </TooltipTrigger>
-        <TooltipContent side='top'>
-          <p>{desc}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <InfoTip tag={label} text={desc} />
   );
 
   return (

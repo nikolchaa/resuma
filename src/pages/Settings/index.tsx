@@ -34,6 +34,9 @@ import {
 } from "@tauri-apps/api/app";
 import { showError, showSuccess, showUpdateAvailable } from "@/lib/toastUtils";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { Switch } from "@/components/ui/switch";
+import { InfoTip } from "@/components/InfoTip";
+import { checkForUpdate, updateMessage } from "@/lib/updates";
 
 export default function Settings() {
   const { t } = useLanguage();
@@ -62,6 +65,7 @@ export default function Settings() {
 
   const [unsavedChanges, setUnsavedChanges] = useState(false);
 
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [version, setVersion] = useState<string>("");
   const [identifier, setIdentifier] = useState<string>("");
   const [tauriVersion, setTauriVersion] = useState<string>("");
@@ -457,49 +461,35 @@ export default function Settings() {
                 <Card className='mt-8'>
                   <CardContent className='flex flex-col gap-4'>
                     <Label className='text-lg'>{t("settings.updates.heading")}</Label>
+                    <div className='flex items-center justify-between gap-4'>
+                      <Label htmlFor='update-check'>
+                        {t("settings.updates.onStart")}{" "}
+                        <InfoTip text={t("settings.updates.onStart.description")} />
+                      </Label>
+                      <Switch
+                        id='update-check'
+                        checked={draftSettings.app.updateCheck ?? true}
+                        onCheckedChange={(v) => updateSettings("app", { updateCheck: v })}
+                      />
+                    </div>
                     <Button
                       variant='outline'
                       className='self-start'
+                      disabled={checkingUpdate}
                       onClick={async () => {
-                        console.log("Checking GitHub for latest version...");
-
+                        setCheckingUpdate(true);
                         try {
-                          const current = await getVersion();
-
-                          const res = await fetch(
-                            "https://api.github.com/repos/nikolchaa/resuma/releases"
-                          );
-                          const releases = await res.json();
-
-                          if (
-                            !Array.isArray(releases) ||
-                            releases.length === 0
-                          ) {
-                            throw new Error("No releases found.");
-                          }
-
-                          const latestTag = releases[0].tag_name?.replace(
-                            /^v/,
-                            ""
-                          );
-                          if (!latestTag) {
-                            throw new Error("No tag name in latest release.");
-                          }
-
-                          if (latestTag !== current) {
-                            console.log(
-                              `New version available: ${latestTag} (current: ${current})`
-                            );
-                            showUpdateAvailable(latestTag);
-                          } else {
-                            showSuccess(t("settings.updates.latest"));
-                          }
+                          const check = await checkForUpdate();
+                          if (check.newer) showUpdateAvailable(updateMessage(check, t));
+                          else showSuccess(t("settings.updates.latest"));
                         } catch (err) {
                           console.error("Failed to check for updates:", err);
-                            showError(
-                              t("settings.updates.checkFailed"),
-                              err instanceof Error ? err.message : undefined
-                            );
+                          showError(
+                            t("settings.updates.checkFailed"),
+                            err instanceof Error ? err.message : undefined
+                          );
+                        } finally {
+                          setCheckingUpdate(false);
                         }
                       }}
                     >

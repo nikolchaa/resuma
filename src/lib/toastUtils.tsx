@@ -50,24 +50,34 @@ export const showError = (title: string, description?: string) => {
   );
 };
 
-export const showUpdateAvailable = (version: string) => {
+/**
+ * A newer release is out. Stays up longer than other toasts, and the link
+ * opens in the system browser (the opener plugin handles target=_blank).
+ */
+export const showUpdateAvailable = ({
+  title,
+  description,
+  action,
+  url,
+}: {
+  title: string;
+  description: string;
+  action: string;
+  url: string;
+}) => {
   toast(
-    <div className='flex items-start gap-3 select-none'>
-      <CircleAlert className='w-5 h-5 text-yellow-500 mt-1 shrink-0' />
-      <div className='flex flex-col'>
-        <p className='text-sm text-yellow-500'>Update available: v{version}</p>
-        <p className='text-sm text-muted-foreground font-[400]'>
-          A new version of Resuma is available. Click below to view it.
-        </p>
-        <Button
-          variant={"outline"}
-          size={"sm"}
-          onClick={() => open("https://github.com/nikolchaa/resuma/releases")}
-          className='self-start mt-1'
-        >
-          View Release
+    <div className='flex items-start gap-2 select-none'>
+      <CircleAlert className='w-5 h-5 text-yellow-500 shrink-0' />
+      <div className='flex flex-col gap-1'>
+        <p className='text-sm text-yellow-500'>{title}</p>
+        <p className='text-sm text-muted-foreground font-[400]'>{description}</p>
+        <Button asChild variant='outline' size='sm' className='self-start mt-1'>
+          <a href={url} target='_blank' rel='noopener noreferrer'>
+            {action}
+          </a>
         </Button>
       </div>
-    </div>
+    </div>,
+    { duration: 15000 }
   );
 };
