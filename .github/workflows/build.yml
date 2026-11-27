@@ -3,7 +3,8 @@ name: Build and check
 # Three levels of checks, by cost:
 # - Every push and pull request: frontend and Rust tests on Linux.
 # - Pull requests to main, pushes to release/* branches and manual runs:
-#   the installers for all six platforms, each started once.
+#   the installers for all six platforms, each started once, and the x64
+#   AppImage started under Wayland on Arch Linux.
 # - Local AI on all six platforms (one llama.cpp request and one job
 #   matching request through the app's own code): on release/* pushes,
 #   on pull requests that change the code or runtimes behind those
@@ -255,6 +256,23 @@ jobs:
             .github/scripts/run-logged.sh "Start-up" ./src-tauri/target/release/Resuma
           fi
 
+      # The AppImage must leave libwayland-client to the system: a copy
+      # bundled from Ubuntu 22.04 is too old for current Mesa, and WebKit
+      # then aborts with "Could not create default EGL display:
+      # EGL_BAD_PARAMETER" (1.1.2 on Arch with Mesa 26).
+      - name: Check the AppImage's libraries
+        if: ${{ !cancelled() && steps.build.outcome == 'success' && runner.os == 'Linux' }}
+        shell: bash
+        run: |
+          cd "$RUNNER_TEMP"
+          "$GITHUB_WORKSPACE"/src-tauri/target/release/bundle/appimage/*.AppImage --appimage-extract >/dev/null
+          bundled="$(find squashfs-root -name 'libwayland-*.so*' -printf '%f\n' | sort | tr '\n' ' ')"
+          echo "::notice title=Wayland libraries in the AppImage::${bundled:-none}"
+          if find squashfs-root -name 'libwayland-client.so*' | grep -q .; then
+            echo "::error title=AppImage::The AppImage bundles libwayland-client, which makes WebKit abort on current Mesa."
+            exit 1
+          fi
+
       - name: Keep the installers
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: actions/upload-artifact@v7
@@ -267,6 +285,38 @@ jobs:
             src-tauri/target/release/bundle/deb/*.deb
             src-tauri/target/release/bundle/rpm/*.rpm
             src-tauri/target/release/bundle/appimage/*.AppImage
+
+  # The x64 AppImage on a current rolling-release desktop stack: Arch Linux
+  # with the latest Mesa, under Wayland (Weston, with Xwayland). The other
+  # start-up checks run on the Ubuntu the installers are built on, which
+  # can't show clashes between bundled libraries and newer system ones.
+  appimage-wayland:
+    name: AppImage on Arch Linux (Wayland)
+    needs: [scope, build]
+    if: ${{ !cancelled() && needs.scope.outputs.platforms == 'true' }}
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Weston, Xwayland and Mesa
+        run: |
+          pacman -Syu --noconfirm --needed weston xorg-xwayland mesa gtk3 ttf-dejavu dbus
+          useradd -m tester
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: resuma-linux-x64
+          path: installers
+
+      - name: Start the AppImage
+        shell: bash
+        run: |
+          app="$(realpath installers/appimage/*.AppImage)"
+          chmod 755 "$app"
+          runuser -u tester -- .github/scripts/run-logged.sh "AppImage on Wayland" \
+            .github/scripts/appimage-wayland.sh "$app"
 
   # One llama.cpp request with the light model and one job matching request,
   # through the app's own code, on the llama.cpp build the app picks for each
