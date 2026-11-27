@@ -567,7 +567,12 @@ pub fn run() {
                         std::thread::sleep(std::time::Duration::from_millis(200));
                     }
                     eprintln!("[smoke] the frontend didn't start within a minute");
-                    handle.exit(1);
+                    // Not handle.exit(1): the event loop can end the process
+                    // with 0 whatever code it's given, which hid a WebKit
+                    // crash on Linux. Nothing has started a child process yet.
+                    llm::cancel_all();
+                    reranker::stop();
+                    std::process::exit(1);
                 });
             }
             Ok(())

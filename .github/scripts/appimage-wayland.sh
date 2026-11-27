@@ -2,9 +2,7 @@
 # Starts the AppImage the way a Wayland desktop would - under Weston, with
 # Xwayland for X11 apps - and exits with the app's start-up check
 # (RESUMA_SMOKE_TEST): 0 once the frontend has loaded, 1 if it hasn't
-# within a minute, for example because WebKit's web process aborted.
-# Without a GPU, WebKit renders in software, so GPU-only failures don't show.
-# Run it as an ordinary user, not root.
+# within a minute, for example because WebKit's web process aborted.# Run it as an ordinary user, not root.
 # Usage: appimage-wayland.sh <AppImage>
 set -euo pipefail
 appimage="$(realpath "$1")"
@@ -28,8 +26,13 @@ fi
 
 export WAYLAND_DISPLAY=wayland-1 DISPLAY=:0 XDG_SESSION_TYPE=wayland RESUMA_SMOKE_TEST=1
 status=0
-timeout 120 dbus-run-session -- ./squashfs-root/AppRun || status=$?
+timeout 120 dbus-run-session -- ./squashfs-root/AppRun 2>&1 | tee app.log || status=$?
 kill "$weston_pid" 2>/dev/null || true
+# Passing needs the app's own word that the frontend started, so a crash
+# can't pass on an exit code alone.
+if ! grep -q '\[smoke\] the frontend started' app.log; then
+  [ "$status" -ne 0 ] || status=1
+fi
 if [ "$status" -ne 0 ]; then
   echo "--- Weston ---"
   tail -n 20 weston.log
