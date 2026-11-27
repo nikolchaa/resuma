@@ -24,6 +24,8 @@ export type SettingsType = {
     discordPresence: boolean;
     /** Editor mode the editor opens in. Missing in older settings = "simple". */
     editorMode?: EditorMode;
+    /** Look for a newer release on start-up. Missing = on. */
+    updateCheck?: boolean;
   };
   llm: {
     /** Provider id from data/providers.json; "local" runs bundled llama.cpp. */
