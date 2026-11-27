@@ -3,6 +3,7 @@
 # Xwayland for X11 apps - and exits with the app's start-up check
 # (RESUMA_SMOKE_TEST): 0 once the frontend has loaded, 1 if it hasn't
 # within a minute, for example because WebKit's web process aborted.
+# Without a GPU, WebKit renders in software, so GPU-only failures don't show.
 # Run it as an ordinary user, not root.
 # Usage: appimage-wayland.sh <AppImage>
 set -euo pipefail

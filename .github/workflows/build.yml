@@ -268,6 +268,8 @@ jobs:
           "$GITHUB_WORKSPACE"/src-tauri/target/release/bundle/appimage/*.AppImage --appimage-extract >/dev/null
           bundled="$(find squashfs-root -name 'libwayland-*.so*' -printf '%f\n' | sort | tr '\n' ' ')"
           echo "::notice title=Wayland libraries in the AppImage::${bundled:-none}"
+          backend="$(grep -rhs 'GDK_BACKEND' squashfs-root/AppRun* squashfs-root/apprun-hooks | sed 's/^ *//' | sort -u | tr '\n' ' ')"
+          echo "::notice title=GDK_BACKEND in the AppImage's start-up scripts::${backend:-not set}"
           if find squashfs-root -name 'libwayland-client.so*' | grep -q .; then
             echo "::error title=AppImage::The AppImage bundles libwayland-client, which makes WebKit abort on current Mesa."
             exit 1
@@ -288,8 +290,10 @@ jobs:
 
   # The x64 AppImage on a current rolling-release desktop stack: Arch Linux
   # with the latest Mesa, under Wayland (Weston, with Xwayland). The other
-  # start-up checks run on the Ubuntu the installers are built on, which
-  # can't show clashes between bundled libraries and newer system ones.
+  # start-up checks run on the Ubuntu the installers are built on. There is
+  # no GPU here, so WebKit renders in software: this catches libraries that
+  # won't load at all, but not 1.1.2's crash, which needs a GPU to show and
+  # is covered by the library check in the build job.
   appimage-wayland:
     name: AppImage on Arch Linux (Wayland)
     needs: [scope, build]
