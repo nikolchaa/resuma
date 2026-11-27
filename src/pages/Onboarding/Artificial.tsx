@@ -11,12 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { InfoTip } from "@/components/InfoTip";
 import { useSystem } from "@/contexts/SystemContext";
 import {
   ArrowRight,
@@ -25,7 +20,6 @@ import {
   ChevronUp,
   Cpu,
   Download,
-  Info,
   Microchip,
   RotateCcw,
   X,
@@ -245,18 +239,7 @@ const Artificial = () => {
   };
 
   const renderParamTooltip = (label: string, desc: string) => (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className='text-muted-foreground cursor-help flex items-center gap-1'>
-            ({label}) <Info className='h-4 w-4' />
-          </span>
-        </TooltipTrigger>
-        <TooltipContent side='top'>
-          <p>{desc}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <InfoTip tag={label} text={desc} />
   );
 
   return (
