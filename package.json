@@ -50,7 +50,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2",
+    "@tauri-apps/cli": "^2.12.6",
     "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^22.14.1",
     "@types/react": "^18.3.1",
