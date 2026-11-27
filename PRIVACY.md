@@ -8,7 +8,7 @@ This Privacy Policy describes how Resuma handles your data.
 
 ## 1. Data Collection
 
-Resuma is a local-first application. By default, **no personal data is collected, transmitted, or stored on external servers**. Sending resume content to an external AI provider is possible, but only after you explicitly configure one - see [Section 3](#3-optional-ai-providers). Showing a generic status on your Discord profile is likewise opt-in - see [Section 4](#4-optional-discord-presence) - and so is letting other AI apps on your computer read your resumes - see [Section 5](#5-optional-connection-for-other-ai-apps). When it starts, Resuma asks GitHub whether a newer version is out, without sending anything about you - see [Section 6](#6-update-check).
+Resuma is a local-first application. By default, **no personal data is collected, transmitted, or stored on external servers**. Sending resume content to an external AI provider is possible, but only after you explicitly configure one - see [Section 3](#3-optional-ai-providers). Showing a generic status on your Discord profile is likewise opt-in - see [Section 4](#4-optional-discord-presence) - and so is letting other AI apps on your computer read your resumes - see [Section 5](#5-optional-connection-for-other-ai-apps). Downloading a local AI model or runtime, searching for models, and the update check at start-up contact Hugging Face, GitHub or AMD without sending anything about you - see [Section 6](#6-downloads-and-update-check).
 
 All resume content, settings, model files, and AI runtime binaries are stored locally on your device:
 
@@ -28,16 +28,17 @@ The following data is stored **locally only**:
 - Your profile and application settings (`settings.resuma`), **encrypted**
 - Saved templates (`templates/*.rsm`), which hold designs, not personal data
 - Exported resumes (PDF/TXT)
-- Downloaded local models (e.g., Qwen3 GGUF)
-- llama.cpp runtime executables
+- Downloaded local models (e.g., Qwen3 GGUF) and the optional job matching model
+- llama.cpp runtime executables, with AMD's ROCm libraries for the HIP runtime
+- On Linux, when Resuma runs from an AppImage: an app menu entry (`~/.local/share/applications/Resuma.desktop`) pointing at the AppImage, and its icon, so your desktop can show Resuma in the menu and taskbar. Resuma never changes an entry it didn't write, and the entry hides itself once the AppImage is deleted.
 
-Resume files and the settings file are encrypted with AES-256-GCM. The key is created on your computer the first time Resuma runs and is kept in your operating system's credential manager (or, where none is reachable, in the encrypted file described below), so Resuma opens your data without a password. This protects copies of your data folder, such as backups, cloud-synced folders or a lost disk. It does not protect against programs running under your own account, which can unlock the data the same way Resuma does.
+Resume files and the settings file are encrypted with AES-256-GCM. The key is created on your computer the first time Resuma runs and is kept in your operating system's credential manager, so Resuma opens your data without a password. This protects copies of your data folder, such as backups, cloud-synced folders or a lost disk. It does not protect against programs running under your own account, which can unlock the data the same way Resuma does. Where no credential manager is reachable, the key goes into the fallback file described below, which protects much less.
 
-When encryption is set up, Resuma shows a **recovery key** once (you can show it again in **Settings → App Settings → Data protection**). With it your data folder opens on another computer, or here if the credential manager loses the key. Without it, a lost key means the data can't be opened. To move data to another computer, export an **encrypted backup**: one file with the resumes you pick and, if you want, your profile and settings, protected by a password you choose (derived with Argon2id). Backups are the only way Resuma exports resumes and settings, and they are always encrypted. The PDF and TXT files you export are written as normal, unencrypted files wherever you save them.
+When encryption is set up, Resuma shows a **recovery key** once (you can show it again in **Settings → App Settings → Data protection**). With it your data folder opens on another computer, or here if the credential manager loses the key. Without it, a lost key means the data can't be opened. To move data to another computer, export an **encrypted backup**: one file with the resumes you pick and, if you want, your profile and settings, protected by a password you choose (derived with Argon2id). Backups are always encrypted. The PDF and TXT files you export are the exception: they are written as normal, unencrypted files wherever you save them.
 
 API keys for external providers are **not** kept in `settings.resuma`. They are stored in your operating system's credential manager (Windows Credential Manager, macOS Keychain, or the Linux Secret Service) and are read only when a request to that provider is made. They are never included in backups.
 
-On systems where no credential manager is reachable - most often a headless Linux setup with no Secret Service daemon - Resuma falls back to an encrypted file (`secrets.enc`) in the same app data directory, and tells you so in the AI settings. That file is encrypted with a key derived from your machine and user account, which protects it if the file is copied or ends up in a backup, but not from someone who can already run programs as you.
+On systems where no credential manager is reachable - most often a headless Linux setup with no Secret Service daemon - Resuma falls back to an encrypted file (`secrets.enc`) in the same app data directory, which then holds both your API keys and the key to your resumes and settings. Resuma tells you so in **Settings → App Settings → Data protection** and in the AI settings. That file's key is derived from your user name and computer name, which aren't secret: it keeps the file from being read at a glance, but someone with a copy of your data folder who knows or guesses those names could decrypt it, and so could anyone who can run programs as you. If your data folder is backed up or synced, use a credential manager.
 
 None of this data is uploaded, synced, or shared without explicit user action.
 
@@ -91,11 +92,18 @@ What a connected app does with what it reads is up to that app and, if it uses a
 
 ---
 
-## 6. Update Check
+## 6. Downloads and Update Check
 
-A few seconds after it starts, Resuma asks GitHub for the version number of its latest release and, if it's newer than yours, tells you. The request goes straight to GitHub's public API (`api.github.com`) and carries nothing about you, your settings, or your resumes. Like any request, it shows GitHub your IP address, under [GitHub's privacy statement](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement). Resuma doesn't install anything itself: you download the new version yourself.
+None of these requests carry your resumes, settings, or personal details. Like any web request, each one shows the site your IP address and a standard browser identification string, under that site's own privacy policy.
 
-You can turn this off in **Settings → App Settings → App Updates**, and still check by hand with **Check for Updates**. Without an internet connection, the start-up check stays quiet.
+**Downloads for local AI** happen only when you choose local AI during onboarding or download something in **Settings → AI Settings**:
+
+- **Models** come from [Hugging Face](https://huggingface.co): the default Qwen3 models, the optional job matching model, and any model you pick. When you search for models, your search terms go to Hugging Face's API.
+- **AI runtimes** are [llama.cpp](https://github.com/ggml-org/llama.cpp) builds from GitHub. The AMD HIP runtime also downloads AMD's ROCm libraries and the GPU kernels for your graphics card from AMD's package repository (`stable.repo.amd.com`).
+
+**The update check** runs a few seconds after Resuma starts, once you've finished setting it up. Resuma asks GitHub's public API (`api.github.com`) for the version number of its latest release and, if it's newer than yours, tells you. Resuma doesn't install anything itself: you download the new version yourself. You can turn the check off in **Settings → App Settings → App Updates**, and still check by hand with **Check for Updates**. Without an internet connection, the start-up check stays quiet.
+
+GitHub's handling of these requests is covered by the [GitHub privacy statement](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement).
 
 ---
 
