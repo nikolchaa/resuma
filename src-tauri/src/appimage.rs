@@ -41,17 +41,29 @@ pub fn integrate() {
     let Some(data_home) = dirs_next::data_dir() else {
         return;
     };
-    let system_dirs: Vec<PathBuf> = std::env::var("XDG_DATA_DIRS")
-        .ok()
+    let system_dirs = system_data_dirs(
+        std::env::var("XDG_DATA_DIRS").ok(),
+        std::env::var_os("APPDIR").map(PathBuf::from),
+    );
+    match integrate_into(&data_home, &system_dirs, &appimage) {
+        Ok(outcome) => println!("[appimage] app menu entry: {outcome:?}"),
+        Err(e) => eprintln!("[appimage] couldn't add Resuma to the app menu: {e}"),
+    }
+}
+
+/// The system's data folders, where a package installs its entry. The
+/// AppImage's start-up script puts its own `usr/share` first, whose bundled
+/// Resuma.desktop no desktop can see, so folders inside the AppImage
+/// (`APPDIR`) are left out.
+fn system_data_dirs(xdg_data_dirs: Option<String>, appdir: Option<PathBuf>) -> Vec<PathBuf> {
+    xdg_data_dirs
         .filter(|dirs| !dirs.trim().is_empty())
         .unwrap_or_else(|| "/usr/local/share:/usr/share".to_string())
         .split(':')
         .filter(|dir| !dir.is_empty())
         .map(PathBuf::from)
-        .collect();
-    if let Err(e) = integrate_into(&data_home, &system_dirs, &appimage) {
-        eprintln!("[appimage] couldn't add Resuma to the app menu: {e}");
-    }
+        .filter(|dir| appdir.as_ref().is_none_or(|appdir| !dir.starts_with(appdir)))
+        .collect()
 }
 
 pub fn integrate_into(
@@ -184,6 +196,19 @@ mod tests {
         assert_eq!(exec_arg("/x/100%/$y").unwrap(), "\"/x/100%%/\\\\$y\"");
         assert_eq!(exec_arg("/x/a\\b").unwrap(), "\"/x/a\\\\\\\\b\"");
         assert!(exec_arg("/x/a\nb").is_err());
+    }
+
+    #[test]
+    fn looks_for_package_entries_outside_the_appimage() {
+        let dirs = system_data_dirs(
+            Some("/tmp/.mount_ResumaX/usr/share:/usr/local/share::/usr/share".to_string()),
+            Some(PathBuf::from("/tmp/.mount_ResumaX")),
+        );
+        assert_eq!(dirs, [PathBuf::from("/usr/local/share"), PathBuf::from("/usr/share")]);
+        assert_eq!(
+            system_data_dirs(None, None),
+            [PathBuf::from("/usr/local/share"), PathBuf::from("/usr/share")]
+        );
     }
 
     #[test]
